@@ -8,13 +8,27 @@
 
 /* Begin PBXBuildFile section */
 		4C4AA1041869C9AE83349E2D /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = A33105392B7C6EF6C33290E6 /* GoogleSignInSwift */; };
+		89CB0E06E185C91A995F878D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 432FCA6D9680CAA14967130D /* Foundation.framework */; };
+		C8ED1E66BF188F6DDC94A9D5 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 5575BFD813A75E3190B13428 /* FirebaseFirestore */; };
 		DCCE30E2166A5CA7EA26DCC0 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = B2B19C79C7CDE2A5D8299505 /* FirebaseCore */; };
 		FAB752160D9F984B40CAB423 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = ED9DF0389D44056354FD852E /* FirebaseAuth */; };
 		FCB8BC08B1D04A779509E274 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D2749F77276CA117F8ECFB1B /* GoogleSignIn */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		89A05451D7F065C82B8A0BB0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2AF9856630518F9E0065A469 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2AF9856D30518F9E0065A469;
+			remoteInfo = FridgeFit;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		2AF9856E30518F9E0065A469 /* FridgeFit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FridgeFit.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		432FCA6D9680CAA14967130D /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		4ED902A1A70855916CA73C63 /* FridgeFitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FridgeFitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -36,6 +50,11 @@
 			path = FridgeFit;
 			sourceTree = "<group>";
 		};
+		5921EE0D09BD997FDB717209 /* FridgeFitTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FridgeFitTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,17 +66,44 @@
 				DCCE30E2166A5CA7EA26DCC0 /* FirebaseCore in Frameworks */,
 				FCB8BC08B1D04A779509E274 /* GoogleSignIn in Frameworks */,
 				4C4AA1041869C9AE83349E2D /* GoogleSignInSwift in Frameworks */,
+				C8ED1E66BF188F6DDC94A9D5 /* FirebaseFirestore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9469F92C731F878F73BA18AF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				89CB0E06E185C91A995F878D /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1CAE3795DE9207828A11DFB0 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				432FCA6D9680CAA14967130D /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		22D18EAC3434F48E6BE0AED8 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				1CAE3795DE9207828A11DFB0 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		2AF9856530518F9E0065A469 = {
 			isa = PBXGroup;
 			children = (
 				2AF9857030518F9E0065A469 /* FridgeFit */,
 				2AF9856F30518F9E0065A469 /* Products */,
+				22D18EAC3434F48E6BE0AED8 /* Frameworks */,
+				5921EE0D09BD997FDB717209 /* FridgeFitTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -65,6 +111,7 @@
 			isa = PBXGroup;
 			children = (
 				2AF9856E30518F9E0065A469 /* FridgeFit.app */,
+				4ED902A1A70855916CA73C63 /* FridgeFitTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -93,10 +140,32 @@
 				B2B19C79C7CDE2A5D8299505 /* FirebaseCore */,
 				D2749F77276CA117F8ECFB1B /* GoogleSignIn */,
 				A33105392B7C6EF6C33290E6 /* GoogleSignInSwift */,
+				5575BFD813A75E3190B13428 /* FirebaseFirestore */,
 			);
 			productName = FridgeFit;
 			productReference = 2AF9856E30518F9E0065A469 /* FridgeFit.app */;
 			productType = "com.apple.product-type.application";
+		};
+		D9F4445E7DC280EDF276EE1C /* FridgeFitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1A9332A53CF2DDC902BD2EBD /* Build configuration list for PBXNativeTarget "FridgeFitTests" */;
+			buildPhases = (
+				1868EDCF93130AF20CCD0656 /* Sources */,
+				9469F92C731F878F73BA18AF /* Frameworks */,
+				C8461587A7F3B714E51DC8C8 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				097681092CDAC3CE54882C3F /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				5921EE0D09BD997FDB717209 /* FridgeFitTests */,
+			);
+			name = FridgeFitTests;
+			productName = FridgeFitTests;
+			productReference = 4ED902A1A70855916CA73C63 /* FridgeFitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -110,6 +179,10 @@
 				TargetAttributes = {
 					2AF9856D30518F9E0065A469 = {
 						CreatedOnToolsVersion = 26.1;
+					};
+					D9F4445E7DC280EDF276EE1C = {
+						CreatedOnToolsVersion = 26.1;
+						TestTargetID = 2AF9856D30518F9E0065A469;
 					};
 				};
 			};
@@ -132,6 +205,7 @@
 			projectRoot = "";
 			targets = (
 				2AF9856D30518F9E0065A469 /* FridgeFit */,
+				D9F4445E7DC280EDF276EE1C /* FridgeFitTests */,
 			);
 		};
 /* End PBXProject section */
@@ -144,9 +218,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C8461587A7F3B714E51DC8C8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		1868EDCF93130AF20CCD0656 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		2AF9856A30518F9E0065A469 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -155,6 +243,15 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		097681092CDAC3CE54882C3F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = FridgeFit;
+			target = 2AF9856D30518F9E0065A469 /* FridgeFit */;
+			targetProxy = 89A05451D7F065C82B8A0BB0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		2AF9857730518FA00065A469 /* Debug */ = {
@@ -340,9 +437,67 @@
 			};
 			name = Release;
 		};
+		B8F347AA1FB91AF6EE218628 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Fridge.FridgeFitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FridgeFit.app/FridgeFit";
+			};
+			name = Debug;
+		};
+		F197229B671C9FE35E487776 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Fridge.FridgeFitTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FridgeFit.app/FridgeFit";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		1A9332A53CF2DDC902BD2EBD /* Build configuration list for PBXNativeTarget "FridgeFitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F197229B671C9FE35E487776 /* Release */,
+				B8F347AA1FB91AF6EE218628 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		2AF9856930518F9E0065A469 /* Build configuration list for PBXProject "FridgeFit" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -383,6 +538,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		5575BFD813A75E3190B13428 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5739C9EE32136E4787E904A7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
 		A33105392B7C6EF6C33290E6 /* GoogleSignInSwift */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 558CD5B0251C9DE99F5AF4AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
