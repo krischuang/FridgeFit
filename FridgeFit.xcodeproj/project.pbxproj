@@ -7,17 +7,32 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4C4AA1041869C9AE83349E2D /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = A33105392B7C6EF6C33290E6 /* GoogleSignInSwift */; };
 		DCCE30E2166A5CA7EA26DCC0 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = B2B19C79C7CDE2A5D8299505 /* FirebaseCore */; };
 		FAB752160D9F984B40CAB423 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = ED9DF0389D44056354FD852E /* FirebaseAuth */; };
+		FCB8BC08B1D04A779509E274 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D2749F77276CA117F8ECFB1B /* GoogleSignIn */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2AF9856E30518F9E0065A469 /* FridgeFit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FridgeFit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9E156134FDE68A4F3E26DCEE /* Exceptions for "FridgeFit" folder in "FridgeFit" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 2AF9856D30518F9E0065A469 /* FridgeFit */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2AF9857030518F9E0065A469 /* FridgeFit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9E156134FDE68A4F3E26DCEE /* Exceptions for "FridgeFit" folder in "FridgeFit" target */,
+			);
 			path = FridgeFit;
 			sourceTree = "<group>";
 		};
@@ -30,6 +45,8 @@
 			files = (
 				FAB752160D9F984B40CAB423 /* FirebaseAuth in Frameworks */,
 				DCCE30E2166A5CA7EA26DCC0 /* FirebaseCore in Frameworks */,
+				FCB8BC08B1D04A779509E274 /* GoogleSignIn in Frameworks */,
+				4C4AA1041869C9AE83349E2D /* GoogleSignInSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -74,6 +91,8 @@
 			packageProductDependencies = (
 				ED9DF0389D44056354FD852E /* FirebaseAuth */,
 				B2B19C79C7CDE2A5D8299505 /* FirebaseCore */,
+				D2749F77276CA117F8ECFB1B /* GoogleSignIn */,
+				A33105392B7C6EF6C33290E6 /* GoogleSignInSwift */,
 			);
 			productName = FridgeFit;
 			productReference = 2AF9856E30518F9E0065A469 /* FridgeFit.app */;
@@ -105,6 +124,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				5739C9EE32136E4787E904A7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				558CD5B0251C9DE99F5AF4AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2AF9856F30518F9E0065A469 /* Products */;
@@ -265,6 +285,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FridgeFit/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -296,6 +317,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FridgeFit/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -342,6 +364,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		558CD5B0251C9DE99F5AF4AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.0.0;
+			};
+		};
 		5739C9EE32136E4787E904A7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -353,10 +383,20 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		A33105392B7C6EF6C33290E6 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 558CD5B0251C9DE99F5AF4AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
 		B2B19C79C7CDE2A5D8299505 /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 5739C9EE32136E4787E904A7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCore;
+		};
+		D2749F77276CA117F8ECFB1B /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 558CD5B0251C9DE99F5AF4AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
 		};
 		ED9DF0389D44056354FD852E /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;

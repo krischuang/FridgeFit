@@ -3,6 +3,7 @@
 //  FridgeFit
 //
 
+import GoogleSignInSwift
 import SwiftUI
 
 struct LoginView: View {
@@ -58,6 +59,17 @@ struct LoginView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!canSubmit)
+
+                HStack {
+                    VStack { Divider() }
+                    Text("or").font(.footnote).foregroundStyle(.secondary)
+                    VStack { Divider() }
+                }
+
+                GoogleSignInButton {
+                    Task { await authViewModel.signInWithGoogle() }
+                }
+                .disabled(authViewModel.isLoading)
 
                 Button("Don't have an account? Sign up") {
                     showRegister = true
