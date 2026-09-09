@@ -7,6 +7,7 @@
 
 import SwiftUI
 import FirebaseCore
+import GoogleSignIn
 
 @main
 struct FridgeFitApp: App {
@@ -14,6 +15,9 @@ struct FridgeFitApp: App {
 
     init() {
         FirebaseApp.configure()
+        if let clientID = FirebaseApp.app()?.options.clientID {
+            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        }
     }
 
     var body: some Scene {
@@ -26,6 +30,9 @@ struct FridgeFitApp: App {
                 }
             }
             .environmentObject(authViewModel)
+            .onOpenURL { url in
+                GIDSignIn.sharedInstance.handle(url)
+            }
         }
     }
 }

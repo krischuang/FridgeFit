@@ -6,6 +6,8 @@
 import Combine
 import Foundation
 import FirebaseAuth
+import GoogleSignIn
+import UIKit
 
 @MainActor
 final class AuthViewModel: ObservableObject {
@@ -54,9 +56,41 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
+    func signInWithGoogle() async {
+        errorMessage = nil
+        isLoading = true
+        defer { isLoading = false }
+
+        guard let presentingViewController = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .flatMap({ $0.windows })
+            .first(where: { $0.isKeyWindow })?.rootViewController
+        else {
+            errorMessage = "Unable to find a view to present Google Sign-In."
+            return
+        }
+
+        do {
+            let googleResult = try await GIDSignIn.sharedInstance.signIn(withPresenting: presentingViewController)
+            guard let idToken = googleResult.user.idToken?.tokenString else {
+                errorMessage = "Google Sign-In did not return an ID token."
+                return
+            }
+            let credential = GoogleAuthProvider.credential(
+                withIDToken: idToken,
+                accessToken: googleResult.user.accessToken.tokenString
+            )
+            let authResult = try await Auth.auth().signIn(with: credential)
+            user = authResult.user
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func signOut() {
         do {
             try Auth.auth().signOut()
+            GIDSignIn.sharedInstance.signOut()
             user = nil
         } catch {
             errorMessage = error.localizedDescription
