@@ -5,15 +5,23 @@
 //  Created by Kai-Hsiang on 9/9/2026.
 //
 
+import FirebaseAuth
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject private var authViewModel: AuthViewModel
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
+        VStack(spacing: 16) {
+            Image(systemName: "refrigerator")
                 .imageScale(.large)
                 .foregroundStyle(.tint)
-            Text("Hello, world!")
+            if let email = authViewModel.user?.email {
+                Text("Signed in as \(email)")
+            }
+            Button("Sign Out", role: .destructive) {
+                authViewModel.signOut()
+            }
         }
         .padding()
     }
@@ -21,4 +29,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(AuthViewModel())
 }
