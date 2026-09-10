@@ -5,35 +5,36 @@
 //  Created by Kai-Hsiang on 9/9/2026.
 //
 
-import FirebaseAuth
 import SwiftUI
 
+/// Root of the authenticated app: Pantry, Recipes, and Profile, each in
+/// its own tab with its own navigation stack.
 struct ContentView: View {
-    @EnvironmentObject private var authViewModel: AuthViewModel
-    @StateObject private var pantryViewModel = PantryViewModel(pantryRepository: FirestorePantryRepository())
+    @StateObject private var pantryViewModel: PantryViewModel
+    @StateObject private var recipeViewModel: RecipeViewModel
+
+    init() {
+        let pantryRepository = FirestorePantryRepository()
+        _pantryViewModel = StateObject(wrappedValue: PantryViewModel(pantryRepository: pantryRepository))
+        _recipeViewModel = StateObject(wrappedValue: RecipeViewModel(pantryRepository: pantryRepository))
+    }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Image(systemName: "refrigerator")
-                    .imageScale(.large)
-                    .foregroundStyle(.tint)
-                if let email = authViewModel.user?.email {
-                    Text("Signed in as \(email)")
-                }
-                NavigationLink {
-                    PantryView(viewModel: pantryViewModel)
-                } label: {
-                    Label("Open Pantry", systemImage: "cabinet")
-                }
-                .buttonStyle(.borderedProminent)
-
-                Button("Sign Out", role: .destructive) {
-                    authViewModel.signOut()
-                }
+        TabView {
+            NavigationStack {
+                PantryView(viewModel: pantryViewModel)
             }
-            .padding()
-            .navigationTitle("FridgeFit")
+            .tabItem { Label("Pantry", systemImage: "cabinet") }
+
+            NavigationStack {
+                RecipeListView(viewModel: recipeViewModel)
+            }
+            .tabItem { Label("Recipes", systemImage: "fork.knife") }
+
+            NavigationStack {
+                ProfileView()
+            }
+            .tabItem { Label("Profile", systemImage: "person.crop.circle") }
         }
     }
 }
