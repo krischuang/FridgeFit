@@ -10,8 +10,16 @@ import SwiftUI
 struct RecipeDetailView: View {
     let recipe: Recipe
     @ObservedObject var viewModel: RecipeViewModel
+    @ObservedObject var substitutionViewModel: SubstitutionViewModel
 
     private var feasibility: RecipeFeasibilityResult? { viewModel.feasibility(for: recipe) }
+
+    private static func needsSubstitute(_ availability: IngredientAvailability) -> Bool {
+        switch availability {
+        case .missing, .insufficient, .quantityUnverified: return true
+        case .available: return false
+        }
+    }
 
     var body: some View {
         List {
@@ -43,7 +51,17 @@ struct RecipeDetailView: View {
             Section("Ingredients") {
                 if let feasibility {
                     ForEach(feasibility.evaluatedIngredients) { evaluation in
-                        RecipeIngredientRow(evaluation: evaluation)
+                        VStack(alignment: .leading, spacing: 4) {
+                            RecipeIngredientRow(evaluation: evaluation)
+                            if Self.needsSubstitute(evaluation.availability) {
+                                SubstitutionSectionView(
+                                    recipeIngredient: evaluation.recipeIngredient,
+                                    recipe: recipe,
+                                    feasibility: feasibility,
+                                    viewModel: substitutionViewModel
+                                )
+                            }
+                        }
                     }
                 } else {
                     ProgressView()

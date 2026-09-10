@@ -9,6 +9,7 @@ import SwiftUI
 /// their current pantry can make each one.
 struct RecipeListView: View {
     @ObservedObject var viewModel: RecipeViewModel
+    @ObservedObject var substitutionViewModel: SubstitutionViewModel
 
     var body: some View {
         Group {
@@ -24,7 +25,7 @@ struct RecipeListView: View {
             } else {
                 List(viewModel.recipes) { recipe in
                     NavigationLink {
-                        RecipeDetailView(recipe: recipe, viewModel: viewModel)
+                        RecipeDetailView(recipe: recipe, viewModel: viewModel, substitutionViewModel: substitutionViewModel)
                     } label: {
                         RecipeRow(recipe: recipe, feasibility: viewModel.feasibility(for: recipe))
                     }
@@ -59,7 +60,14 @@ struct RecipeListView: View {
         PantryItem(ingredient: Ingredient(name: "Pasta", category: .grain), quantity: 500, unit: .grams),
         PantryItem(ingredient: Ingredient(name: "Garlic", category: .produce), quantity: 3, unit: .pieces),
     ])
+    let substitutionViewModel = SubstitutionViewModel(
+        useCase: GetIngredientSubstitutionsUseCase(
+            substitutionService: MockSubstitutionService(),
+            pantryRepository: pantry,
+            cache: SubstitutionCache()
+        )
+    )
     NavigationStack {
-        RecipeListView(viewModel: RecipeViewModel(pantryRepository: pantry))
+        RecipeListView(viewModel: RecipeViewModel(pantryRepository: pantry), substitutionViewModel: substitutionViewModel)
     }
 }

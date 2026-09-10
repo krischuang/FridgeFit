@@ -27,8 +27,10 @@
 
 /* Begin PBXFileReference section */
 		2AF9856E30518F9E0065A469 /* FridgeFit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FridgeFit.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		39DE02FFF38E1D8B020F8816 /* Secrets.example.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Secrets.example.xcconfig; sourceTree = "<group>"; };
 		432FCA6D9680CAA14967130D /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		4ED902A1A70855916CA73C63 /* FridgeFitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FridgeFitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9ADE3FAB860B088B60A43E6D /* Config.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -104,6 +106,8 @@
 				2AF9856F30518F9E0065A469 /* Products */,
 				22D18EAC3434F48E6BE0AED8 /* Frameworks */,
 				5921EE0D09BD997FDB717209 /* FridgeFitTests */,
+				9ADE3FAB860B088B60A43E6D /* Config.xcconfig */,
+				39DE02FFF38E1D8B020F8816 /* Secrets.example.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -375,6 +379,7 @@
 		};
 		2AF9857A30518FA00065A469 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9ADE3FAB860B088B60A43E6D /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -407,6 +412,7 @@
 		};
 		2AF9857B30518FA00065A469 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9ADE3FAB860B088B60A43E6D /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
