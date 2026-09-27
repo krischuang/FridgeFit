@@ -10,6 +10,8 @@ import SwiftUI
 struct RecipeListView: View {
     @ObservedObject var viewModel: RecipeViewModel
     @ObservedObject var substitutionViewModel: SubstitutionViewModel
+    @ObservedObject var suggestionViewModel: RecipeSuggestionViewModel
+    @State private var isPresentingPantryIdeas = false
 
     var body: some View {
         Group {
@@ -35,8 +37,20 @@ struct RecipeListView: View {
             }
         }
         .navigationTitle("Recipes")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    isPresentingPantryIdeas = true
+                } label: {
+                    Label("Pantry Ideas", systemImage: "lightbulb")
+                }
+            }
+        }
         .onAppear {
             Task { await viewModel.loadRecipes() }
+        }
+        .sheet(isPresented: $isPresentingPantryIdeas) {
+            PantryRecipeIdeasView(viewModel: suggestionViewModel)
         }
         .alert(
             "Couldn't Load Recipes",
@@ -67,7 +81,17 @@ struct RecipeListView: View {
             cache: SubstitutionCache()
         )
     )
+    let suggestionViewModel = RecipeSuggestionViewModel(
+        useCase: SuggestRecipesFromPantryUseCase(
+            suggestionService: MockRecipeSuggestionService(),
+            pantryRepository: pantry
+        )
+    )
     NavigationStack {
-        RecipeListView(viewModel: RecipeViewModel(pantryRepository: pantry), substitutionViewModel: substitutionViewModel)
+        RecipeListView(
+            viewModel: RecipeViewModel(pantryRepository: pantry),
+            substitutionViewModel: substitutionViewModel,
+            suggestionViewModel: suggestionViewModel
+        )
     }
 }

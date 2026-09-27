@@ -9,8 +9,12 @@ import SwiftUI
 /// update quantities, and remove ones they've used up.
 struct PantryView: View {
     @ObservedObject var viewModel: PantryViewModel
+    @ObservedObject var scannerViewModel: IngredientScannerViewModel
     @State private var isPresentingAddItem = false
+    @State private var isPresentingScanner = false
     @State private var editingItem: PantryItem?
+    /// What the last fridge scan added, shown once the scanner closes.
+    @State private var scanSummaryMessage: String?
 
     var body: some View {
         Group {
@@ -24,11 +28,18 @@ struct PantryView: View {
                     Text("Add ingredients you have on hand to start tracking your pantry.")
                 } actions: {
                     Button {
+                        isPresentingScanner = true
+                    } label: {
+                        Label("Scan Fridge", systemImage: "sparkles")
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button {
                         isPresentingAddItem = true
                     } label: {
                         Label("Add Ingredient", systemImage: "plus")
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.bordered)
                 }
             } else {
                 List {
@@ -74,8 +85,35 @@ struct PantryView: View {
                     Label("Add Ingredient", systemImage: "plus")
                 }
             }
+            ToolbarItem(placement: .secondaryAction) {
+                Button {
+                    isPresentingScanner = true
+                } label: {
+                    Label("Scan Fridge", systemImage: "sparkles")
+                }
+            }
         }
         .task { await viewModel.loadItems() }
+        .sheet(isPresented: $isPresentingScanner, onDismiss: { scannerViewModel.reset() }) {
+            IngredientScannerView(viewModel: scannerViewModel) { summary in
+                isPresentingScanner = false
+                scanSummaryMessage = summary.userMessage
+                Task { await viewModel.loadItems() }
+            }
+        }
+        .alert(
+            "Fridge Scan",
+            isPresented: Binding(
+                get: { scanSummaryMessage != nil },
+                set: { isPresented in
+                    if !isPresented { scanSummaryMessage = nil }
+                }
+            )
+        ) {
+            Button("OK") { scanSummaryMessage = nil }
+        } message: {
+            Text(scanSummaryMessage ?? "")
+        }
         .sheet(isPresented: $isPresentingAddItem) {
             AddPantryItemView(viewModel: viewModel) { duplicateItem in
                 isPresentingAddItem = false
@@ -104,7 +142,7 @@ struct PantryView: View {
         .alert(
             "Couldn't Load Pantry",
             isPresented: Binding(
-                get: { viewModel.errorMessage != nil && !isPresentingAddItem && editingItem == nil },
+                get: { viewModel.errorMessage != nil && !isPresentingAddItem && !isPresentingScanner && editingItem == nil },
                 set: { isPresented in
                     if !isPresented { viewModel.errorMessage = nil }
                 }
@@ -124,7 +162,14 @@ struct PantryView: View {
 }
 
 #Preview {
-    NavigationStack {
-        PantryView(viewModel: PantryViewModel())
+    let pantryRepository = InMemoryPantryRepository()
+    return NavigationStack {
+        PantryView(
+            viewModel: PantryViewModel(pantryRepository: pantryRepository),
+            scannerViewModel: IngredientScannerViewModel(
+                recognitionService: MockIngredientRecognitionService(result: .success(.sampleFridge)),
+                pantryRepository: pantryRepository
+            )
+        )
     }
 }
