@@ -9,11 +9,11 @@ import SwiftUI
 /// update quantities, and remove ones they've used up.
 struct PantryView: View {
     @ObservedObject var viewModel: PantryViewModel
-    @ObservedObject var scannerViewModel: IngredientScannerViewModel
+    @ObservedObject var scannerViewModel: ReceiptScannerViewModel
     @State private var isPresentingAddItem = false
     @State private var isPresentingScanner = false
     @State private var editingItem: PantryItem?
-    /// What the last fridge scan added, shown once the scanner closes.
+    /// What the last receipt scan added, shown once the scanner closes.
     @State private var scanSummaryMessage: String?
 
     var body: some View {
@@ -25,12 +25,12 @@ struct PantryView: View {
                 ContentUnavailableView {
                     Label("Your Pantry Is Empty", systemImage: "cabinet")
                 } description: {
-                    Text("Add ingredients you have on hand to start tracking your pantry.")
+                    Text("Scan a grocery receipt, or add ingredients by hand, to start tracking your pantry.")
                 } actions: {
                     Button {
                         isPresentingScanner = true
                     } label: {
-                        Label("Scan Fridge", systemImage: "sparkles")
+                        Label("Scan Receipt", systemImage: "doc.text.viewfinder")
                     }
                     .buttonStyle(.borderedProminent)
 
@@ -89,20 +89,20 @@ struct PantryView: View {
                 Button {
                     isPresentingScanner = true
                 } label: {
-                    Label("Scan Fridge", systemImage: "sparkles")
+                    Label("Scan Receipt", systemImage: "doc.text.viewfinder")
                 }
             }
         }
         .task { await viewModel.loadItems() }
         .sheet(isPresented: $isPresentingScanner, onDismiss: { scannerViewModel.reset() }) {
-            IngredientScannerView(viewModel: scannerViewModel) { summary in
+            ReceiptScannerView(viewModel: scannerViewModel) { summary in
                 isPresentingScanner = false
                 scanSummaryMessage = summary.userMessage
                 Task { await viewModel.loadItems() }
             }
         }
         .alert(
-            "Fridge Scan",
+            "Receipt Scan",
             isPresented: Binding(
                 get: { scanSummaryMessage != nil },
                 set: { isPresented in
@@ -166,8 +166,9 @@ struct PantryView: View {
     return NavigationStack {
         PantryView(
             viewModel: PantryViewModel(pantryRepository: pantryRepository),
-            scannerViewModel: IngredientScannerViewModel(
-                recognitionService: MockIngredientRecognitionService(result: .success(.sampleFridge)),
+            scannerViewModel: ReceiptScannerViewModel(
+                textRecognizer: MockReceiptTextRecognizer(lines: SampleReceiptPreviewData.lines),
+                interpreter: MockReceiptIngredientInterpreter(),
                 pantryRepository: pantryRepository
             )
         )

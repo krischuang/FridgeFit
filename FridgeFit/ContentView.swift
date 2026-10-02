@@ -13,7 +13,7 @@ struct ContentView: View {
     @StateObject private var pantryViewModel: PantryViewModel
     @StateObject private var recipeViewModel: RecipeViewModel
     @StateObject private var substitutionViewModel: SubstitutionViewModel
-    @StateObject private var scannerViewModel: IngredientScannerViewModel
+    @StateObject private var scannerViewModel: ReceiptScannerViewModel
     @StateObject private var recipeSuggestionViewModel: RecipeSuggestionViewModel
 
     init() {
@@ -23,11 +23,15 @@ struct ContentView: View {
 
         // Apple Intelligence, on-device. Both of these degrade to an
         // explained unavailable state rather than failing the app, so they
-        // are wired unconditionally - see
-        // `IngredientRecognitionAvailability`.
+        // are wired unconditionally - see `AppleIntelligenceAvailability`.
+        //
+        // Receipt scanning is two on-device stages: Vision reads the text,
+        // Foundation Models interprets it. Neither sends anything off the
+        // device, and the photo never reaches the language model.
         _scannerViewModel = StateObject(
-            wrappedValue: IngredientScannerViewModel(
-                recognitionService: AppleIngredientRecognitionService(),
+            wrappedValue: ReceiptScannerViewModel(
+                textRecognizer: VisionReceiptTextRecognizer(),
+                interpreter: AppleReceiptIngredientInterpreter(),
                 pantryRepository: pantryRepository
             )
         )

@@ -5,12 +5,12 @@
 
 import Foundation
 
-/// What happened when confirmed detections were sent to the pantry.
+/// What happened when confirmed scan results were sent to the pantry.
 ///
-/// A scan can add ten ingredients at once, so "did it work" isn't a yes or
-/// no - some can succeed while others are rejected as duplicates. Each
-/// outcome is reported by name so the review screen can say exactly what
-/// went in and what didn't.
+/// A receipt can add ten ingredients at once, so "did it work" isn't a yes
+/// or no - some can succeed while others are rejected as duplicates. Each
+/// outcome is reported by name so the confirmation screen can say exactly
+/// what went in and what didn't.
 struct AddDetectedIngredientsSummary: Equatable {
     /// Names added to the pantry.
     let addedNames: [String]
@@ -52,13 +52,13 @@ struct AddDetectedIngredientsSummary: Equatable {
     }
 }
 
-/// Adds user-confirmed scan detections to the pantry.
+/// Adds user-confirmed scan results to the pantry.
 ///
 /// Deliberately thin: it does no validation, no duplicate checking and no
 /// storage of its own, because all of that already exists in
 /// `AddPantryItemUseCase`. Its only job is to run that use case once per
-/// confirmed draft and collect the per-item outcomes, so a scan of a dozen
-/// ingredients can't be stopped dead by one duplicate.
+/// confirmed draft and collect the per-item outcomes, so a receipt of a
+/// dozen ingredients can't be stopped dead by one duplicate.
 ///
 /// This is the only path from a scan into the pantry. The scanner UI has no
 /// repository and no Firestore access of its own.
@@ -76,14 +76,16 @@ struct AddDetectedIngredientsUseCase {
     /// Adds each draft through `AddPantryItemUseCase`, in order.
     ///
     /// Drafts with no usable quantity are reported as failures rather than
-    /// defaulted to a number the user didn't ask for.
-    func execute(drafts: [DetectedIngredientDraft]) async -> AddDetectedIngredientsSummary {
+    /// defaulted to a number the user didn't ask for. That is the normal
+    /// outcome for a receipt line that never stated an amount and the user
+    /// left blank, and the message tells them exactly what to fix.
+    func execute(drafts: [ReceiptItemDraft]) async -> AddDetectedIngredientsSummary {
         var addedNames: [String] = []
         var duplicateNames: [String] = []
         var failures: [AddDetectedIngredientsSummary.Failure] = []
 
         for draft in drafts {
-            let name = draft.trimmedName.isEmpty ? draft.detection.name : draft.trimmedName
+            let name = draft.trimmedName.isEmpty ? draft.candidate.displayName : draft.trimmedName
 
             guard let quantity = draft.quantity else {
                 failures.append(.init(name: name, message: AddPantryItemError.invalidQuantity.errorDescription ?? "Invalid quantity."))

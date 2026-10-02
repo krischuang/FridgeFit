@@ -15,13 +15,16 @@ final class AddDetectedIngredientsUseCaseTests: XCTestCase {
         unit: MeasurementUnit = .pieces,
         isSelected: Bool = true,
         isAlreadyInPantry: Bool = false
-    ) -> DetectedIngredientDraft {
-        var draft = DetectedIngredientDraft(
-            detection: DetectedIngredient(
-                name: name,
+    ) -> ReceiptItemDraft {
+        var draft = ReceiptItemDraft(
+            candidate: ReceiptIngredientCandidate(
+                displayName: name,
+                canonicalName: name.lowercased(),
+                classification: .ingredient,
                 category: category,
-                visibleCount: 2,
-                confidence: .high,
+                quantity: ReceiptQuantity(value: 2, unit: unit),
+                sourceText: "\(name.uppercased()) 4.00",
+                order: 0,
                 isAlreadyInPantry: isAlreadyInPantry
             )
         )
@@ -117,6 +120,34 @@ final class AddDetectedIngredientsUseCaseTests: XCTestCase {
         XCTAssertEqual(summary.failures.count, 1)
         let stored = try await repository.fetchAll()
         XCTAssertTrue(stored.isEmpty)
+    }
+
+    /// A receipt line that stated no quantity leaves the field empty, and
+    /// an empty field must be reported rather than silently defaulted. This
+    /// is the behaviour that replaced the old "everything is 1 pcs".
+    func test_addDetectedIngredients_reportsFailure_whenQuantityWasNeverDetected() async throws {
+        let repository = InMemoryPantryRepository()
+        let useCase = AddDetectedIngredientsUseCase(pantryRepository: repository)
+
+        let undetected = ReceiptItemDraft(
+            candidate: ReceiptIngredientCandidate(
+                displayName: "Red Capsicum",
+                canonicalName: "bell_pepper",
+                classification: .ingredient,
+                category: .produce,
+                quantity: nil,
+                sourceText: "CAPS RED 2.71",
+                order: 0
+            )
+        )
+        XCTAssertEqual(undetected.quantityText, "", "No receipt quantity must mean an empty field")
+
+        let summary = await useCase.execute(drafts: [undetected])
+
+        XCTAssertTrue(summary.addedNames.isEmpty)
+        XCTAssertEqual(summary.failures.map(\.name), ["Red Capsicum"])
+        let stored = try await repository.fetchAll()
+        XCTAssertTrue(stored.isEmpty, "Nothing may be stored with a quantity nobody supplied")
     }
 
     func test_summary_userMessage_describesMixedOutcome() {

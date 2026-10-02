@@ -1,18 +1,29 @@
 //
-//  IngredientReviewView.swift
+//  ReceiptItemReviewView.swift
 //  FridgeFit
 //
 
 import SwiftUI
 
-/// The confirmation step between a scan and the pantry.
+/// The confirmation step between reading a receipt and the pantry.
 ///
-/// Nothing detected is stored until the user taps Add Selected to Pantry, and
-/// every row can be renamed, recategorised, requantified, unticked or
-/// deleted first - the model's answer is a starting point, not a fact.
-struct IngredientReviewView: View {
+/// Nothing is stored until the user taps Add to Pantry, and every row can
+/// be renamed, recategorised, requantified, unticked or deleted first -
+/// an OCR'd abbreviation interpreted by a model is a starting point, not a
+/// fact.
+///
+/// Two things are deliberately absent. There is no confidence badge: the
+/// old fridge-scan screen showed the model's self-reported "Low / Medium
+/// confidence", which was not a measurement of anything and gave the user
+/// no action to take. And there are no canonical identifiers - the row for
+/// `CAPS RED` reads "Red Capsicum", never `bell_pepper`.
+///
+/// What *is* shown is the receipt line each item came from, so a user can
+/// check a row against the paper in their hand. That is real grounding,
+/// unlike a number.
+struct ReceiptItemReviewView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: IngredientScannerViewModel
+    @ObservedObject var viewModel: ReceiptScannerViewModel
     /// Called once the pantry has been updated, with what actually went in.
     var onCompleted: (AddDetectedIngredientsSummary) -> Void
 
@@ -23,13 +34,14 @@ struct IngredientReviewView: View {
                     ContentUnavailableView {
                         Label("Nothing Left to Review", systemImage: "checkmark.circle")
                     } description: {
-                        Text("Every detected ingredient has been added or removed.")
+                        Text("Every item from this receipt has been added or removed.")
                     }
                 } else {
                     reviewList
                 }
             }
-            .navigationTitle("Detected Ingredients")
+            .navigationTitle("Detected Grocery Items")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Back") { dismiss() }
@@ -48,17 +60,53 @@ struct IngredientReviewView: View {
         List {
             Section {
                 ForEach(viewModel.drafts) { draft in
-                    DetectedIngredientRow(draft: draft, viewModel: viewModel)
+                    ReceiptItemRow(draft: draft, viewModel: viewModel)
                 }
                 .onDelete { viewModel.removeDrafts(at: $0) }
             } header: {
-                Text("Tap to correct anything Apple Intelligence got wrong")
+                Text("Review what we found on your receipt")
             } footer: {
-                Text("Only ticked ingredients are added. Swipe to remove a detection that isn't in your fridge.")
+                Text("Only ticked items are added. Swipe to remove anything that isn't a pantry ingredient.")
             }
+
+            #if DEBUG
+            excludedDiagnosticsSection
+            #endif
         }
         .listStyle(.insetGrouped)
     }
+
+    /// Why items are missing, for development only.
+    ///
+    /// The production list deliberately shows pantry candidates and
+    /// nothing else - a confirmation screen cluttered with dishwashing
+    /// tablets and paper towels is worse than useless. But "the scan
+    /// dropped my mushrooms" is impossible to diagnose without seeing what
+    /// was dropped and why, so the rejected items stay inspectable in
+    /// DEBUG builds.
+    #if DEBUG
+    @ViewBuilder
+    private var excludedDiagnosticsSection: some View {
+        if !viewModel.excludedItems.isEmpty {
+            Section {
+                DisclosureGroup("Excluded items (\(viewModel.excludedItems.count))") {
+                    ForEach(viewModel.excludedItems) { item in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.displayName)
+                                .font(.callout)
+                            Text("\(item.classification.diagnosticLabel) · \(item.sourceText)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .font(.footnote)
+            } footer: {
+                Text("DEBUG only. Not shown in release builds.")
+            }
+        }
+    }
+    #endif
 
     @ViewBuilder
     private var addToPantryBar: some View {
@@ -87,7 +135,7 @@ struct IngredientReviewView: View {
 
     private var addButtonTitle: String {
         let count = viewModel.selectedDrafts.count
-        return count == 0 ? "Add Selected to Pantry" : "Add \(count) to Pantry"
+        return count == 0 ? "Add to Pantry" : "Add \(count) to Pantry"
     }
 
     private func addSelected() {
@@ -102,11 +150,11 @@ struct IngredientReviewView: View {
     }
 }
 
-/// One reviewable detection: tick, name, category, quantity and the
-/// confidence the model reported.
-private struct DetectedIngredientRow: View {
-    let draft: DetectedIngredientDraft
-    @ObservedObject var viewModel: IngredientScannerViewModel
+/// One reviewable grocery item: tick, name, the receipt line it came from,
+/// quantity and category.
+private struct ReceiptItemRow: View {
+    let draft: ReceiptItemDraft
+    @ObservedObject var viewModel: ReceiptScannerViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -126,22 +174,26 @@ private struct DetectedIngredientRow: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     TextField(
-                        "Ingredient name",
+                        "Item name",
                         text: Binding(
                             get: { draft.name },
                             set: { viewModel.updateName($0, for: draft.id) }
                         )
                     )
                     .font(.body)
-                    .accessibilityLabel("Ingredient name")
+                    .accessibilityLabel("Item name")
 
-                    ConfidenceBadge(confidence: draft.confidence)
+                    Text(draft.sourceText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .accessibilityLabel("From receipt line \(draft.sourceText)")
                 }
             }
 
             HStack(spacing: 10) {
                 TextField(
-                    "Quantity",
+                    quantityPlaceholder,
                     text: Binding(
                         get: { draft.quantityText },
                         set: { viewModel.updateQuantityText($0, for: draft.id) }
@@ -149,8 +201,8 @@ private struct DetectedIngredientRow: View {
                 )
                 .keyboardType(.decimalPad)
                 .textFieldStyle(.roundedBorder)
-                .frame(maxWidth: 90)
-                .accessibilityLabel("Quantity for \(draft.name)")
+                .frame(maxWidth: 110)
+                .accessibilityLabel(quantityAccessibilityLabel)
 
                 Picker(
                     "Unit",
@@ -180,6 +232,14 @@ private struct DetectedIngredientRow: View {
             }
             .font(.callout)
 
+            // The receipt didn't say how much, so the user has to. Said
+            // plainly rather than filled in with a made-up "1 pcs".
+            if !draft.hasDetectedQuantity && draft.quantity == nil {
+                Text("Quantity not detected — enter one to add this item.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
             if draft.isAlreadyInPantry {
                 InlineInfoBanner(
                     message: "Already in your pantry. Adding it again will be rejected - update its quantity in Pantry instead.",
@@ -190,12 +250,23 @@ private struct DetectedIngredientRow: View {
         }
         .padding(.vertical, 4)
     }
+
+    private var quantityPlaceholder: String {
+        draft.hasDetectedQuantity ? "Quantity" : "Not detected"
+    }
+
+    private var quantityAccessibilityLabel: String {
+        draft.hasDetectedQuantity
+            ? "Quantity for \(draft.name)"
+            : "Quantity for \(draft.name), not detected on the receipt"
+    }
 }
 
 #Preview {
-    let viewModel = IngredientScannerViewModel(
-        recognitionService: MockIngredientRecognitionService(result: .success(.sampleFridge)),
+    let viewModel = ReceiptScannerViewModel(
+        textRecognizer: MockReceiptTextRecognizer(lines: SampleReceiptPreviewData.lines),
+        interpreter: MockReceiptIngredientInterpreter(),
         pantryRepository: InMemoryPantryRepository()
     )
-    return IngredientReviewView(viewModel: viewModel, onCompleted: { _ in })
+    return ReceiptItemReviewView(viewModel: viewModel, onCompleted: { _ in })
 }
