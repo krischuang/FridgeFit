@@ -11,13 +11,13 @@ import Foundation
 /// - and only the real pantry - is what gets sent to the model.
 final class MockRecipeSuggestionService: RecipeSuggestionService {
     var result: Result<[RawRecipeSuggestion], Error>
-    var availability: IngredientRecognitionAvailability
+    var availability: AppleIntelligenceAvailability
     private(set) var suggestCallCount = 0
     private(set) var lastPantryItems: [PantryItem] = []
 
     init(
         result: Result<[RawRecipeSuggestion], Error> = .success([]),
-        availability: IngredientRecognitionAvailability = .available
+        availability: AppleIntelligenceAvailability = .available
     ) {
         self.result = result
         self.availability = availability

@@ -8,8 +8,8 @@ import UIKit
 
 /// A throwaway image for driving the scan flow in unit tests.
 ///
-/// The pixels are irrelevant - `MockIngredientRecognitionService` never looks
-/// at them. It exists so the tests exercise the real
+/// The pixels are irrelevant - `MockReceiptTextRecognizer` never looks at
+/// them, it returns fixture text. It exists so the tests exercise the real
 /// `UIImage` -> `CGImage` path the view model takes, instead of bypassing it.
 enum TestImage {
     static func makeUIImage(size: CGSize = CGSize(width: 4, height: 4)) -> UIImage {

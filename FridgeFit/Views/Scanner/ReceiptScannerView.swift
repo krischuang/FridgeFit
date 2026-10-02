@@ -1,19 +1,20 @@
 //
-//  IngredientScannerView.swift
+//  ReceiptScannerView.swift
 //  FridgeFit
 //
 
 import PhotosUI
 import SwiftUI
 
-/// Scan Fridge: take or choose a photo, analyse it on-device, then review
-/// what was found before anything reaches the pantry.
+/// Scan Receipt: take or choose a photo of a grocery receipt, read it
+/// on-device, then confirm what was found before anything reaches the
+/// pantry.
 ///
 /// Presented as a sheet from `PantryView`. Holds no business logic - every
-/// action goes through `IngredientScannerViewModel`.
-struct IngredientScannerView: View {
+/// action goes through `ReceiptScannerViewModel`.
+struct ReceiptScannerView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: IngredientScannerViewModel
+    @ObservedObject var viewModel: ReceiptScannerViewModel
     /// Called after the pantry has been updated, so Pantry can reload and
     /// report what happened.
     var onFinished: (AddDetectedIngredientsSummary) -> Void
@@ -32,17 +33,17 @@ struct IngredientScannerView: View {
                     unavailableContent
                 }
             }
-            .navigationTitle("Scan Fridge")
+            .navigationTitle("Scan Receipt")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        viewModel.cancelAnalysis()
+                        viewModel.cancelScan()
                         dismiss()
                     }
                 }
             }
             .sheet(isPresented: $viewModel.isPresentingReview) {
-                IngredientReviewView(viewModel: viewModel) { summary in
+                ReceiptItemReviewView(viewModel: viewModel) { summary in
                     onFinished(summary)
                     dismiss()
                 }
@@ -80,18 +81,18 @@ struct IngredientScannerView: View {
             VStack(spacing: 20) {
                 imageArea
 
-                if viewModel.analysisState.isAnalyzing {
-                    analyzingIndicator
+                if viewModel.scanState.isScanning {
+                    scanningIndicator
                 } else {
                     actionButtons
                 }
 
-                if case .failed(let message) = viewModel.analysisState {
+                if case .failed(let message) = viewModel.scanState {
                     InlineErrorBanner(message: message)
                 }
 
                 InlineInfoBanner(
-                    message: "Photos are analysed by Apple Intelligence on this device. Your fridge photo is never uploaded - only the ingredients you confirm are saved to your pantry.",
+                    message: "Receipts are read by Apple Intelligence on this device. Your receipt photo is never uploaded - only the ingredients you confirm are saved to your pantry.",
                     systemImage: "lock.fill"
                 )
             }
@@ -107,15 +108,19 @@ struct IngredientScannerView: View {
                 .scaledToFit()
                 .frame(maxHeight: 320)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .accessibilityLabel("Selected fridge photo")
+                .accessibilityLabel("Selected receipt photo")
         } else {
             VStack(spacing: 12) {
-                Image(systemName: "refrigerator")
+                Image(systemName: "doc.text.viewfinder")
                     .font(.system(size: 44))
                     .foregroundStyle(.secondary)
-                Text("Scan your fridge to identify ingredients.")
+                Text("Scan a grocery receipt to add what you bought.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Text("Lay the receipt flat and fill the frame.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
@@ -126,19 +131,19 @@ struct IngredientScannerView: View {
     }
 
     @ViewBuilder
-    private var analyzingIndicator: some View {
+    private var scanningIndicator: some View {
         VStack(spacing: 12) {
             ProgressView()
-            Text("Analyzing your fridge…")
+            Text("Reading your receipt…")
                 .font(.callout)
                 .foregroundStyle(.secondary)
-            Button("Cancel Analysis") { viewModel.cancelAnalysis() }
+            Button("Cancel Scan") { viewModel.cancelScan() }
                 .buttonStyle(.bordered)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Analyzing your fridge")
+        .accessibilityLabel("Reading your receipt")
     }
 
     @ViewBuilder
@@ -160,9 +165,9 @@ struct IngredientScannerView: View {
                 .buttonStyle(.bordered)
             } else {
                 Button {
-                    viewModel.analyze()
+                    viewModel.scan()
                 } label: {
-                    Label("Analyze Ingredients", systemImage: "sparkles")
+                    Label("Read Receipt", systemImage: "sparkles")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -191,7 +196,7 @@ struct IngredientScannerView: View {
     private var unavailableContent: some View {
         let availability = viewModel.availability
         ContentUnavailableView {
-            Label(availability.unavailableTitle ?? "Scanning Is Unavailable", systemImage: "sparkles.slash")
+            Label(availability.unavailableTitle ?? "Receipt Scanning Is Unavailable", systemImage: "sparkles.slash")
         } description: {
             Text(availability.unavailableExplanation ?? "")
         } actions: {
@@ -235,9 +240,10 @@ struct IngredientScannerView: View {
 }
 
 #Preview {
-    IngredientScannerView(
-        viewModel: IngredientScannerViewModel(
-            recognitionService: MockIngredientRecognitionService(result: .success(.sampleFridge)),
+    ReceiptScannerView(
+        viewModel: ReceiptScannerViewModel(
+            textRecognizer: MockReceiptTextRecognizer(lines: SampleReceiptPreviewData.lines),
+            interpreter: MockReceiptIngredientInterpreter(),
             pantryRepository: InMemoryPantryRepository()
         ),
         onFinished: { _ in }

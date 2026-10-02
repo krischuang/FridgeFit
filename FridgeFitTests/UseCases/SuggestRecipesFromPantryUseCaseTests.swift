@@ -189,9 +189,9 @@ final class SuggestRecipesFromPantryUseCaseTests: XCTestCase {
 
         do {
             _ = try await useCase.execute()
-            XCTFail("Expected recognitionUnavailable")
-        } catch let error as IngredientRecognitionError {
-            XCTAssertEqual(error, .recognitionUnavailable(.deviceNotSupported))
+            XCTFail("Expected suggestionUnavailable")
+        } catch let error as RecipeSuggestionError {
+            XCTAssertEqual(error, .suggestionUnavailable(.deviceNotSupported))
         } catch {
             XCTFail("Unexpected error: \(error)")
         }
@@ -245,13 +245,13 @@ final class RecipeSuggestionViewModelTests: XCTestCase {
 
     func test_loadSuggestions_setsUserFacingError_whenServiceThrows() async {
         let viewModel = makeViewModel(
-            service: MockRecipeSuggestionService(result: .failure(IngredientRecognitionError.modelBusy))
+            service: MockRecipeSuggestionService(result: .failure(RecipeSuggestionError.modelBusy))
         )
 
         await viewModel.loadSuggestions()
 
         XCTAssertTrue(viewModel.suggestions.isEmpty)
-        XCTAssertEqual(viewModel.errorMessage, IngredientRecognitionError.modelBusy.localizedDescription)
+        XCTAssertEqual(viewModel.errorMessage, RecipeSuggestionError.modelBusy.localizedDescription)
     }
 
     func test_loadSuggestions_isBlocked_whenModelUnavailable() async {
@@ -264,7 +264,7 @@ final class RecipeSuggestionViewModelTests: XCTestCase {
         XCTAssertEqual(service.suggestCallCount, 0)
         XCTAssertEqual(
             viewModel.errorMessage,
-            IngredientRecognitionError.recognitionUnavailable(.appleIntelligenceNotEnabled).localizedDescription
+            RecipeSuggestionError.suggestionUnavailable(.appleIntelligenceNotEnabled).localizedDescription
         )
     }
 }

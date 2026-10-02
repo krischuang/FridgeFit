@@ -5,42 +5,13 @@
 
 import SwiftUI
 
-extension ModelStatedConfidence {
-    /// Warm for confident, cooler as the model gets less sure. Paired with
-    /// `label` text everywhere it's used, so colour is never the only thing
-    /// carrying the meaning.
-    var tint: Color {
-        switch self {
-        case .high: return .green
-        case .medium: return .orange
-        case .low: return .secondary
-        }
-    }
-
-    var symbolName: String {
-        switch self {
-        case .high: return "checkmark.seal.fill"
-        case .medium: return "exclamationmark.circle.fill"
-        case .low: return "questionmark.circle.fill"
-        }
-    }
-}
-
-/// The model's self-reported confidence in a detection, as a small caption
-/// under the ingredient name.
-struct ConfidenceBadge: View {
-    let confidence: ModelStatedConfidence
-
-    var body: some View {
-        Label {
-            Text(confidence.label)
-        } icon: {
-            Image(systemName: confidence.symbolName)
-        }
-        .font(.caption)
-        .foregroundStyle(confidence.tint)
-    }
-}
+// A confidence badge used to live here, showing the model's self-reported
+// "Low / Medium / High confidence" for each detection. It was removed with
+// the fridge-photo scanner: it was the model's own coarse self-assessment
+// rather than a measurement of anything, it had no defensible meaning, and
+// it gave the user nothing to act on. The receipt confirmation screen shows
+// the receipt line an item came from instead, which is evidence the user
+// can actually check.
 
 /// A short explanatory note in a tinted card, used for the privacy note and
 /// the "already in your pantry" warning - the same shape as

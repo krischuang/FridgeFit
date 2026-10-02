@@ -71,7 +71,7 @@ struct AppleRecipeSuggestionService: RecipeSuggestionService {
         self.model = model
     }
 
-    var availability: IngredientRecognitionAvailability {
+    var availability: AppleIntelligenceAvailability {
         switch model.availability {
         case .available:
             return .available
@@ -90,7 +90,7 @@ struct AppleRecipeSuggestionService: RecipeSuggestionService {
     func suggestRecipes(from pantryItems: [PantryItem]) async throws -> [RawRecipeSuggestion] {
         let availability = self.availability
         guard availability.canScan else {
-            throw IngredientRecognitionError.recognitionUnavailable(availability)
+            throw RecipeSuggestionError.suggestionUnavailable(availability)
         }
         guard !pantryItems.isEmpty else { return [] }
 
@@ -122,17 +122,17 @@ struct AppleRecipeSuggestionService: RecipeSuggestionService {
             logger.error("Recipe suggestion failed: \(String(describing: error), privacy: .public)")
             switch error {
             case .rateLimited, .concurrentRequests:
-                throw IngredientRecognitionError.modelBusy
+                throw RecipeSuggestionError.modelBusy
             case .guardrailViolation, .refusal:
-                throw IngredientRecognitionError.requestNotAllowed
+                throw RecipeSuggestionError.requestNotAllowed
             case .assetsUnavailable:
-                throw IngredientRecognitionError.recognitionUnavailable(.modelNotReady)
+                throw RecipeSuggestionError.suggestionUnavailable(.modelNotReady)
             default:
-                throw IngredientRecognitionError.recognitionFailed
+                throw RecipeSuggestionError.suggestionFailed
             }
         } catch {
             logger.error("Recipe suggestion failed: \(error.localizedDescription, privacy: .public)")
-            throw IngredientRecognitionError.recognitionFailed
+            throw RecipeSuggestionError.suggestionFailed
         }
     }
 }

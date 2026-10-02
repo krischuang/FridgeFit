@@ -26,7 +26,7 @@ struct SuggestRecipesFromPantryUseCase {
         self.pantryRepository = pantryRepository
     }
 
-    var availability: IngredientRecognitionAvailability {
+    var availability: AppleIntelligenceAvailability {
         suggestionService.availability
     }
 
@@ -37,7 +37,7 @@ struct SuggestRecipesFromPantryUseCase {
     func execute() async throws -> [RecipeSuggestion] {
         let availability = suggestionService.availability
         guard availability.canScan else {
-            throw IngredientRecognitionError.recognitionUnavailable(availability)
+            throw RecipeSuggestionError.suggestionUnavailable(availability)
         }
 
         let pantryItems = try await pantryRepository.fetchAll()

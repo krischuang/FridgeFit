@@ -14,11 +14,11 @@ import Foundation
 /// actually on hand before the UI sees a suggestion.
 protocol RecipeSuggestionService {
     /// Whether suggestions can be generated right now.
-    var availability: IngredientRecognitionAvailability { get }
+    var availability: AppleIntelligenceAvailability { get }
 
     /// Proposes recipes that lean on the given pantry items.
     ///
-    /// - Throws: `IngredientRecognitionError`, never a provider-specific
+    /// - Throws: `RecipeSuggestionError`, never a provider-specific
     ///   error type.
     func suggestRecipes(from pantryItems: [PantryItem]) async throws -> [RawRecipeSuggestion]
 }

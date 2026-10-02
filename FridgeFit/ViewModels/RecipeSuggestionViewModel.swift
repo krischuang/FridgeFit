@@ -36,7 +36,7 @@ final class RecipeSuggestionViewModel: ObservableObject {
         suggestionTask?.cancel()
     }
 
-    var availability: IngredientRecognitionAvailability {
+    var availability: AppleIntelligenceAvailability {
         useCase.availability
     }
 
@@ -52,7 +52,7 @@ final class RecipeSuggestionViewModel: ObservableObject {
 
         let availability = self.availability
         guard availability.canScan else {
-            errorMessage = IngredientRecognitionError.recognitionUnavailable(availability).localizedDescription
+            errorMessage = RecipeSuggestionError.suggestionUnavailable(availability).localizedDescription
             return
         }
 
@@ -74,8 +74,8 @@ final class RecipeSuggestionViewModel: ObservableObject {
         } catch {
             guard token == currentToken else { return }
             suggestions = []
-            errorMessage = (error as? IngredientRecognitionError)?.localizedDescription
-                ?? IngredientRecognitionError.recognitionFailed.localizedDescription
+            errorMessage = (error as? RecipeSuggestionError)?.localizedDescription
+                ?? RecipeSuggestionError.suggestionFailed.localizedDescription
         }
     }
 
