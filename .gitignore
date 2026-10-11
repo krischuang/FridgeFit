@@ -23,7 +23,12 @@ Pods/
 .DS_Store
 
 # Firebase
-GoogleService-Info.plist
+#
+# GoogleService-Info.plist IS committed on purpose - the repo is private and
+# every collaborator shares one Firebase project, so a fresh clone can run
+# without an out-of-band file handoff. It holds client identifiers, not
+# credentials; Firestore rules are the actual security boundary. If this repo
+# ever goes public, re-ignore it and distribute it separately instead.
 
-# Local secrets (see Secrets.example.xcconfig)
+# Local secrets (see Secrets.xcconfig.example)
 Secrets.xcconfig

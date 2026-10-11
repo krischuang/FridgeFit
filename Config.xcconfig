@@ -1,8 +1,22 @@
 // Committed build configuration. Pulls in your local, gitignored
-// Secrets.xcconfig if it exists (see Secrets.example.xcconfig to set one
+// Secrets.xcconfig if it exists (see Secrets.xcconfig.example to set one
 // up) - the "?" makes this include optional so a fresh checkout still
 // builds without it (OPENROUTER_API_KEY just resolves empty).
 
 #include? "Secrets.xcconfig"
 
 OPENROUTER_MODEL = google/gemma-4-31b-it:free
+
+// Signing. Both of these resolve to per-developer values set in the
+// gitignored Secrets.xcconfig, so nobody's Apple Development Team or
+// bundle identifier ends up committed. Left unset they resolve empty,
+// which is exactly the state a target has when no team is chosen:
+// simulator builds work, and Xcode asks for a team when you first run
+// on a device.
+DEVELOPMENT_TEAM = $(LOCAL_DEVELOPMENT_TEAM)
+
+// Defaults to com.Fridge.FridgeFit - the id the shared Firebase project
+// is registered against. Collaborators who need their own (a free Apple
+// ID can't claim someone else's id) set LOCAL_BUNDLE_ID_SUFFIX in
+// Secrets.xcconfig; see README "Bundle Identifier".
+PRODUCT_BUNDLE_IDENTIFIER = com.Fridge.FridgeFit$(LOCAL_BUNDLE_ID_SUFFIX)
