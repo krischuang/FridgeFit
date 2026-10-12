@@ -19,10 +19,13 @@ substitutions.
   built from what's actually in your pantry.
 - **Substitutions** — for any ingredient you're short on, get alternatives
   via OpenRouter, validated against your pantry before being shown.
+- **Discover (online recipes)** — search Spoonacular for real recipes that
+  use your pantry, filtered by diet, intolerances and time, with a
+  fail-closed allergen check and an offline cache of the last results.
 - **Accounts** — Firebase Authentication, including Google Sign-In.
 
 Architecture is layered: `Domain` (models, protocols, errors) → `UseCases`
-→ `Data` (Firestore, Vision, Foundation Models, OpenRouter) → `ViewModels`
+→ `Data` (Firestore, Vision, Foundation Models, OpenRouter, Spoonacular) → `ViewModels`
 → `Views`. 240 unit tests cover the domain, use-case and view-model layers.
 
 ---
@@ -60,6 +63,8 @@ Two optional steps, each only if you need it:
   [Apple Development Team](#apple-development-team).
 - Using the **substitutions feature** → add an OpenRouter key, see
   [OpenRouter API](#openrouter-api-key).
+- Using the **Discover tab** → add a Spoonacular key, see
+  [Spoonacular API key](#spoonacular-api-key).
 
 ---
 
@@ -167,6 +172,30 @@ injected via build settings into `Info.plist` at build time, so it never
 appears in source. Note that this means the key *is* readable inside the
 built app binary — fine for a class project, not a pattern for production.
 
+### Spoonacular API key
+
+Needed only for the **Discover** tab (online recipes). Without it the rest
+of the app is unaffected: `SpoonacularConfiguration.load()` returns `nil`
+and `ContentView` wires an `UnconfiguredOnlineRecipeService`, so Discover
+shows a "not set up" message instead of failing.
+
+Get a free key from the
+[Spoonacular console](https://spoonacular.com/food-api/console#Dashboard)
+and add it to `Secrets.xcconfig`:
+
+```
+SPOONACULAR_API_KEY = your-key
+```
+
+Alternatively set the `SPOONACULAR_API_KEY` environment variable on the
+run scheme — it takes precedence over the build setting.
+
+The free plan has a daily point quota, so Discover only searches when you
+tap **Find Recipes** (never on appear or on pantry edits) and asks for 30
+results per search. When the quota is used up you'll see a clear
+"limit reached" message; when offline, the last results for the same
+pantry + filters are shown and labelled as saved.
+
 ---
 
 ## Building and running
@@ -225,6 +254,11 @@ Apple Intelligence enabled in Settings, and the model assets downloaded.
 The app degrades gracefully with an explanation rather than failing; the
 pantry, recipes and auth are unaffected.
 
+**Discover says online recipes aren't set up** — no Spoonacular key. See
+[Spoonacular API key](#spoonacular-api-key). If it says the key was
+rejected, check for a typo or stray quotes in `Secrets.xcconfig`, then
+clean the build folder (⇧⌘K) so `Info.plist` picks up the new value.
+
 **"Find Substitute" reports the feature isn't configured** — no OpenRouter
 key. See [OpenRouter API key](#openrouter-api-key).
 
@@ -239,7 +273,7 @@ Xcode older than 26.1. Update Xcode.
 FridgeFit/              App source (file-system-synchronized group)
   Domain/               Models, protocols, errors — no framework imports
   UseCases/             Business rules
-  Data/                 Firestore, Vision, Foundation Models, OpenRouter
+  Data/                 Firestore, Vision, Foundation Models, OpenRouter, Spoonacular
   ViewModels/           Observable state for the views
   Views/                SwiftUI screens
   GoogleService-Info.plist   Firebase config (committed on purpose)
