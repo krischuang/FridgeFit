@@ -17,5 +17,7 @@
 	<string>$(OPENROUTER_API_KEY)</string>
 	<key>OPENROUTER_MODEL</key>
 	<string>$(OPENROUTER_MODEL)</string>
+	<key>SPOONACULAR_API_KEY</key>
+	<string>$(SPOONACULAR_API_KEY)</string>
 </dict>
 </plist>
