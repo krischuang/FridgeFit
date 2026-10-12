@@ -7,14 +7,15 @@
 
 import SwiftUI
 
-/// Root of the authenticated app: Pantry, Recipes, and Profile, each in
-/// its own tab with its own navigation stack.
+/// Root of the authenticated app: Pantry, Recipes, Discover, and Profile,
+/// each in its own tab with its own navigation stack.
 struct ContentView: View {
     @StateObject private var pantryViewModel: PantryViewModel
     @StateObject private var recipeViewModel: RecipeViewModel
     @StateObject private var substitutionViewModel: SubstitutionViewModel
     @StateObject private var scannerViewModel: ReceiptScannerViewModel
     @StateObject private var recipeSuggestionViewModel: RecipeSuggestionViewModel
+    @StateObject private var onlineRecipeSearchViewModel: OnlineRecipeSearchViewModel
 
     init() {
         let pantryRepository = FirestorePantryRepository()
@@ -53,6 +54,27 @@ struct ContentView: View {
             cache: SubstitutionCache()
         )
         _substitutionViewModel = StateObject(wrappedValue: SubstitutionViewModel(useCase: substitutionUseCase))
+
+        // Online recipes (Spoonacular). Same degrade-don't-crash rule as
+        // substitutions: no key -> the Discover tab explains it isn't set up.
+        // Separate from the bundled Recipes feature on purpose.
+        let onlineRecipeService: OnlineRecipeService = SpoonacularConfiguration.load()
+            .map {
+                CachingOnlineRecipeService(
+                    wrapping: SpoonacularRecipeService(configuration: $0),
+                    cache: OnlineRecipeCacheStore()
+                )
+            }
+            ?? UnconfiguredOnlineRecipeService()
+        _onlineRecipeSearchViewModel = StateObject(
+            wrappedValue: OnlineRecipeSearchViewModel(
+                useCase: FindOnlineRecipesFromPantryUseCase(
+                    recipeService: onlineRecipeService,
+                    pantryRepository: pantryRepository
+                ),
+                preferencesStore: UserDefaultsOnlineRecipePreferencesStore()
+            )
+        )
     }
 
     var body: some View {
@@ -70,6 +92,11 @@ struct ContentView: View {
                 )
             }
             .tabItem { Label("Recipes", systemImage: "fork.knife") }
+
+            NavigationStack {
+                DiscoverRecipesView(viewModel: onlineRecipeSearchViewModel)
+            }
+            .tabItem { Label("Discover", systemImage: "globe") }
 
             NavigationStack {
                 ProfileView()
