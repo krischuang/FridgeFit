@@ -14,7 +14,6 @@ struct ContentView: View {
     @StateObject private var recipeViewModel: RecipeViewModel
     @StateObject private var substitutionViewModel: SubstitutionViewModel
     @StateObject private var scannerViewModel: ReceiptScannerViewModel
-    @StateObject private var recipeSuggestionViewModel: RecipeSuggestionViewModel
     @StateObject private var onlineRecipeSearchViewModel: OnlineRecipeSearchViewModel
 
     init() {
@@ -22,9 +21,9 @@ struct ContentView: View {
         _pantryViewModel = StateObject(wrappedValue: PantryViewModel(pantryRepository: pantryRepository))
         _recipeViewModel = StateObject(wrappedValue: RecipeViewModel(pantryRepository: pantryRepository))
 
-        // Apple Intelligence, on-device. Both of these degrade to an
-        // explained unavailable state rather than failing the app, so they
-        // are wired unconditionally - see `AppleIntelligenceAvailability`.
+        // Apple Intelligence, on-device. Degrades to an explained
+        // unavailable state rather than failing the app, so it is wired
+        // unconditionally - see `AppleIntelligenceAvailability`.
         //
         // Receipt scanning is two on-device stages: Vision reads the text,
         // Foundation Models interprets it. Neither sends anything off the
@@ -36,15 +35,6 @@ struct ContentView: View {
                 pantryRepository: pantryRepository
             )
         )
-        _recipeSuggestionViewModel = StateObject(
-            wrappedValue: RecipeSuggestionViewModel(
-                useCase: SuggestRecipesFromPantryUseCase(
-                    suggestionService: AppleRecipeSuggestionService(),
-                    pantryRepository: pantryRepository
-                )
-            )
-        )
-
         let substitutionService: SubstitutionService = OpenRouterConfiguration.loadFromInfoPlist()
             .map { OpenRouterSubstitutionService(configuration: $0) }
             ?? UnconfiguredSubstitutionService()
@@ -56,8 +46,9 @@ struct ContentView: View {
         _substitutionViewModel = StateObject(wrappedValue: SubstitutionViewModel(useCase: substitutionUseCase))
 
         // Online recipes (Spoonacular). Same degrade-don't-crash rule as
-        // substitutions: no key -> the Discover tab explains it isn't set up.
-        // Separate from the bundled Recipes feature on purpose.
+        // substitutions: no key -> Discover / Pantry Ideas explain it isn't
+        // set up. One view model backs both the Discover tab and the Recipes
+        // tab's lightbulb sheet, so they always show the same results.
         let onlineRecipeService: OnlineRecipeService = SpoonacularConfiguration.load()
             .map {
                 CachingOnlineRecipeService(
@@ -88,7 +79,7 @@ struct ContentView: View {
                 RecipeListView(
                     viewModel: recipeViewModel,
                     substitutionViewModel: substitutionViewModel,
-                    suggestionViewModel: recipeSuggestionViewModel
+                    ideasViewModel: onlineRecipeSearchViewModel
                 )
             }
             .tabItem { Label("Recipes", systemImage: "fork.knife") }

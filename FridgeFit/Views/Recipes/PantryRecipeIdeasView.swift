@@ -5,138 +5,27 @@
 
 import SwiftUI
 
-/// Recipe ideas generated on-device from what's in the pantry, presented as
-/// a sheet from the Recipes tab.
+/// Recipe ideas from Spoonacular based on what's in the pantry, presented as
+/// a sheet from the Recipes tab's lightbulb button.
 ///
-/// Sits alongside the bundled recipe list rather than inside it - these are
-/// suggestions, and they're labelled as such. Which ingredients a suggestion
-/// is missing comes from the pantry check in
-/// `SuggestRecipesFromPantryUseCase`, never from the model.
+/// Reuses the Discover screen and its `OnlineRecipeSearchViewModel`, so the
+/// sheet and the Discover tab always agree. Searches automatically the first
+/// time it opens; after that, results stay until the user searches again or
+/// changes filters. Sits alongside the bundled recipe list rather than inside
+/// it - these are online ideas, never mixed into bundled feasibility.
 struct PantryRecipeIdeasView: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject var viewModel: RecipeSuggestionViewModel
+    @ObservedObject var viewModel: OnlineRecipeSearchViewModel
 
     var body: some View {
         NavigationStack {
-            Group {
-                if !viewModel.canSuggest {
-                    unavailableContent
-                } else if viewModel.isLoading {
-                    ProgressView("Looking at your pantry…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let errorMessage = viewModel.errorMessage {
-                    ContentUnavailableView {
-                        Label("Couldn't Suggest Recipes", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(errorMessage)
-                    } actions: {
-                        Button("Try Again") {
-                            Task { await viewModel.loadSuggestions() }
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                } else if viewModel.suggestions.isEmpty {
-                    ContentUnavailableView {
-                        Label("No Ideas Yet", systemImage: "lightbulb")
-                    } description: {
-                        Text(viewModel.hasLoadedEmptyResult
-                             ? "There isn't enough in your pantry to suggest a recipe yet. Add a few more ingredients and try again."
-                             : "Generate ideas based on what's in your pantry right now.")
-                    } actions: {
-                        Button("Suggest Recipes") {
-                            Task { await viewModel.loadSuggestions() }
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                } else {
-                    suggestionList
-                }
-            }
-            .navigationTitle("Pantry Ideas")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") {
-                        viewModel.cancel()
-                        dismiss()
+            DiscoverRecipesView(viewModel: viewModel, title: "Pantry Ideas", searchesOnAppear: true)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { dismiss() }
                     }
                 }
-            }
-            .task {
-                if viewModel.suggestions.isEmpty && viewModel.canSuggest {
-                    await viewModel.loadSuggestions()
-                }
-            }
         }
-    }
-
-    @ViewBuilder
-    private var suggestionList: some View {
-        List {
-            Section {
-                ForEach(viewModel.suggestions) { suggestion in
-                    SuggestionRow(suggestion: suggestion)
-                }
-            } footer: {
-                Text("Suggested on-device by Apple Intelligence. Ingredient availability is checked against your pantry, not guessed.")
-            }
-        }
-        .listStyle(.insetGrouped)
-        .refreshable { await viewModel.loadSuggestions() }
-    }
-
-    @ViewBuilder
-    private var unavailableContent: some View {
-        let availability = viewModel.availability
-        ContentUnavailableView {
-            Label(availability.unavailableTitle ?? "Suggestions Unavailable", systemImage: "sparkles.slash")
-        } description: {
-            Text(availability.unavailableExplanation ?? "")
-        } actions: {
-            Button("Back to Recipes") { dismiss() }
-                .buttonStyle(.borderedProminent)
-        }
-    }
-}
-
-private struct SuggestionRow: View {
-    let suggestion: RecipeSuggestion
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(suggestion.name)
-                    .font(.headline)
-                Spacer()
-                if let time = suggestion.formattedPreparationTime {
-                    Text(time)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            if suggestion.usesOnlyPantryIngredients {
-                Label("Uses only what you have", systemImage: "checkmark.circle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.green)
-            } else {
-                Label(
-                    "Missing: \(suggestion.missingIngredients.joined(separator: ", "))",
-                    systemImage: "cart"
-                )
-                .font(.caption)
-                .foregroundStyle(.orange)
-            }
-
-            Text("From your pantry: \(suggestion.availableIngredients.joined(separator: ", "))")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Text(suggestion.shortInstructions)
-                .font(.callout)
-                .foregroundStyle(.primary)
-        }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -145,17 +34,30 @@ private struct SuggestionRow: View {
         PantryItem(ingredient: Ingredient(name: "Eggs", category: .other), quantity: 6, unit: .pieces),
         PantryItem(ingredient: Ingredient(name: "Tomato", category: .produce), quantity: 3, unit: .pieces)
     ])
-    let service = MockRecipeSuggestionService(result: .success([
-        RawRecipeSuggestion(
-            name: "Tomato and egg scramble",
-            requiredIngredients: ["Eggs", "Tomato", "Butter"],
-            shortInstructions: "Beat the eggs. Soften the tomato in butter, then fold the eggs through until just set.",
-            estimatedPreparationMinutes: 10
-        )
-    ]))
+    let match = OnlineRecipeMatch(
+        recipe: OnlineRecipe(
+            id: 1,
+            title: "Tomato and Egg Scramble",
+            imageURL: nil,
+            readyInMinutes: 10,
+            servings: 2,
+            summary: "A quick scramble.",
+            sourceName: nil,
+            sourceURL: nil,
+            healthScore: nil,
+            diets: [],
+            ingredients: [],
+            steps: ["Beat the eggs.", "Cook with the tomato until just set."],
+            containsIntolerances: []
+        ),
+        usedIngredientNames: ["eggs", "tomato"],
+        missedIngredients: []
+    )
+    let useCase = FindOnlineRecipesFromPantryUseCase(
+        recipeService: MockOnlineRecipeService(result: .success([match])),
+        pantryRepository: pantry
+    )
     return PantryRecipeIdeasView(
-        viewModel: RecipeSuggestionViewModel(
-            useCase: SuggestRecipesFromPantryUseCase(suggestionService: service, pantryRepository: pantry)
-        )
+        viewModel: OnlineRecipeSearchViewModel(useCase: useCase, preferencesStore: InMemoryOnlineRecipePreferencesStore())
     )
 }

@@ -15,8 +15,9 @@ substitutions.
   on-device; the photo never leaves the phone and never reaches a server.
 - **Recipes** — browse recipes and see per-ingredient availability
   (have it / not enough / missing) computed against your real pantry.
-- **Recipe suggestions** — on-device Apple Intelligence proposes recipes
-  built from what's actually in your pantry.
+- **Pantry Ideas** — the lightbulb on the Recipes tab finds real recipes
+  on Spoonacular that use what's in your pantry (same search and filters
+  as the Discover tab).
 - **Substitutions** — for any ingredient you're short on, get alternatives
   via OpenRouter, validated against your pantry before being shown.
 - **Discover (online recipes)** — search Spoonacular for real recipes that
@@ -174,10 +175,11 @@ built app binary — fine for a class project, not a pattern for production.
 
 ### Spoonacular API key
 
-Needed only for the **Discover** tab (online recipes). Without it the rest
-of the app is unaffected: `SpoonacularConfiguration.load()` returns `nil`
-and `ContentView` wires an `UnconfiguredOnlineRecipeService`, so Discover
-shows a "not set up" message instead of failing.
+Needed only for online recipes — the **Discover** tab and the Recipes
+tab's **Pantry Ideas** sheet. Without it the rest of the app is
+unaffected: `SpoonacularConfiguration.load()` returns `nil` and
+`ContentView` wires an `UnconfiguredOnlineRecipeService`, so both show a
+"not set up" message instead of failing.
 
 Get a free key from the
 [Spoonacular console](https://spoonacular.com/food-api/console#Dashboard)
@@ -190,9 +192,10 @@ SPOONACULAR_API_KEY = your-key
 Alternatively set the `SPOONACULAR_API_KEY` environment variable on the
 run scheme — it takes precedence over the build setting.
 
-The free plan has a daily point quota, so Discover only searches when you
-tap **Find Recipes** (never on appear or on pantry edits) and asks for 30
-results per search. When the quota is used up you'll see a clear
+The free plan has a daily point quota, so the Discover tab only searches
+when you tap **Find Recipes**, and Pantry Ideas searches once the first
+time it opens (never on pantry edits); both share one set of results and
+ask for 30 per search. When the quota is used up you'll see a clear
 "limit reached" message; when offline, the last results for the same
 pantry + filters are shown and labelled as saved.
 
@@ -247,9 +250,8 @@ failures** — in Xcode, **File → Packages → Reset Package Caches**, then
 **Resolve Package Versions**. `Package.resolved` is gitignored, so each
 machine resolves its own versions.
 
-**Receipt scanning or recipe suggestions say Apple Intelligence is
-unavailable** — expected on the simulator and on hardware that doesn't
-support Apple Intelligence. These features need a physical device with
+**Receipt scanning says Apple Intelligence is unavailable** — expected on the simulator and on hardware that doesn't
+support Apple Intelligence. It needs a physical device with
 Apple Intelligence enabled in Settings, and the model assets downloaded.
 The app degrades gracefully with an explanation rather than failing; the
 pantry, recipes and auth are unaffected.

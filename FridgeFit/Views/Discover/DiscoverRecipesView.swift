@@ -7,10 +7,17 @@ import SwiftUI
 
 /// Discover tab: online recipes (Spoonacular) that use what's in the pantry.
 ///
-/// Independent of the Recipes tab - it has its own view model and never
-/// changes bundled recipes or their feasibility.
+/// Also shown as the Recipes tab's "Pantry Ideas" sheet (see
+/// `PantryRecipeIdeasView`), sharing the same view model so both places
+/// show the same results. Never changes bundled recipes or their
+/// feasibility.
 struct DiscoverRecipesView: View {
     @ObservedObject var viewModel: OnlineRecipeSearchViewModel
+    var title: String = "Discover"
+    /// Search automatically the first time the screen appears. Off for the
+    /// Discover tab (every search spends API quota, so it waits for a tap);
+    /// on for the Pantry Ideas sheet, where opening it *is* the request.
+    var searchesOnAppear: Bool = false
     @State private var isShowingFilters = false
 
     var body: some View {
@@ -74,7 +81,12 @@ struct DiscoverRecipesView: View {
                 }
             }
         }
-        .navigationTitle("Discover")
+        .navigationTitle(title)
+        .task {
+            if searchesOnAppear && !viewModel.hasSearched && !viewModel.isLoading {
+                await viewModel.search()
+            }
+        }
         .navigationDestination(for: OnlineRecipeMatch.self) { match in
             OnlineRecipeDetailView(match: match, intolerances: viewModel.preferences.intolerances)
         }

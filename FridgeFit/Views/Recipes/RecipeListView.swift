@@ -10,7 +10,8 @@ import SwiftUI
 struct RecipeListView: View {
     @ObservedObject var viewModel: RecipeViewModel
     @ObservedObject var substitutionViewModel: SubstitutionViewModel
-    @ObservedObject var suggestionViewModel: RecipeSuggestionViewModel
+    /// Backs the lightbulb's "Pantry Ideas" sheet (Spoonacular, pantry-based).
+    @ObservedObject var ideasViewModel: OnlineRecipeSearchViewModel
     @State private var isPresentingPantryIdeas = false
 
     var body: some View {
@@ -50,7 +51,7 @@ struct RecipeListView: View {
             Task { await viewModel.loadRecipes() }
         }
         .sheet(isPresented: $isPresentingPantryIdeas) {
-            PantryRecipeIdeasView(viewModel: suggestionViewModel)
+            PantryRecipeIdeasView(viewModel: ideasViewModel)
         }
         .alert(
             "Couldn't Load Recipes",
@@ -81,17 +82,18 @@ struct RecipeListView: View {
             cache: SubstitutionCache()
         )
     )
-    let suggestionViewModel = RecipeSuggestionViewModel(
-        useCase: SuggestRecipesFromPantryUseCase(
-            suggestionService: MockRecipeSuggestionService(),
+    let ideasViewModel = OnlineRecipeSearchViewModel(
+        useCase: FindOnlineRecipesFromPantryUseCase(
+            recipeService: MockOnlineRecipeService(result: .success([])),
             pantryRepository: pantry
-        )
+        ),
+        preferencesStore: InMemoryOnlineRecipePreferencesStore()
     )
     NavigationStack {
         RecipeListView(
             viewModel: RecipeViewModel(pantryRepository: pantry),
             substitutionViewModel: substitutionViewModel,
-            suggestionViewModel: suggestionViewModel
+            ideasViewModel: ideasViewModel
         )
     }
 }
