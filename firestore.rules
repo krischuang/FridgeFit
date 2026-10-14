@@ -1,15 +1,93 @@
 rules_version = '2';
 
+// FridgeFit Firestore security rules.
+//
+// Everything the app stores lives under users/{uid}/..., and the single
+// security boundary is "the signed-in user owns the uid in the path". That
+// is what makes a Firebase account - not a client-side filter - the limit of
+// what any device can see.
+//
+// Paths in use (see FirestorePantryRepository, FirestoreDeviceRegistry and
+// FirestoreSignalingTransport):
+//
+//   users/{uid}/pantry/{pantryItemId}
+//   users/{uid}/devices/{deviceId}
+//   users/{uid}/webrtcSessions/{sessionId}
+//   users/{uid}/webrtcSessions/{sessionId}/callerCandidates/{candidateId}
+//   users/{uid}/webrtcSessions/{sessionId}/calleeCandidates/{candidateId}
+//
+// Covered by FirestoreRulesTests (`npm test` in firestore-tests/), which runs
+// these rules against the Firestore emulator.
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Each user's pantry lives at users/{uid}/pantry/{pantryItemId}.
-    // A signed-in user may only read or write their own pantry - uid in
-    // the path must match the authenticated request's uid.
-    match /users/{uid}/pantry/{pantryItemId} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+    // The one authorisation question these rules can answer: is the caller
+    // signed in, and is this their own subtree?
+    //
+    // Note it deliberately says nothing about *which device* is asking -
+    // deviceId is not part of the auth token, so per-device authorisation is
+    // enforced client-side in WebRTCSessionCoordinator, which refuses any
+    // session not addressed to it and refuses to answer its own offer.
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
     }
 
-    // Everything else is denied by default.
+    // --- Pantry (pre-existing, unchanged behaviour) -----------------------
+    //
+    // A signed-in user may only read or write their own pantry.
+    match /users/{uid}/pantry/{pantryItemId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // --- Remote camera: device registry -----------------------------------
+    //
+    // One document per install, so the app can tell two iPhones on the same
+    // account apart - a Firebase UID identifies the account, not the phone
+    // (see DeviceIdentity).
+    //
+    // `read` covers both getting a single device and listing the collection,
+    // which is how discovery and the presence heartbeat work. `write` covers
+    // registration (create), heartbeat and role changes (update), and
+    // removal (delete).
+    match /users/{uid}/devices/{deviceId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // --- Remote camera: WebRTC signaling ----------------------------------
+    //
+    // Carries SDP offers/answers and ICE candidates only. Video frames and
+    // captured photos never pass through Firestore - they go peer-to-peer
+    // over WebRTC.
+    //
+    // `read` also covers the two queries the app runs here: a camera listens
+    // for sessions where calleeDeviceId == its own id, and the controller
+    // sweeps sessions whose expiresAt has passed.
+    match /users/{uid}/webrtcSessions/{sessionId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ICE candidates, in a subcollection per negotiating role.
+    //
+    // This needs its own match: a rule on the parent document does NOT cascade
+    // to its subcollections. Without this block the session document would be
+    // readable but candidates would be denied, and connections would get as
+    // far as exchanging SDP and then never complete - which is the failure
+    // mode most easily mistaken for a networking problem.
+    //
+    // The collection name is restricted to the two the app actually uses
+    // (see SignalingRole.candidateCollectionName) rather than a recursive
+    // wildcard, so this grants no more than the feature needs.
+    match /users/{uid}/webrtcSessions/{sessionId}/{candidateCollection}/{candidateId} {
+      allow read, write: if isOwner(uid)
+        && candidateCollection in ['callerCandidates', 'calleeCandidates'];
+    }
+
+    // --- Default deny -----------------------------------------------------
+    //
+    // Anything not matched above. Note that in Firestore an `allow` elsewhere
+    // is OR'd in, so this cannot override the rules above - it only closes
+    // off paths nothing has granted.
     match /{document=**} {
       allow read, write: if false;
     }

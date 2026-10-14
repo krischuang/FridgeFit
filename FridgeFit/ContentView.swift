@@ -15,9 +15,13 @@ struct ContentView: View {
     @StateObject private var substitutionViewModel: SubstitutionViewModel
     @StateObject private var scannerViewModel: ReceiptScannerViewModel
     @StateObject private var recipeSuggestionViewModel: RecipeSuggestionViewModel
+    /// Shared with the remote-camera review sheet through the environment,
+    /// so a confirmed ingredient reaches the same pantry as everything else.
+    private let pantryRepository: PantryRepository
 
     init() {
         let pantryRepository = FirestorePantryRepository()
+        self.pantryRepository = pantryRepository
         _pantryViewModel = StateObject(wrappedValue: PantryViewModel(pantryRepository: pantryRepository))
         _recipeViewModel = StateObject(wrappedValue: RecipeViewModel(pantryRepository: pantryRepository))
 
@@ -76,6 +80,12 @@ struct ContentView: View {
             }
             .tabItem { Label("Profile", systemImage: "person.crop.circle") }
         }
+        // Reaches the remote-camera review sheet, four levels down, without
+        // adding a pantry parameter to ProfileView, ConnectedDevicesView and
+        // RemoteCameraView - none of which have anything to do with the
+        // pantry. Same repository instance as every other tab, so a confirmed
+        // ingredient lands in the same place and under the same auth.
+        .environment(\.pantryRepository, pantryRepository)
     }
 }
 

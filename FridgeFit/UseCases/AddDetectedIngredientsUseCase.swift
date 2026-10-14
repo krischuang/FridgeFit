@@ -52,6 +52,49 @@ struct AddDetectedIngredientsSummary: Equatable {
     }
 }
 
+/// One user-confirmed ingredient, ready to be stored.
+///
+/// A storage-shaped value with no knowledge of where it came from, so the
+/// receipt scanner and the remote-camera review sheet can both reach the
+/// pantry through the same use case. `ReceiptItemDraft` carries a
+/// `ReceiptIngredientCandidate` it cannot exist without; a recognised
+/// ingredient has no receipt line, and inventing an empty one to satisfy the
+/// type would be a lie about provenance.
+///
+/// `quantity` is optional on purpose. Both flows deliberately refuse to
+/// invent an amount nobody stated - see `ReceiptItemDraft`'s note about the
+/// old fridge-scan defaulting every row to `1 pcs`. A `nil` here is reported
+/// as a failure with a message telling the user what to fill in.
+struct ConfirmedIngredientDraft: Equatable {
+    /// The name to store. Passed to `AddPantryItemUseCase` exactly as given,
+    /// including when it is blank - validation belongs there, not here.
+    let name: String
+    /// The name to use when *reporting* this row's outcome.
+    ///
+    /// Separate from `name` because a row the user blanked must still fail
+    /// validation, while the failure message needs something to call it.
+    /// Collapsing the two would quietly store the fallback instead.
+    let reportingName: String
+    /// `nil` when the user has not supplied one. Never defaulted.
+    let quantity: Double?
+    let unit: MeasurementUnit
+    let category: IngredientCategory
+
+    init(
+        name: String,
+        reportingName: String? = nil,
+        quantity: Double?,
+        unit: MeasurementUnit,
+        category: IngredientCategory
+    ) {
+        self.name = name
+        self.reportingName = reportingName ?? name
+        self.quantity = quantity
+        self.unit = unit
+        self.category = category
+    }
+}
+
 /// Adds user-confirmed scan results to the pantry.
 ///
 /// Deliberately thin: it does no validation, no duplicate checking and no
@@ -80,12 +123,32 @@ struct AddDetectedIngredientsUseCase {
     /// outcome for a receipt line that never stated an amount and the user
     /// left blank, and the message tells them exactly what to fix.
     func execute(drafts: [ReceiptItemDraft]) async -> AddDetectedIngredientsSummary {
+        await execute(confirmed: drafts.map { draft in
+            ConfirmedIngredientDraft(
+                // Stored exactly as typed, so a blanked row still fails
+                // validation; the display name is only the fallback for
+                // saying *which* row failed.
+                name: draft.trimmedName,
+                reportingName: draft.trimmedName.isEmpty ? draft.candidate.displayName : draft.trimmedName,
+                quantity: draft.quantity,
+                unit: draft.unit,
+                category: draft.category
+            )
+        })
+    }
+
+    /// Adds each confirmed ingredient through `AddPantryItemUseCase`, in order.
+    ///
+    /// One shared implementation for both callers. Per-item outcomes are
+    /// collected rather than aborting on the first problem, so a basket of a
+    /// dozen ingredients cannot be stopped dead by one duplicate.
+    func execute(confirmed drafts: [ConfirmedIngredientDraft]) async -> AddDetectedIngredientsSummary {
         var addedNames: [String] = []
         var duplicateNames: [String] = []
         var failures: [AddDetectedIngredientsSummary.Failure] = []
 
         for draft in drafts {
-            let name = draft.trimmedName.isEmpty ? draft.candidate.displayName : draft.trimmedName
+            let name = draft.reportingName
 
             guard let quantity = draft.quantity else {
                 failures.append(.init(name: name, message: AddPantryItemError.invalidQuantity.errorDescription ?? "Invalid quantity."))
@@ -94,7 +157,7 @@ struct AddDetectedIngredientsUseCase {
 
             do {
                 try await addPantryItemUseCase.execute(
-                    name: draft.trimmedName,
+                    name: draft.name,
                     quantity: quantity,
                     unit: draft.unit,
                     category: draft.category

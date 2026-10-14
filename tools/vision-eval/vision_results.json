@@ -1,0 +1,973 @@
+{
+  "beef_raw" : {
+    "classifications" : [
+      {
+        "confidence" : 0.28979548811912537,
+        "identifier" : "structure"
+      },
+      {
+        "confidence" : 0.289794921875,
+        "identifier" : "wood_processed"
+      },
+      {
+        "confidence" : 0.2278774231672287,
+        "identifier" : "utensil"
+      },
+      {
+        "confidence" : 0.2278754562139511,
+        "identifier" : "tableware"
+      },
+      {
+        "confidence" : 0.227783203125,
+        "identifier" : "plate"
+      },
+      {
+        "confidence" : 0.17585867643356323,
+        "identifier" : "food"
+      },
+      {
+        "confidence" : 0.1645849496126175,
+        "identifier" : "dessert"
+      },
+      {
+        "confidence" : 0.16455078125,
+        "identifier" : "brownie"
+      },
+      {
+        "confidence" : 0.12166251242160797,
+        "identifier" : "meat"
+      },
+      {
+        "confidence" : 0.070556640625,
+        "identifier" : "tool"
+      },
+      {
+        "confidence" : 0.041750192642211914,
+        "identifier" : "baked_goods"
+      },
+      {
+        "confidence" : 0.0024569432716816664,
+        "identifier" : "people"
+      },
+      {
+        "confidence" : 0.000244140625,
+        "identifier" : "land"
+      },
+      {
+        "confidence" : 0.000244140625,
+        "identifier" : "outdoor"
+      }
+    ],
+    "classifyMs" : 0.14495849609375,
+    "ocrLines" : [
+
+    ],
+    "ocrMs" : 0.16200542449951172
+  },
+  "chicken_raw" : {
+    "classifications" : [
+      {
+        "confidence" : 0.8076173067092896,
+        "identifier" : "structure"
+      },
+      {
+        "confidence" : 0.8076171875,
+        "identifier" : "wood_processed"
+      },
+      {
+        "confidence" : 0.6688551902770996,
+        "identifier" : "utensil"
+      },
+      {
+        "confidence" : 0.6679689288139343,
+        "identifier" : "tableware"
+      },
+      {
+        "confidence" : 0.66796875,
+        "identifier" : "plate"
+      },
+      {
+        "confidence" : 0.190673828125,
+        "identifier" : "cutting_board"
+      },
+      {
+        "confidence" : 0.12591271102428436,
+        "identifier" : "food"
+      },
+      {
+        "confidence" : 0.12585073709487915,
+        "identifier" : "meat"
+      },
+      {
+        "confidence" : 0.105224609375,
+        "identifier" : "tool"
+      },
+      {
+        "confidence" : 0.0021919719874858856,
+        "identifier" : "animal"
+      },
+      {
+        "confidence" : 0.0019532442092895508,
+        "identifier" : "fish"
+      },
+      {
+        "confidence" : 0.001708984375,
+        "identifier" : "mammal"
+      },
+      {
+        "confidence" : 0.00146484375,
+        "identifier" : "people"
+      }
+    ],
+    "classifyMs" : 27.076005935668945,
+    "ocrLines" : [
+
+    ],
+    "ocrMs" : 39.26503658294678
+  },
+  "eggs_carton" : {
+    "classifications" : [
+      {
+        "confidence" : 0.96337890625,
+        "identifier" : "carton"
+      },
+      {
+        "confidence" : 0.96337890625,
+        "identifier" : "container"
+      },
+      {
+        "confidence" : 0.010254121385514736,
+        "identifier" : "food"
+      },
+      {
+        "confidence" : 0.0026612828951328993,
+        "identifier" : "structure"
+      },
+      {
+        "confidence" : 0.0014670990640297532,
+        "identifier" : "utensil"
+      },
+      {
+        "confidence" : 0.0012379138497635722,
+        "identifier" : "tableware"
+      },
+      {
+        "confidence" : 0.0012211911380290985,
+        "identifier" : "people"
+      },
+      {
+        "confidence" : 0.0002903337590396404,
+        "identifier" : "outdoor"
+      },
+      {
+        "confidence" : 0.0002903337590396404,
+        "identifier" : "sport"
+      },
+      {
+        "confidence" : 0.000244140625,
+        "identifier" : "animal"
+      },
+      {
+        "confidence" : 0.000244140625,
+        "identifier" : "bird"
+      },
+      {
+        "confidence" : 0.000244140625,
+        "identifier" : "golf"
+      },
+      {
+        "confidence" : 0.000244140625,
+        "identifier" : "land"
+      },
+      {
+        "confidence" : 0.000244140625,
+        "identifier" : "sky"
+      }
+    ],
+    "classifyMs" : 27.3740291595459,
+    "ocrLines" : [
+
+    ],
+    "ocrMs" : 78.8719654083252
+  },
+  "fish_platter" : {
+    "classifications" : [
+      {
+        "confidence" : 0.8579103946685791,
+        "identifier" : "structure"
+      },
+      {
+        "confidence" : 0.85791015625,
+        "identifier" : "wood_processed"
+      },
+      {
+        "confidence" : 0.8331148028373718,
+        "identifier" : "food"
+      },
+      {
+        "confidence" : 0.7474901676177979,
+        "identifier" : "vegetable"
+      },
+      {
+        "confidence" : 0.7236328125,
+        "identifier" : "onion"
+      },
+      {
+        "confidence" : 0.6269660592079163,
+        "identifier" : "seasonings"
+      },
+      {
+        "confidence" : 0.6269598007202148,
+        "identifier" : "condiment"
+      },
+      {
+        "confidence" : 0.6218249201774597,
+        "identifier" : "utensil"
+      },
+      {
+        "confidence" : 0.6216407418251038,
+        "identifier" : "tableware"
+      },
+      {
+        "confidence" : 0.6201171875,
+        "identifier" : "bowl"
+      },
+      {
+        "confidence" : 0.5551853775978088,
+        "identifier" : "fruit"
+      },
+      {
+        "confidence" : 0.5551798939704895,
+        "identifier" : "citrus_fruit"
+      },
+      {
+        "confidence" : 0.54150390625,
+        "identifier" : "lemon"
+      },
+      {
+        "confidence" : 0.474609375,
+        "identifier" : "tomato"
+      },
+      {
+        "confidence" : 0.315185546875,
+        "identifier" : "lime"
+      },
+      {
+        "confidence" : 0.25659191608428955,
+        "identifier" : "seafood"
+      },
+      {
+        "confidence" : 0.256591796875,
+        "identifier" : "salmon"
+      },
+      {
+        "confidence" : 0.203369140625,
+        "identifier" : "plate"
+      },
+      {
+        "confidence" : 0.194580078125,
+        "identifier" : "cucumber"
+      },
+      {
+        "confidence" : 0.18310546875,
+        "identifier" : "fries"
+      },
+      {
+        "confidence" : 0.12262497842311859,
+        "identifier" : "pepper_veggie"
+      },
+      {
+        "confidence" : 0.1201171875,
+        "identifier" : "cutting_board"
+      },
+      {
+        "confidence" : 0.116943359375,
+        "identifier" : "salad"
+      },
+      {
+        "confidence" : 0.05193287879228592,
+        "identifier" : "herb"
+      },
+      {
+        "confidence" : 0.04638671875,
+        "identifier" : "guacamole"
+      }
+    ],
+    "classifyMs" : 9.115934371948242,
+    "ocrLines" : [
+
+    ],
+    "ocrMs" : 43.03300380706787
+  },
+  "fruits_mixed" : {
+    "classifications" : [
+      {
+        "confidence" : 0.998522162437439,
+        "identifier" : "food"
+      },
+      {
+        "confidence" : 0.998522162437439,
+        "identifier" : "fruit"
+      },
+      {
+        "confidence" : 0.95458984375,
+        "identifier" : "banana"
+      },
+      {
+        "confidence" : 0.943359375,
+        "identifier" : "pineapple"
+      },
+      {
+        "confidence" : 0.83154296875,
+        "identifier" : "apple"
+      },
+      {
+        "confidence" : 0.8149369359016418,
+        "identifier" : "melon"
+      },
+      {
+        "confidence" : 0.81396484375,
+        "identifier" : "watermelon"
+      },
+      {
+        "confidence" : 0.7020439505577087,
+        "identifier" : "citrus_fruit"
+      },
+      {
+        "confidence" : 0.70166015625,
+        "identifier" : "oranges"
+      },
+      {
+        "confidence" : 0.6181640625,
+        "identifier" : "grape"
+      },
+      {
+        "confidence" : 0.5215026140213013,
+        "identifier" : "berry"
+      },
+      {
+        "confidence" : 0.521484375,
+        "identifier" : "strawberry"
+      },
+      {
+        "confidence" : 0.3896484375,
+        "identifier" : "pear"
+      },
+      {
+        "confidence" : 0.34326171875,
+        "identifier" : "papaya"
+      },
+      {
+        "confidence" : 0.2333984375,
+        "identifier" : "kiwi"
+      },
+      {
+        "confidence" : 0.233154296875,
+        "identifier" : "cantaloupe"
+      },
+      {
+        "confidence" : 0.167724609375,
+        "identifier" : "honeydew"
+      },
+      {
+        "confidence" : 0.129150390625,
+        "identifier" : "pomegranate"
+      },
+      {
+        "confidence" : 0.10986328125,
+        "identifier" : "starfruit"
+      },
+      {
+        "confidence" : 0.081298828125,
+        "identifier" : "grapefruit"
+      },
+      {
+        "confidence" : 0.0712890625,
+        "identifier" : "passionfruit"
+      },
+      {
+        "confidence" : 0.06111875921487808,
+        "identifier" : "vegetable"
+      },
+      {
+        "confidence" : 0.041015625,
+        "identifier" : "rambutan"
+      },
+      {
+        "confidence" : 0.038330238312482834,
+        "identifier" : "plant"
+      },
+      {
+        "confidence" : 0.032958984375,
+        "identifier" : "lychee"
+      }
+    ],
+    "classifyMs" : 8.924007415771484,
+    "ocrLines" : [
+
+    ],
+    "ocrMs" : 20.050048828125
+  },
+  "market_crowded" : {
+    "classifications" : [
+      {
+        "confidence" : 0.8945353627204895,
+        "identifier" : "people"
+      },
+      {
+        "confidence" : 0.89453125,
+        "identifier" : "adult"
+      },
+      {
+        "confidence" : 0.8331597447395325,
+        "identifier" : "food"
+      },
+      {
+        "confidence" : 0.8331498503684998,
+        "identifier" : "fruit"
+      },
+      {
+        "confidence" : 0.76513671875,
+        "identifier" : "mango"
+      },
+      {
+        "confidence" : 0.5966796875,
+        "identifier" : "apple"
+      },
+      {
+        "confidence" : 0.42798304557800293,
+        "identifier" : "citrus_fruit"
+      },
+      {
+        "confidence" : 0.427734375,
+        "identifier" : "oranges"
+      },
+      {
+        "confidence" : 0.380859375,
+        "identifier" : "interior_room"
+      },
+      {
+        "confidence" : 0.380859375,
+        "identifier" : "interior_shop"
+      },
+      {
+        "confidence" : 0.36328125,
+        "identifier" : "rambutan"
+      },
+      {
+        "confidence" : 0.35768139362335205,
+        "identifier" : "clothing"
+      },
+      {
+        "confidence" : 0.357666015625,
+        "identifier" : "jeans"
+      },
+      {
+        "confidence" : 0.3464358150959015,
+        "identifier" : "plant"
+      },
+      {
+        "confidence" : 0.346435546875,
+        "identifier" : "foliage"
+      },
+      {
+        "confidence" : 0.33349609375,
+        "identifier" : "grape"
+      },
+      {
+        "confidence" : 0.2998046875,
+        "identifier" : "banana"
+      },
+      {
+        "confidence" : 0.2978515625,
+        "identifier" : "papaya"
+      },
+      {
+        "confidence" : 0.264892578125,
+        "identifier" : "mangosteen"
+      },
+      {
+        "confidence" : 0.26416015625,
+        "identifier" : "pineapple"
+      },
+      {
+        "confidence" : 0.258056640625,
+        "identifier" : "lychee"
+      },
+      {
+        "confidence" : 0.217529296875,
+        "identifier" : "kiwi"
+      },
+      {
+        "confidence" : 0.21043731272220612,
+        "identifier" : "container"
+      },
+      {
+        "confidence" : 0.20068359375,
+        "identifier" : "durian"
+      },
+      {
+        "confidence" : 0.19384765625,
+        "identifier" : "passionfruit"
+      }
+    ],
+    "classifyMs" : 8.81195068359375,
+    "ocrLines" : [
+
+    ],
+    "ocrMs" : 308.40301513671875
+  },
+  "prawns" : {
+    "classifications" : [
+      {
+        "confidence" : 0.09239238500595093,
+        "identifier" : "plant"
+      },
+      {
+        "confidence" : 0.07861506193876266,
+        "identifier" : "tableware"
+      },
+      {
+        "confidence" : 0.07861506193876266,
+        "identifier" : "utensil"
+      },
+      {
+        "confidence" : 0.07861328125,
+        "identifier" : "plate"
+      },
+      {
+        "confidence" : 0.0695262923836708,
+        "identifier" : "food"
+      },
+      {
+        "confidence" : 0.06891835480928421,
+        "identifier" : "fruit"
+      },
+      {
+        "confidence" : 0.013677108101546764,
+        "identifier" : "animal"
+      },
+      {
+        "confidence" : 0.013671875,
+        "identifier" : "fish"
+      },
+      {
+        "confidence" : 0.005959926173090935,
+        "identifier" : "structure"
+      },
+      {
+        "confidence" : 0.0017121784621849656,
+        "identifier" : "people"
+      },
+      {
+        "confidence" : 0.001465126289986074,
+        "identifier" : "bird"
+      },
+      {
+        "confidence" : 0.0007977489731274545,
+        "identifier" : "flower"
+      },
+      {
+        "confidence" : 0.0005028728628531098,
+        "identifier" : "outdoor"
+      },
+      {
+        "confidence" : 0.0004957380588166416,
+        "identifier" : "sky"
+      },
+      {
+        "confidence" : 0.000244140625,
+        "identifier" : "land"
+      },
+      {
+        "confidence" : 0.000244140625,
+        "identifier" : "mammal"
+      }
+    ],
+    "classifyMs" : 10.000944137573242,
+    "ocrLines" : [
+
+    ],
+    "ocrMs" : 23.695945739746094
+  },
+  "shelf_packaged" : {
+    "classifications" : [
+      {
+        "confidence" : 0.240478515625,
+        "identifier" : "interior_room"
+      },
+      {
+        "confidence" : 0.22193120419979095,
+        "identifier" : "container"
+      },
+      {
+        "confidence" : 0.026661619544029236,
+        "identifier" : "food"
+      },
+      {
+        "confidence" : 0.012461433187127113,
+        "identifier" : "structure"
+      },
+      {
+        "confidence" : 0.006758691743016243,
+        "identifier" : "utensil"
+      },
+      {
+        "confidence" : 0.006758671719580889,
+        "identifier" : "tableware"
+      },
+      {
+        "confidence" : 0.004797744564712048,
+        "identifier" : "people"
+      },
+      {
+        "confidence" : 0.0007369017112068832,
+        "identifier" : "outdoor"
+      },
+      {
+        "confidence" : 0.0002903337590396404,
+        "identifier" : "land"
+      },
+      {
+        "confidence" : 0.000244140625,
+        "identifier" : "sport"
+      }
+    ],
+    "classifyMs" : 8.321046829223633,
+    "ocrLines" : [
+      "89:",
+      "54:0",
+      "ГЕРКУЛЕС",
+      "7490",
+      "УЛЕС",
+      "ПРЕЧНЕВЫЕ",
+      "МАННАЯ КРУПА",
+      "4003",
+      "500",
+      "3300",
+      "2495",
+      "75%0",
+      "МАНКА",
+      "нІ УВервой повни",
+      "МАННАЯ КРУПА",
+      "3350",
+      "53-",
+      "350AR",
+      "72:0",
+      "Захожая",
+      "МАНКА",
+      "из тведдой пшеници",
+      "36%0",
+      "Намональ",
+      "КРУПА",
+      "МАННАЯ",
+      "800 г",
+      "49:0",
+      "S"
+    ],
+    "ocrMs" : 408.32698345184326
+  },
+  "supermarket" : {
+    "classifications" : [
+      {
+        "confidence" : 0.7283089756965637,
+        "identifier" : "structure"
+      },
+      {
+        "confidence" : 0.7149604558944702,
+        "identifier" : "container"
+      },
+      {
+        "confidence" : 0.71435546875,
+        "identifier" : "cardboard_box"
+      },
+      {
+        "confidence" : 0.6826182007789612,
+        "identifier" : "sign"
+      },
+      {
+        "confidence" : 0.43993040919303894,
+        "identifier" : "conveyance"
+      },
+      {
+        "confidence" : 0.427490234375,
+        "identifier" : "tripod"
+      },
+      {
+        "confidence" : 0.4106205701828003,
+        "identifier" : "portal"
+      },
+      {
+        "confidence" : 0.409423828125,
+        "identifier" : "door"
+      },
+      {
+        "confidence" : 0.33575910329818726,
+        "identifier" : "outdoor"
+      },
+      {
+        "confidence" : 0.335693359375,
+        "identifier" : "building"
+      },
+      {
+        "confidence" : 0.335693359375,
+        "identifier" : "storefront"
+      },
+      {
+        "confidence" : 0.30859375,
+        "identifier" : "stairs"
+      },
+      {
+        "confidence" : 0.16408374905586243,
+        "identifier" : "machine"
+      },
+      {
+        "confidence" : 0.1640630066394806,
+        "identifier" : "appliance"
+      },
+      {
+        "confidence" : 0.15625,
+        "identifier" : "wood_processed"
+      },
+      {
+        "confidence" : 0.1357421875,
+        "identifier" : "window"
+      },
+      {
+        "confidence" : 0.09506365656852722,
+        "identifier" : "art"
+      },
+      {
+        "confidence" : 0.07227016985416412,
+        "identifier" : "people"
+      },
+      {
+        "confidence" : 0.072265625,
+        "identifier" : "adult"
+      },
+      {
+        "confidence" : 0.05439222976565361,
+        "identifier" : "land"
+      },
+      {
+        "confidence" : 0.03393556550145149,
+        "identifier" : "sky"
+      },
+      {
+        "confidence" : 0.024534234777092934,
+        "identifier" : "vehicle"
+      },
+      {
+        "confidence" : 0.012995758093893528,
+        "identifier" : "utensil"
+      },
+      {
+        "confidence" : 0.002301398664712906,
+        "identifier" : "tableware"
+      },
+      {
+        "confidence" : 0.0012211911380290985,
+        "identifier" : "sport"
+      }
+    ],
+    "classifyMs" : 8.265972137451172,
+    "ocrLines" : [
+      "ARVANITIS",
+      "markee",
+      "ПРАТИРІО APTOY",
+      "BAKERY",
+      "FRUITS - ФРОТА",
+      "SOFT DRINKS - ANAYYKTIKA",
+      "ICE CREAM - ПАГОТА",
+      "NEWSPAPER - EOHMEPIDET",
+      "FILMS",
+      "CIGARETTES • TEIFAPA",
+      "CocaCola",
+      "A4 BE",
+      "CocaCola",
+      "Heineken®",
+      "Dn FItR",
+      "110902",
+      "Keya.",
+      "EUROPE"
+    ],
+    "ocrMs" : 269.3910598754883
+  },
+  "tapas_cheese" : {
+    "classifications" : [
+      {
+        "confidence" : 0.7778012156486511,
+        "identifier" : "utensil"
+      },
+      {
+        "confidence" : 0.7778007388114929,
+        "identifier" : "tableware"
+      },
+      {
+        "confidence" : 0.7451171875,
+        "identifier" : "drinking_glass"
+      },
+      {
+        "confidence" : 0.5324813723564148,
+        "identifier" : "structure"
+      },
+      {
+        "confidence" : 0.479736328125,
+        "identifier" : "plate"
+      },
+      {
+        "confidence" : 0.468994140625,
+        "identifier" : "wood_processed"
+      },
+      {
+        "confidence" : 0.42822265625,
+        "identifier" : "furniture"
+      },
+      {
+        "confidence" : 0.42822265625,
+        "identifier" : "table"
+      },
+      {
+        "confidence" : 0.34521484375,
+        "identifier" : "bowl"
+      },
+      {
+        "confidence" : 0.2762262523174286,
+        "identifier" : "food"
+      },
+      {
+        "confidence" : 0.27551838755607605,
+        "identifier" : "meat"
+      },
+      {
+        "confidence" : 0.2398107945919037,
+        "identifier" : "material"
+      },
+      {
+        "confidence" : 0.2342793494462967,
+        "identifier" : "liquid"
+      },
+      {
+        "confidence" : 0.23427803814411163,
+        "identifier" : "drink"
+      },
+      {
+        "confidence" : 0.229736328125,
+        "identifier" : "juice"
+      },
+      {
+        "confidence" : 0.2295423150062561,
+        "identifier" : "container"
+      },
+      {
+        "confidence" : 0.224853515625,
+        "identifier" : "bottle"
+      },
+      {
+        "confidence" : 0.173095703125,
+        "identifier" : "salami"
+      },
+      {
+        "confidence" : 0.020644063130021095,
+        "identifier" : "people"
+      },
+      {
+        "confidence" : 0.01611328125,
+        "identifier" : "water"
+      },
+      {
+        "confidence" : 0.00830078125,
+        "identifier" : "adult"
+      },
+      {
+        "confidence" : 0.0031818817369639874,
+        "identifier" : "outdoor"
+      },
+      {
+        "confidence" : 0.0009914761176332831,
+        "identifier" : "sky"
+      },
+      {
+        "confidence" : 0.0005097162211313844,
+        "identifier" : "land"
+      },
+      {
+        "confidence" : 0.0005028728628531098,
+        "identifier" : "flower"
+      }
+    ],
+    "classifyMs" : 8.410930633544922,
+    "ocrLines" : [
+      "König Ludwig",
+      "Weissbier",
+      "ER NON KÖNIGLICHER HOHERE",
+      "1"
+    ],
+    "ocrMs" : 195.19400596618652
+  },
+  "veg_mixed" : {
+    "classifications" : [
+      {
+        "confidence" : 0.7208729982376099,
+        "identifier" : "food"
+      },
+      {
+        "confidence" : 0.7208729386329651,
+        "identifier" : "vegetable"
+      },
+      {
+        "confidence" : 0.60791015625,
+        "identifier" : "zucchini"
+      },
+      {
+        "confidence" : 0.58740234375,
+        "identifier" : "structure"
+      },
+      {
+        "confidence" : 0.58740234375,
+        "identifier" : "wood_processed"
+      },
+      {
+        "confidence" : 0.5869140625,
+        "identifier" : "carrot"
+      },
+      {
+        "confidence" : 0.443359375,
+        "identifier" : "garlic"
+      },
+      {
+        "confidence" : 0.170654296875,
+        "identifier" : "cucumber"
+      },
+      {
+        "confidence" : 0.013122458010911942,
+        "identifier" : "utensil"
+      },
+      {
+        "confidence" : 0.008657260797917843,
+        "identifier" : "tableware"
+      },
+      {
+        "confidence" : 0.0011613350361585617,
+        "identifier" : "people"
+      },
+      {
+        "confidence" : 0.00032130713225342333,
+        "identifier" : "outdoor"
+      },
+      {
+        "confidence" : 0.0002903337590396404,
+        "identifier" : "land"
+      },
+      {
+        "confidence" : 0.000244140625,
+        "identifier" : "animal"
+      }
+    ],
+    "classifyMs" : 8.46397876739502,
+    "ocrLines" : [
+
+    ],
+    "ocrMs" : 82.33296871185303
+  }
+}
