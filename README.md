@@ -23,6 +23,8 @@ substitutions.
 - **Discover (online recipes)** — search Spoonacular for real recipes that
   use your pantry, filtered by diet, intolerances and time, with a
   fail-closed allergen check and an offline cache of the last results.
+  **Save to Recipes** adds a recipe to the Recipes tab (stored per user in
+  Firestore), where it gets the same pantry check as the bundled recipes.
 - **Accounts** — Firebase Authentication, including Google Sign-In.
 
 Architecture is layered: `Domain` (models, protocols, errors) → `UseCases`
@@ -84,6 +86,11 @@ credentials; anyone with the app binary can read them. The real security
 boundary is `firestore.rules`, which scopes every document to its owning
 user. **If this repository is ever made public, re-ignore this file** and
 hand it to collaborators out of band instead.
+
+The rules allow each user their own `pantry` and `savedRecipes`
+collections only. After changing `firestore.rules`, deploy them with
+`firebase deploy --only firestore:rules` — until then, saving a Discover
+recipe fails with a permission error.
 
 You should not need to create your own Firebase project. If you do, replace
 `GoogleService-Info.plist` **and** update the Google Sign-In URL scheme in

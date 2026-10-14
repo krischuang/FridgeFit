@@ -26,11 +26,35 @@ struct RecipeListView: View {
                     Text("Check back later for recipes to cook.")
                 }
             } else {
-                List(viewModel.recipes) { recipe in
-                    NavigationLink {
-                        RecipeDetailView(recipe: recipe, viewModel: viewModel, substitutionViewModel: substitutionViewModel)
-                    } label: {
-                        RecipeRow(recipe: recipe, feasibility: viewModel.feasibility(for: recipe))
+                List {
+                    if !viewModel.savedRecipes.isEmpty {
+                        Section {
+                            ForEach(viewModel.savedRecipes) { recipe in
+                                recipeLink(recipe)
+                            }
+                            .onDelete { offsets in
+                                let targets = offsets.map { viewModel.savedRecipes[$0] }
+                                Task {
+                                    for recipe in targets {
+                                        await viewModel.removeSavedRecipe(recipe)
+                                    }
+                                }
+                            }
+                        } header: {
+                            Text("Saved from Discover")
+                        } footer: {
+                            Text("Recipe data via Spoonacular. Swipe left to remove.")
+                        }
+                    }
+
+                    Section {
+                        ForEach(viewModel.bundledRecipes) { recipe in
+                            recipeLink(recipe)
+                        }
+                    } header: {
+                        if !viewModel.savedRecipes.isEmpty {
+                            Text("FridgeFit Recipes")
+                        }
                     }
                 }
                 .listStyle(.insetGrouped)
@@ -51,7 +75,20 @@ struct RecipeListView: View {
             Task { await viewModel.loadRecipes() }
         }
         .sheet(isPresented: $isPresentingPantryIdeas) {
-            PantryRecipeIdeasView(viewModel: ideasViewModel)
+            PantryRecipeIdeasView(viewModel: ideasViewModel, recipeViewModel: viewModel)
+        }
+        .alert(
+            "Saved Recipes",
+            isPresented: Binding(
+                get: { viewModel.savedRecipeErrorMessage != nil && !isPresentingPantryIdeas },
+                set: { isPresented in
+                    if !isPresented { viewModel.savedRecipeErrorMessage = nil }
+                }
+            )
+        ) {
+            Button("OK") { viewModel.savedRecipeErrorMessage = nil }
+        } message: {
+            Text(viewModel.savedRecipeErrorMessage ?? "")
         }
         .alert(
             "Couldn't Load Recipes",
@@ -65,6 +102,14 @@ struct RecipeListView: View {
             Button("OK") { viewModel.errorMessage = nil }
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+    }
+
+    private func recipeLink(_ recipe: Recipe) -> some View {
+        NavigationLink {
+            RecipeDetailView(recipe: recipe, viewModel: viewModel, substitutionViewModel: substitutionViewModel)
+        } label: {
+            RecipeRow(recipe: recipe, feasibility: viewModel.feasibility(for: recipe))
         }
     }
 }

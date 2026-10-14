@@ -11,6 +11,7 @@ import SwiftUI
 struct OnlineRecipeDetailView: View {
     let match: OnlineRecipeMatch
     let intolerances: Set<FoodIntolerance>
+    @ObservedObject var recipeViewModel: RecipeViewModel
 
     private var recipe: OnlineRecipe { match.recipe }
 
@@ -49,6 +50,35 @@ struct OnlineRecipeDetailView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                }
+            }
+
+            if recipeViewModel.canSaveRecipes {
+                Section {
+                    if recipeViewModel.isSaved(onlineRecipeID: recipe.id) {
+                        Label("Saved to Recipes", systemImage: "bookmark.fill")
+                            .foregroundStyle(.tint)
+                    } else {
+                        Button {
+                            Task { await recipeViewModel.saveOnlineRecipe(recipe) }
+                        } label: {
+                            HStack {
+                                Label("Save to Recipes", systemImage: "bookmark")
+                                Spacer()
+                                if recipeViewModel.isSaving(onlineRecipeID: recipe.id) {
+                                    ProgressView()
+                                }
+                            }
+                        }
+                        .disabled(recipeViewModel.isSaving(onlineRecipeID: recipe.id))
+                    }
+                    if let message = recipeViewModel.savedRecipeErrorMessage {
+                        Text(message)
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
+                    }
+                } footer: {
+                    Text("Saved recipes appear on the Recipes tab, where FridgeFit checks them against your pantry like any other recipe.")
                 }
             }
 
@@ -130,5 +160,6 @@ struct OnlineRecipeDetailView: View {
         }
         .navigationTitle(recipe.title)
         .navigationBarTitleDisplayMode(.inline)
+        .onDisappear { recipeViewModel.savedRecipeErrorMessage = nil }
     }
 }

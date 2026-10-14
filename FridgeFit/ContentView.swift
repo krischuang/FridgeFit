@@ -19,7 +19,12 @@ struct ContentView: View {
     init() {
         let pantryRepository = FirestorePantryRepository()
         _pantryViewModel = StateObject(wrappedValue: PantryViewModel(pantryRepository: pantryRepository))
-        _recipeViewModel = StateObject(wrappedValue: RecipeViewModel(pantryRepository: pantryRepository))
+        _recipeViewModel = StateObject(
+            wrappedValue: RecipeViewModel(
+                pantryRepository: pantryRepository,
+                savedRecipeRepository: FirestoreSavedRecipeRepository()
+            )
+        )
 
         // Apple Intelligence, on-device. Degrades to an explained
         // unavailable state rather than failing the app, so it is wired
@@ -85,7 +90,7 @@ struct ContentView: View {
             .tabItem { Label("Recipes", systemImage: "fork.knife") }
 
             NavigationStack {
-                DiscoverRecipesView(viewModel: onlineRecipeSearchViewModel)
+                DiscoverRecipesView(viewModel: onlineRecipeSearchViewModel, recipeViewModel: recipeViewModel)
             }
             .tabItem { Label("Discover", systemImage: "globe") }
 

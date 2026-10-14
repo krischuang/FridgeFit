@@ -16,10 +16,12 @@ import SwiftUI
 struct PantryRecipeIdeasView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: OnlineRecipeSearchViewModel
+    /// Lets the user save an idea to the Recipes page.
+    @ObservedObject var recipeViewModel: RecipeViewModel
 
     var body: some View {
         NavigationStack {
-            DiscoverRecipesView(viewModel: viewModel, title: "Pantry Ideas", searchesOnAppear: true)
+            DiscoverRecipesView(viewModel: viewModel, recipeViewModel: recipeViewModel, title: "Pantry Ideas", searchesOnAppear: true)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Done") { dismiss() }
@@ -58,6 +60,7 @@ struct PantryRecipeIdeasView: View {
         pantryRepository: pantry
     )
     return PantryRecipeIdeasView(
-        viewModel: OnlineRecipeSearchViewModel(useCase: useCase, preferencesStore: InMemoryOnlineRecipePreferencesStore())
+        viewModel: OnlineRecipeSearchViewModel(useCase: useCase, preferencesStore: InMemoryOnlineRecipePreferencesStore()),
+        recipeViewModel: RecipeViewModel(pantryRepository: pantry, savedRecipeRepository: InMemorySavedRecipeRepository())
     )
 }

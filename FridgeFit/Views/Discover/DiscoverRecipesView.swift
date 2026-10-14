@@ -13,6 +13,8 @@ import SwiftUI
 /// feasibility.
 struct DiscoverRecipesView: View {
     @ObservedObject var viewModel: OnlineRecipeSearchViewModel
+    /// Saves recipes to the Recipes page and knows which already are.
+    @ObservedObject var recipeViewModel: RecipeViewModel
     var title: String = "Discover"
     /// Search automatically the first time the screen appears. Off for the
     /// Discover tab (every search spends API quota, so it waits for a tap);
@@ -62,7 +64,7 @@ struct DiscoverRecipesView: View {
                 Section {
                     ForEach(viewModel.matches) { match in
                         NavigationLink(value: match) {
-                            OnlineRecipeRow(match: match)
+                            OnlineRecipeRow(match: match, isSaved: recipeViewModel.isSaved(onlineRecipeID: match.id))
                         }
                     }
                 } header: {
@@ -83,12 +85,13 @@ struct DiscoverRecipesView: View {
         }
         .navigationTitle(title)
         .task {
+            await recipeViewModel.loadRecipesIfNeeded()
             if searchesOnAppear && !viewModel.hasSearched && !viewModel.isLoading {
                 await viewModel.search()
             }
         }
         .navigationDestination(for: OnlineRecipeMatch.self) { match in
-            OnlineRecipeDetailView(match: match, intolerances: viewModel.preferences.intolerances)
+            OnlineRecipeDetailView(match: match, intolerances: viewModel.preferences.intolerances, recipeViewModel: recipeViewModel)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -112,6 +115,7 @@ struct DiscoverRecipesView: View {
 /// One search result: thumbnail, title, and how it lines up with the pantry.
 private struct OnlineRecipeRow: View {
     let match: OnlineRecipeMatch
+    let isSaved: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -120,9 +124,17 @@ private struct OnlineRecipeRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(match.recipe.title)
-                    .font(.headline)
-                    .lineLimit(2)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(match.recipe.title)
+                        .font(.headline)
+                        .lineLimit(2)
+                    if isSaved {
+                        Image(systemName: "bookmark.fill")
+                            .font(.caption)
+                            .foregroundStyle(.tint)
+                            .accessibilityLabel("Saved to Recipes")
+                    }
+                }
                 HStack(spacing: 10) {
                     Label("\(match.usedIngredientNames.count) used", systemImage: "checkmark.circle.fill")
                         .foregroundStyle(.green)
@@ -170,7 +182,8 @@ struct OnlineRecipeImage: View {
     let useCase = FindOnlineRecipesFromPantryUseCase(recipeService: service, pantryRepository: pantry)
     return NavigationStack {
         DiscoverRecipesView(
-            viewModel: OnlineRecipeSearchViewModel(useCase: useCase, preferencesStore: InMemoryOnlineRecipePreferencesStore())
+            viewModel: OnlineRecipeSearchViewModel(useCase: useCase, preferencesStore: InMemoryOnlineRecipePreferencesStore()),
+            recipeViewModel: RecipeViewModel(pantryRepository: pantry, savedRecipeRepository: InMemorySavedRecipeRepository())
         )
     }
 }
