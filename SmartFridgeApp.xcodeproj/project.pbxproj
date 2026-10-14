@@ -1,0 +1,713 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		100000000000000000000101 /* SmartFridgeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000201 /* SmartFridgeApp.swift */; };
+		100000000000000000000102 /* EmptyKitchenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000202 /* EmptyKitchenView.swift */; };
+		100000000000000000000103 /* IngredientArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000203 /* IngredientArtwork.swift */; };
+		100000000000000000000104 /* IngredientRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000204 /* IngredientRow.swift */; };
+		100000000000000000000105 /* IngredientTile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000205 /* IngredientTile.swift */; };
+		100000000000000000000106 /* SmartFridgeTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000206 /* SmartFridgeTheme.swift */; };
+		100000000000000000000107 /* AddIngredientView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000207 /* AddIngredientView.swift */; };
+		100000000000000000000108 /* IngredientEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000208 /* IngredientEditorView.swift */; };
+		100000000000000000000109 /* IngredientDrawerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000209 /* IngredientDrawerView.swift */; };
+		10000000000000000000010A /* SmartFridgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000020A /* SmartFridgeView.swift */; };
+		10000000000000000000010B /* Ingredient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000020B /* Ingredient.swift */; };
+		10000000000000000000010C /* InventoryEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000020C /* InventoryEvent.swift */; };
+		10000000000000000000010D /* Quantity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000020D /* Quantity.swift */; };
+		10000000000000000000010E /* StorageLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000020E /* StorageLocation.swift */; };
+		10000000000000000000010F /* ExpiryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000020F /* ExpiryService.swift */; };
+		100000000000000000000110 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000210 /* Haptics.swift */; };
+		100000000000000000000111 /* InventoryPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000211 /* InventoryPersistence.swift */; };
+		100000000000000000000112 /* InventoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000212 /* InventoryService.swift */; };
+		100000000000000000000113 /* SeedData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000213 /* SeedData.swift */; };
+		100000000000000000000114 /* InventoryServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000214 /* InventoryServiceTests.swift */; };
+		100000000000000000000115 /* DomainFoodTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000216 /* DomainFoodTypes.swift */; };
+		100000000000000000000116 /* HouseholdInventoryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000217 /* HouseholdInventoryRepository.swift */; };
+		100000000000000000000117 /* JSONHouseholdInventoryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000218 /* JSONHouseholdInventoryRepository.swift */; };
+		100000000000000000000118 /* AddInventoryItemUseCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000219 /* AddInventoryItemUseCase.swift */; };
+		100000000000000000000119 /* RecordIngredientUseUseCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000021A /* RecordIngredientUseUseCase.swift */; };
+		10000000000000000000011A /* UpdateInventoryItemDetailsUseCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000021B /* UpdateInventoryItemDetailsUseCase.swift */; };
+		10000000000000000000011B /* RecordFoodOutcomeUseCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000021C /* RecordFoodOutcomeUseCase.swift */; };
+		10000000000000000000011C /* IdentifyExpiringInventoryUseCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000021D /* IdentifyExpiringInventoryUseCase.swift */; };
+		10000000000000000000011D /* InventoryUseCaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000021E /* InventoryUseCaseTests.swift */; };
+		10000000000000000000011E /* IngredientDrawerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10000000000000000000021F /* IngredientDrawerViewModel.swift */; };
+		10000000000000000000011F /* MyKitchenViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000220 /* MyKitchenViewModel.swift */; };
+		100000000000000000000120 /* KitchenActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000221 /* KitchenActivityView.swift */; };
+		100000000000000000000121 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000215 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		100000000000000000000901 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 100000000000000000000701 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 100000000000000000000401;
+			remoteInfo = SmartFridgeApp;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		100000000000000000000201 /* SmartFridgeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SmartFridgeApp.swift; path = SmartFridgeApp/App/SmartFridgeApp.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000202 /* EmptyKitchenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EmptyKitchenView.swift; path = SmartFridgeApp/Shared/Components/EmptyKitchenView.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000203 /* IngredientArtwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IngredientArtwork.swift; path = SmartFridgeApp/Shared/Components/IngredientArtwork.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000204 /* IngredientRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IngredientRow.swift; path = SmartFridgeApp/Shared/Components/IngredientRow.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000205 /* IngredientTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IngredientTile.swift; path = SmartFridgeApp/Shared/Components/IngredientTile.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000206 /* SmartFridgeTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SmartFridgeTheme.swift; path = SmartFridgeApp/DesignSystem/SmartFridgeTheme.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000207 /* AddIngredientView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AddIngredientView.swift; path = SmartFridgeApp/Features/Ingredients/AddIngredient/AddIngredientView.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000208 /* IngredientEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IngredientEditorView.swift; path = SmartFridgeApp/Features/Ingredients/AddIngredient/IngredientEditorView.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000209 /* IngredientDrawerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IngredientDrawerView.swift; path = SmartFridgeApp/Features/Ingredients/IngredientDrawer/IngredientDrawerView.swift; sourceTree = SOURCE_ROOT; };
+		10000000000000000000020A /* SmartFridgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SmartFridgeView.swift; path = SmartFridgeApp/Features/Kitchen/SmartFridgeView.swift; sourceTree = SOURCE_ROOT; };
+		10000000000000000000020B /* Ingredient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Ingredient.swift; path = SmartFridgeApp/Core/Models/Ingredient.swift; sourceTree = SOURCE_ROOT; };
+		10000000000000000000020C /* InventoryEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InventoryEvent.swift; path = SmartFridgeApp/Core/Models/InventoryEvent.swift; sourceTree = SOURCE_ROOT; };
+		10000000000000000000020D /* Quantity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Quantity.swift; path = SmartFridgeApp/Core/Models/Quantity.swift; sourceTree = SOURCE_ROOT; };
+		10000000000000000000020E /* StorageLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StorageLocation.swift; path = SmartFridgeApp/Core/Models/StorageLocation.swift; sourceTree = SOURCE_ROOT; };
+		10000000000000000000020F /* ExpiryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ExpiryService.swift; path = SmartFridgeApp/Core/Services/ExpiryService.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000210 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Haptics.swift; path = SmartFridgeApp/Core/Services/Haptics.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000211 /* InventoryPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InventoryPersistence.swift; path = SmartFridgeApp/Core/Services/InventoryPersistence.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000212 /* InventoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InventoryService.swift; path = SmartFridgeApp/Core/Services/InventoryService.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000213 /* SeedData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SeedData.swift; path = SmartFridgeApp/Core/Services/SeedData.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000214 /* InventoryServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InventoryServiceTests.swift; path = SmartFridgeAppTests/Core/InventoryServiceTests.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000215 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = SmartFridgeApp/Resources/Assets.xcassets; sourceTree = SOURCE_ROOT; };
+		100000000000000000000216 /* DomainFoodTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DomainFoodTypes.swift; path = SmartFridgeApp/Domain/Models/DomainFoodTypes.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000217 /* HouseholdInventoryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HouseholdInventoryRepository.swift; path = SmartFridgeApp/Domain/Repositories/HouseholdInventoryRepository.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000218 /* JSONHouseholdInventoryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = JSONHouseholdInventoryRepository.swift; path = SmartFridgeApp/Data/JSONHouseholdInventoryRepository.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000219 /* AddInventoryItemUseCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AddInventoryItemUseCase.swift; path = SmartFridgeApp/UseCases/AddInventoryItemUseCase.swift; sourceTree = SOURCE_ROOT; };
+		10000000000000000000021A /* RecordIngredientUseUseCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordIngredientUseUseCase.swift; path = SmartFridgeApp/UseCases/RecordIngredientUseUseCase.swift; sourceTree = SOURCE_ROOT; };
+		10000000000000000000021B /* UpdateInventoryItemDetailsUseCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UpdateInventoryItemDetailsUseCase.swift; path = SmartFridgeApp/UseCases/UpdateInventoryItemDetailsUseCase.swift; sourceTree = SOURCE_ROOT; };
+		10000000000000000000021C /* RecordFoodOutcomeUseCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordFoodOutcomeUseCase.swift; path = SmartFridgeApp/UseCases/RecordFoodOutcomeUseCase.swift; sourceTree = SOURCE_ROOT; };
+		10000000000000000000021D /* IdentifyExpiringInventoryUseCase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IdentifyExpiringInventoryUseCase.swift; path = SmartFridgeApp/UseCases/IdentifyExpiringInventoryUseCase.swift; sourceTree = SOURCE_ROOT; };
+		10000000000000000000021E /* InventoryUseCaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InventoryUseCaseTests.swift; path = SmartFridgeAppTests/UseCases/InventoryUseCaseTests.swift; sourceTree = SOURCE_ROOT; };
+		10000000000000000000021F /* IngredientDrawerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IngredientDrawerViewModel.swift; path = SmartFridgeApp/Features/Ingredients/IngredientDrawer/IngredientDrawerViewModel.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000220 /* MyKitchenViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MyKitchenViewModel.swift; path = SmartFridgeApp/Features/Kitchen/MyKitchenViewModel.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000221 /* KitchenActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KitchenActivityView.swift; path = SmartFridgeApp/Features/Kitchen/KitchenActivityView.swift; sourceTree = SOURCE_ROOT; };
+		100000000000000000000301 /* SmartFridgeApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SmartFridgeApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		100000000000000000000302 /* SmartFridgeAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SmartFridgeAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		100000000000000000000602 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		100000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000010 /* SmartFridgeApp */,
+				100000000000000000000013 /* SmartFridgeAppTests */,
+				100000000000000000000012 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		100000000000000000000010 /* SmartFridgeApp */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000020 /* App */,
+				10000000000000000000002F /* Domain */,
+				100000000000000000000032 /* UseCases */,
+				100000000000000000000033 /* Data */,
+				100000000000000000000021 /* Core */,
+				100000000000000000000022 /* DesignSystem */,
+				100000000000000000000023 /* Shared */,
+				100000000000000000000024 /* Features */,
+				100000000000000000000025 /* Resources */,
+			);
+			path = SmartFridgeApp;
+			sourceTree = "<group>";
+		};
+		100000000000000000000012 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000301 /* SmartFridgeApp.app */,
+				100000000000000000000302 /* SmartFridgeAppTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		100000000000000000000013 /* SmartFridgeAppTests */ = {
+			isa = PBXGroup;
+			children = (
+				10000000000000000000002E /* Core */,
+				100000000000000000000034 /* UseCases */,
+			);
+			path = SmartFridgeAppTests;
+			sourceTree = "<group>";
+		};
+		100000000000000000000020 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000201 /* SmartFridgeApp.swift */,
+			);
+			name = App;
+			sourceTree = "<group>";
+		};
+		100000000000000000000021 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000026 /* Models */,
+				100000000000000000000027 /* Services */,
+			);
+			name = Core;
+			sourceTree = "<group>";
+		};
+		100000000000000000000022 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000206 /* SmartFridgeTheme.swift */,
+			);
+			name = DesignSystem;
+			sourceTree = "<group>";
+		};
+		100000000000000000000023 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000028 /* Components */,
+			);
+			name = Shared;
+			sourceTree = "<group>";
+		};
+		100000000000000000000024 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000029 /* Kitchen */,
+				10000000000000000000002A /* Ingredients */,
+			);
+			name = Features;
+			sourceTree = "<group>";
+		};
+		100000000000000000000025 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000215 /* Assets.xcassets */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		100000000000000000000026 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				10000000000000000000020B /* Ingredient.swift */,
+				10000000000000000000020C /* InventoryEvent.swift */,
+				10000000000000000000020D /* Quantity.swift */,
+				10000000000000000000020E /* StorageLocation.swift */,
+			);
+			name = Models;
+			sourceTree = "<group>";
+		};
+		100000000000000000000027 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				10000000000000000000020F /* ExpiryService.swift */,
+				100000000000000000000210 /* Haptics.swift */,
+				100000000000000000000211 /* InventoryPersistence.swift */,
+				100000000000000000000212 /* InventoryService.swift */,
+				100000000000000000000213 /* SeedData.swift */,
+			);
+			name = Services;
+			sourceTree = "<group>";
+		};
+		100000000000000000000028 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000202 /* EmptyKitchenView.swift */,
+				100000000000000000000203 /* IngredientArtwork.swift */,
+				100000000000000000000204 /* IngredientRow.swift */,
+				100000000000000000000205 /* IngredientTile.swift */,
+			);
+			name = Components;
+			sourceTree = "<group>";
+		};
+		100000000000000000000029 /* Kitchen */ = {
+			isa = PBXGroup;
+			children = (
+				10000000000000000000020A /* SmartFridgeView.swift */,
+				100000000000000000000220 /* MyKitchenViewModel.swift */,
+				100000000000000000000221 /* KitchenActivityView.swift */,
+			);
+			name = Kitchen;
+			sourceTree = "<group>";
+		};
+		10000000000000000000002A /* Ingredients */ = {
+			isa = PBXGroup;
+			children = (
+				10000000000000000000002B /* AddIngredient */,
+				10000000000000000000002C /* IngredientDrawer */,
+			);
+			name = Ingredients;
+			sourceTree = "<group>";
+		};
+		10000000000000000000002B /* AddIngredient */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000207 /* AddIngredientView.swift */,
+				100000000000000000000208 /* IngredientEditorView.swift */,
+			);
+			name = AddIngredient;
+			sourceTree = "<group>";
+		};
+		10000000000000000000002C /* IngredientDrawer */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000209 /* IngredientDrawerView.swift */,
+				10000000000000000000021F /* IngredientDrawerViewModel.swift */,
+			);
+			name = IngredientDrawer;
+			sourceTree = "<group>";
+		};
+		10000000000000000000002E /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000214 /* InventoryServiceTests.swift */,
+			);
+			name = Core;
+			sourceTree = "<group>";
+		};
+		10000000000000000000002F /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000030 /* Models */,
+				100000000000000000000031 /* Repositories */,
+			);
+			name = Domain;
+			sourceTree = "<group>";
+		};
+		100000000000000000000030 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000216 /* DomainFoodTypes.swift */,
+			);
+			name = Models;
+			sourceTree = "<group>";
+		};
+		100000000000000000000031 /* Repositories */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000217 /* HouseholdInventoryRepository.swift */,
+			);
+			name = Repositories;
+			sourceTree = "<group>";
+		};
+		100000000000000000000032 /* UseCases */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000219 /* AddInventoryItemUseCase.swift */,
+				10000000000000000000021A /* RecordIngredientUseUseCase.swift */,
+				10000000000000000000021B /* UpdateInventoryItemDetailsUseCase.swift */,
+				10000000000000000000021C /* RecordFoodOutcomeUseCase.swift */,
+				10000000000000000000021D /* IdentifyExpiringInventoryUseCase.swift */,
+			);
+			name = UseCases;
+			sourceTree = "<group>";
+		};
+		100000000000000000000033 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000218 /* JSONHouseholdInventoryRepository.swift */,
+			);
+			name = Data;
+			sourceTree = "<group>";
+		};
+		100000000000000000000034 /* UseCases */ = {
+			isa = PBXGroup;
+			children = (
+				10000000000000000000021E /* InventoryUseCaseTests.swift */,
+			);
+			name = UseCases;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		100000000000000000000401 /* SmartFridgeApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 100000000000000000000501 /* Build configuration list for PBXNativeTarget "SmartFridgeApp" */;
+			buildPhases = (
+				100000000000000000000601 /* Sources */,
+				100000000000000000000604 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SmartFridgeApp;
+			productName = SmartFridgeApp;
+			productReference = 100000000000000000000301 /* SmartFridgeApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+		100000000000000000000402 /* SmartFridgeAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 100000000000000000000503 /* Build configuration list for PBXNativeTarget "SmartFridgeAppTests" */;
+			buildPhases = (
+				100000000000000000000603 /* Sources */,
+				100000000000000000000602 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				100000000000000000000902 /* PBXTargetDependency */,
+			);
+			name = SmartFridgeAppTests;
+			productName = SmartFridgeAppTests;
+			productReference = 100000000000000000000302 /* SmartFridgeAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		100000000000000000000701 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 1620;
+				TargetAttributes = {
+					100000000000000000000401 = {
+						CreatedOnToolsVersion = 16.2;
+					};
+					100000000000000000000402 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 100000000000000000000401;
+					};
+				};
+			};
+			buildConfigurationList = 100000000000000000000502 /* Build configuration list for PBXProject "SmartFridgeApp" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 100000000000000000000001;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 100000000000000000000012 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				100000000000000000000401 /* SmartFridgeApp */,
+				100000000000000000000402 /* SmartFridgeAppTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		100000000000000000000604 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000121 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		100000000000000000000601 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000101 /* SmartFridgeApp.swift in Sources */,
+				100000000000000000000102 /* EmptyKitchenView.swift in Sources */,
+				100000000000000000000103 /* IngredientArtwork.swift in Sources */,
+				100000000000000000000104 /* IngredientRow.swift in Sources */,
+				100000000000000000000105 /* IngredientTile.swift in Sources */,
+				100000000000000000000106 /* SmartFridgeTheme.swift in Sources */,
+				100000000000000000000107 /* AddIngredientView.swift in Sources */,
+				100000000000000000000108 /* IngredientEditorView.swift in Sources */,
+				100000000000000000000109 /* IngredientDrawerView.swift in Sources */,
+				10000000000000000000010A /* SmartFridgeView.swift in Sources */,
+				10000000000000000000010B /* Ingredient.swift in Sources */,
+				10000000000000000000010C /* InventoryEvent.swift in Sources */,
+				10000000000000000000010D /* Quantity.swift in Sources */,
+				10000000000000000000010E /* StorageLocation.swift in Sources */,
+				10000000000000000000010F /* ExpiryService.swift in Sources */,
+				100000000000000000000110 /* Haptics.swift in Sources */,
+				100000000000000000000111 /* InventoryPersistence.swift in Sources */,
+				100000000000000000000112 /* InventoryService.swift in Sources */,
+				100000000000000000000113 /* SeedData.swift in Sources */,
+				100000000000000000000115 /* DomainFoodTypes.swift in Sources */,
+				100000000000000000000116 /* HouseholdInventoryRepository.swift in Sources */,
+				100000000000000000000117 /* JSONHouseholdInventoryRepository.swift in Sources */,
+				100000000000000000000118 /* AddInventoryItemUseCase.swift in Sources */,
+				100000000000000000000119 /* RecordIngredientUseUseCase.swift in Sources */,
+				10000000000000000000011A /* UpdateInventoryItemDetailsUseCase.swift in Sources */,
+				10000000000000000000011B /* RecordFoodOutcomeUseCase.swift in Sources */,
+				10000000000000000000011C /* IdentifyExpiringInventoryUseCase.swift in Sources */,
+				10000000000000000000011E /* IngredientDrawerViewModel.swift in Sources */,
+				10000000000000000000011F /* MyKitchenViewModel.swift in Sources */,
+				100000000000000000000120 /* KitchenActivityView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		100000000000000000000603 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000114 /* InventoryServiceTests.swift in Sources */,
+				10000000000000000000011D /* InventoryUseCaseTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		100000000000000000000902 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 100000000000000000000401 /* SmartFridgeApp */;
+			targetProxy = 100000000000000000000901 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		100000000000000000000801 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		100000000000000000000802 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		100000000000000000000803 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SULGCQVAX9;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Smart Fridge";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shellyhuang.SmartFridgeApp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		100000000000000000000804 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = SULGCQVAX9;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Smart Fridge";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.food-and-drink";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shellyhuang.SmartFridgeApp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		100000000000000000000805 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.shellyhuang.SmartFridgeAppTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SmartFridgeApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SmartFridgeApp";
+			};
+			name = Debug;
+		};
+		100000000000000000000806 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.shellyhuang.SmartFridgeAppTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SmartFridgeApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SmartFridgeApp";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		100000000000000000000501 /* Build configuration list for PBXNativeTarget "SmartFridgeApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				100000000000000000000803 /* Debug */,
+				100000000000000000000804 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		100000000000000000000502 /* Build configuration list for PBXProject "SmartFridgeApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				100000000000000000000801 /* Debug */,
+				100000000000000000000802 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		100000000000000000000503 /* Build configuration list for PBXNativeTarget "SmartFridgeAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				100000000000000000000805 /* Debug */,
+				100000000000000000000806 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 100000000000000000000701 /* Project object */;
+}
