@@ -11,6 +11,9 @@ struct RecipeListView: View {
     @ObservedObject var viewModel: RecipeViewModel
     @ObservedObject var substitutionViewModel: SubstitutionViewModel
     @ObservedObject var suggestionViewModel: RecipeSuggestionViewModel
+    /// Drives the context-aware recommendation screen, pushed from the
+    /// toolbar onto this tab's existing stack.
+    @ObservedObject var recommendationViewModel: RecommendationViewModel
     @State private var isPresentingPantryIdeas = false
 
     var body: some View {
@@ -38,6 +41,22 @@ struct RecipeListView: View {
         }
         .navigationTitle("Recipes")
         .toolbar {
+            // A push, not a sheet: the recommendation screen leads on to
+            // `RecipeDetailView`, and sharing this tab's stack is what
+            // lets the back button return to the ranked list instead of
+            // dismissing it.
+            ToolbarItem(placement: .primaryAction) {
+                NavigationLink {
+                    RecipeRecommendationsView(
+                        viewModel: recommendationViewModel,
+                        recipeViewModel: viewModel,
+                        substitutionViewModel: substitutionViewModel
+                    )
+                } label: {
+                    Label("Recommended", systemImage: "sparkles")
+                }
+            }
+
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     isPresentingPantryIdeas = true
@@ -87,11 +106,18 @@ struct RecipeListView: View {
             pantryRepository: pantry
         )
     )
+    let recipes = BundledRecipeRepository()
     NavigationStack {
         RecipeListView(
-            viewModel: RecipeViewModel(pantryRepository: pantry),
+            viewModel: RecipeViewModel(recipeRepository: recipes, pantryRepository: pantry),
             substitutionViewModel: substitutionViewModel,
-            suggestionViewModel: suggestionViewModel
+            suggestionViewModel: suggestionViewModel,
+            recommendationViewModel: RecommendationViewModel(
+                generateUseCase: GenerateContextAwareRecommendationsUseCase(
+                    recipeRepository: recipes,
+                    pantryRepository: pantry
+                )
+            )
         )
     }
 }
