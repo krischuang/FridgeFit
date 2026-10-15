@@ -62,6 +62,27 @@ service cloud.firestore {
       allow read, write: if isOwner(uid);
     }
 
+    // --- Recipes saved from Discover --------------------------------------
+    //
+    // One document per recipe the user saved from an online search, holding
+    // the converted `Recipe` as JSON (see FirestoreSavedRecipeRepository and
+    // SaveOnlineRecipeUseCase). Same own-data-only boundary as the pantry.
+    //
+    // `read` covers the ordered query the Recipes tab runs over savedAt.
+    // `write` covers saving (which overwrites by recipe id, so saving the
+    // same recipe twice is idempotent) and removing.
+    //
+    // NOTE: this block is not yet deployed. Until it is,
+    // `OnlineRecipeFeature.savedRecipeStorage` stays
+    // `.disabledPendingRulesDeployment`, which keeps the app from building a
+    // saved-recipe repository at all - so no write is attempted against the
+    // deployed default-deny rules and no user ever sees a save action fail.
+    // Deploying this file and running the firestore-tests suite against it
+    // are the two prerequisites for flipping that flag.
+    match /users/{uid}/savedRecipes/{recipeId} {
+      allow read, write: if isOwner(uid);
+    }
+
     // --- Remote camera: device registry -----------------------------------
     //
     // One document per install, so the app can tell two iPhones on the same
