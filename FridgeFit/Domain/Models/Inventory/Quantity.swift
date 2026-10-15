@@ -150,6 +150,17 @@ nonisolated enum Quantity: Codable, Equatable, Sendable {
         normalizedAmount > 0
     }
 
+    /// The package kind and level, when this is a packaged quantity.
+    ///
+    /// Saves every caller writing the same `if case .package` to pull the two
+    /// values out for storage.
+    var packageReading: (unit: PackageUnit, level: PackageLevel)? {
+        if case .package(_, let unit, let level) = self {
+            return (unit, level)
+        }
+        return nil
+    }
+
     /// The quantity left after a confirmed use.
     ///
     /// - The used amount must be greater than zero.

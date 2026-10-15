@@ -107,16 +107,3 @@ nonisolated struct AddInventoryItemUseCase {
         return (item, event)
     }
 }
-
-extension Quantity {
-    /// The package kind and level, when this is a packaged quantity.
-    ///
-    /// Saves every caller writing the same `if case .package` to pull two
-    /// values out for storage.
-    var packageReading: (unit: PackageUnit, level: PackageLevel)? {
-        if case .package(_, let unit, let level) = self {
-            return (unit, level)
-        }
-        return nil
-    }
-}
