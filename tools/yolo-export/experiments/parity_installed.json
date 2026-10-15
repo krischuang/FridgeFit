@@ -1,0 +1,120 @@
+{
+  "model": "../../FridgeFit/Resources/FridgeFitIngredients.mlpackage",
+  "terms": 113,
+  "conf": 0.25,
+  "boxIoUMin": 0.85,
+  "confTolerance": 0.08,
+  "images": [
+    {
+      "image": "beef_raw",
+      "torch": 2,
+      "coreml": 2,
+      "matched": 2,
+      "labelMismatches": 0,
+      "confMismatches": 0,
+      "boxMismatches": 0,
+      "nearTies": 0
+    },
+    {
+      "image": "chicken_raw",
+      "torch": 5,
+      "coreml": 5,
+      "matched": 5,
+      "labelMismatches": 0,
+      "confMismatches": 0,
+      "boxMismatches": 0,
+      "nearTies": 0
+    },
+    {
+      "image": "eggs_carton",
+      "torch": 5,
+      "coreml": 5,
+      "matched": 5,
+      "labelMismatches": 0,
+      "confMismatches": 0,
+      "boxMismatches": 0,
+      "nearTies": 0
+    },
+    {
+      "image": "fish_platter",
+      "torch": 7,
+      "coreml": 6,
+      "matched": 6,
+      "labelMismatches": 0,
+      "confMismatches": 0,
+      "boxMismatches": 0,
+      "nearTies": 0
+    },
+    {
+      "image": "fruits_mixed",
+      "torch": 41,
+      "coreml": 42,
+      "matched": 41,
+      "labelMismatches": 0,
+      "confMismatches": 0,
+      "boxMismatches": 0,
+      "nearTies": 0
+    },
+    {
+      "image": "market_crowded",
+      "torch": 27,
+      "coreml": 28,
+      "matched": 27,
+      "labelMismatches": 0,
+      "confMismatches": 0,
+      "boxMismatches": 0,
+      "nearTies": 0
+    },
+    {
+      "image": "prawns",
+      "torch": 1,
+      "coreml": 1,
+      "matched": 1,
+      "labelMismatches": 0,
+      "confMismatches": 0,
+      "boxMismatches": 0,
+      "nearTies": 0
+    },
+    {
+      "image": "shelf_packaged",
+      "torch": 7,
+      "coreml": 7,
+      "matched": 7,
+      "labelMismatches": 0,
+      "confMismatches": 0,
+      "boxMismatches": 0,
+      "nearTies": 0
+    },
+    {
+      "image": "supermarket",
+      "torch": 19,
+      "coreml": 20,
+      "matched": 19,
+      "labelMismatches": 0,
+      "confMismatches": 0,
+      "boxMismatches": 0,
+      "nearTies": 0
+    },
+    {
+      "image": "tapas_cheese",
+      "torch": 13,
+      "coreml": 13,
+      "matched": 13,
+      "labelMismatches": 0,
+      "confMismatches": 0,
+      "boxMismatches": 0,
+      "nearTies": 0
+    },
+    {
+      "image": "veg_mixed",
+      "torch": 26,
+      "coreml": 27,
+      "matched": 26,
+      "labelMismatches": 0,
+      "confMismatches": 0,
+      "boxMismatches": 0,
+      "nearTies": 0
+    }
+  ],
+  "failures": []
+}

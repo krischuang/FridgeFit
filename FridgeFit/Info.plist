@@ -12,7 +12,13 @@
 		</dict>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>FridgeFit uses the camera to photograph the inside of your fridge so Apple Intelligence can identify ingredients on this device. Photos are not uploaded.</string>
+	<string>FridgeFit uses the camera to photograph the inside of your fridge, and - if you turn on Camera Mode - to stream a live view to another iPhone signed into your own FridgeFit account. Photos and video are sent directly between your devices, never uploaded to FridgeFit.</string>
+	<key>TURN_CREDENTIAL</key>
+	<string>$(TURN_CREDENTIAL)</string>
+	<key>TURN_URL</key>
+	<string>$(TURN_URL)</string>
+	<key>TURN_USERNAME</key>
+	<string>$(TURN_USERNAME)</string>
 	<key>OPENROUTER_API_KEY</key>
 	<string>$(OPENROUTER_API_KEY)</string>
 	<key>OPENROUTER_MODEL</key>

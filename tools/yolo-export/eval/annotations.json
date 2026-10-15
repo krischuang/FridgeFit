@@ -1,0 +1,95 @@
+{
+  "fruits_mixed": {
+    "category": "fruit",
+    "present": [
+      "pineapple",
+      "watermelon",
+      "banana",
+      "apple",
+      "orange",
+      "strawberry",
+      "grape",
+      "pear",
+      "mango",
+      "lemon"
+    ]
+  },
+  "market_crowded": {
+    "category": "fruit",
+    "present": [
+      "orange",
+      "apple",
+      "banana",
+      "tomato",
+      "grape",
+      "strawberry"
+    ]
+  },
+  "veg_mixed": {
+    "category": "vegetable",
+    "present": [
+      "carrot",
+      "cucumber",
+      "zucchini",
+      "garlic",
+      "onion"
+    ]
+  },
+  "chicken_raw": {
+    "category": "meat",
+    "present": [
+      "chicken"
+    ]
+  },
+  "beef_raw": {
+    "category": "meat",
+    "present": [
+      "red_meat"
+    ]
+  },
+  "fish_platter": {
+    "category": "seafood",
+    "present": [
+      "salmon_fillet",
+      "prawns",
+      "shrimp",
+      "lime",
+      "lettuce"
+    ]
+  },
+  "prawns": {
+    "category": "seafood",
+    "present": [
+      "prawns"
+    ]
+  },
+  "eggs_carton": {
+    "category": "dairy",
+    "present": [
+      "egg",
+      "egg_carton"
+    ]
+  },
+  "tapas_cheese": {
+    "category": "dairy",
+    "present": [
+      "block_of_cheese",
+      "sliced_cheese",
+      "sausage"
+    ]
+  },
+  "shelf_packaged": {
+    "category": "pantry",
+    "present": [
+      "bag_of_rice",
+      "bag_of_flour",
+      "bag_of_sugar"
+    ]
+  },
+  "supermarket": {
+    "category": "pantry",
+    "present": [
+      "sauce_bottle"
+    ]
+  }
+}
