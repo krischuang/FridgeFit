@@ -51,8 +51,20 @@ final class RemoteCameraViewModel: ObservableObject {
     /// Raw model output, in the model's own vocabulary. Kept because it is
     /// what the geometry is measured against; the UI draws `ingredients`.
     @Published private(set) var detections: DetectionFrame = .empty
-    /// The same frame normalised into candidate ingredients - filtered,
-    /// deduplicated and flagged for review. This is what the overlay shows.
+    /// Stage 2: accepted candidate ingredients - decoys dropped, ambiguous
+    /// classes genericised, same-ingredient overlaps merged, floored at
+    /// `DetectionFilterPolicy.candidateThreshold`.
+    ///
+    /// Published for the diagnostics row, and kept deliberately *wider* than
+    /// what is drawn. The snapshot pipeline works from this same stage, so a
+    /// box the overlay withholds is still available for Apple Vision and OCR
+    /// to corroborate rather than being deleted.
+    @Published private(set) var candidateIngredients: IngredientDetectionFrame = .empty
+    /// Stage 3: what the overlay actually draws.
+    ///
+    /// `candidateIngredients` after the display threshold, the per-ingredient
+    /// box budget, the frame budget and flicker hysteresis. Narrower than
+    /// stage 2 on purpose.
     @Published private(set) var ingredients: IngredientDetectionFrame = .empty
     @Published private(set) var detectionStatus: DetectionStatus = .waitingForVideo
     /// Which model is running, once one has loaded.
@@ -164,6 +176,18 @@ final class RemoteCameraViewModel: ObservableObject {
     /// The track the tap is currently attached to, so attach and detach stay
     /// balanced across reconnects and camera switches.
     private var tappedTrack: RTCVideoTrack?
+    /// Stage 2 → stage 3. Holds the only piece of cross-frame state in the
+    /// pipeline, which is what stops boxes blinking at the threshold.
+    ///
+    /// Recreated whenever a detector resolves, so it always carries the policy
+    /// that detector was configured with rather than a default.
+    private var displayFilter = DetectionDisplayFilter()
+    /// Clears the overlay when results stop arriving.
+    ///
+    /// Without it, a stalled stream or a stalled inference queue leaves the
+    /// last frame's boxes hanging over video that has moved on - boxes that
+    /// are real, just no longer about anything on screen.
+    private var staleDetectionTimer: Task<Void, Never>?
 
     /// How long to wait for a capture round trip before giving up.
     ///
@@ -197,6 +221,7 @@ final class RemoteCameraViewModel: ObservableObject {
     nonisolated deinit {
         deviceSubscription?.cancel()
         captureTimeout?.cancel()
+        staleDetectionTimer?.cancel()
         // Stops any in-flight inference from delivering into a deallocated
         // view model. Detaching from the track needs the main actor, so that
         // is left to `stopDetection`, which every teardown path calls.
@@ -343,8 +368,24 @@ final class RemoteCameraViewModel: ObservableObject {
     /// Ingredients currently drawn.
     var detectionCount: Int { ingredients.ingredients.count }
 
-    /// How many of those need the user to confirm them.
+    /// How many of those carry a specific review flag.
+    ///
+    /// Not "how many need confirming" - that is all of them. Live detections
+    /// come from one method and none of them is verified.
     var reviewCount: Int { ingredients.reviewCount }
+
+    /// Candidates the display filter withheld from the overlay.
+    ///
+    /// Diagnostic only, and the point of showing it is that these are *not*
+    /// lost: the snapshot analysis runs over the candidate list, so a box too
+    /// weak to draw can still reach the review sheet if Apple Vision names it.
+    var withheldCandidateCount: Int {
+        max(0, candidateIngredients.ingredients.count - ingredients.ingredients.count)
+    }
+
+    /// The filtering policy in force, so the UI can state its own thresholds
+    /// rather than hard-coding a number that might drift from the code.
+    var detectionPolicy: DetectionFilterPolicy { displayFilter.policy }
 
     /// Attaches the frame tap to `track`.
     ///
@@ -376,6 +417,11 @@ final class RemoteCameraViewModel: ObservableObject {
                 // neither model could be loaded.
                 active = try makeDetector()
                 resolvedDetector = active
+                // The filter has to use the policy this detector was built
+                // with - the COCO fallback runs different numbers from the
+                // ingredient model, and reaching for `.default` here would
+                // silently apply the wrong ones.
+                displayFilter = DetectionDisplayFilter(policy: active.policy)
                 detectionSource = active.source
                 detectorFallbackReason = active.fallbackReason
                 if let reason = active.fallbackReason {
@@ -422,8 +468,42 @@ final class RemoteCameraViewModel: ObservableObject {
         }
         detectionTap = nil
         tappedTrack = nil
+        clearDetections()
+    }
+
+    /// Drops every stage's results and forgets the cross-frame state.
+    ///
+    /// Resetting the filter matters as much as clearing the published frames:
+    /// hysteresis retains whatever was last displayed, and a new stream must
+    /// not inherit the previous one's retained set.
+    private func clearDetections() {
+        staleDetectionTimer?.cancel()
+        staleDetectionTimer = nil
+        displayFilter.reset()
         detections = .empty
+        candidateIngredients = .empty
         ingredients = .empty
+    }
+
+    /// Arms a one-shot sweep that clears the overlay if no further result
+    /// arrives within the policy's staleness window.
+    ///
+    /// Re-armed on every frame, so at the tap's ~3 FPS it never fires during
+    /// normal operation - only when inference or the stream has stopped.
+    private func scheduleStaleDetectionSweep() {
+        let window = displayFilter.policy.staleAfter
+        staleDetectionTimer?.cancel()
+        staleDetectionTimer = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(Int(window * 1000)))
+            guard !Task.isCancelled, let self else { return }
+            // Re-check rather than trust the timer: a frame may have arrived
+            // and re-armed a *newer* sweep between the sleep ending and this
+            // running, in which case there is nothing stale to clear.
+            guard self.displayFilter.isStale(at: self.now()) else { return }
+            // Cancels this very task on the way through, which is harmless -
+            // there is no suspension point left for the flag to interrupt.
+            self.clearDetections()
+        }
     }
 
     /// Reacts to the user toggle.
@@ -444,8 +524,7 @@ final class RemoteCameraViewModel: ObservableObject {
             }
         } else {
             detectionTap?.setEnabled(false)
-            detections = .empty
-            ingredients = .empty
+            clearDetections()
             detectionStatus = .off
         }
     }
@@ -471,10 +550,15 @@ final class RemoteCameraViewModel: ObservableObject {
         guard detectionTap != nil, isDetectionEnabled else { return }
         guard let active = resolvedDetector else { return }
         detections = frame
-        // Raw model output becomes candidate ingredients here: decoys
-        // dropped, low confidence filtered, ambiguous classes genericised,
-        // duplicates suppressed.
-        ingredients = active.normalizer.normalize(frame, source: active.source)
+        // Stage 2: raw model output becomes candidate ingredients - decoys
+        // dropped, ambiguous classes genericised, same-ingredient overlaps
+        // merged, floored at the candidate threshold.
+        let candidates = active.normalizer.normalize(frame, source: active.source)
+        candidateIngredients = candidates
+        // Stage 3: the subset worth drawing. Narrower than stage 2, and the
+        // only place the display threshold and the box budgets apply.
+        ingredients = displayFilter.display(candidates, at: now())
+        scheduleStaleDetectionSweep()
         if let tap = detectionTap {
             let statistics = tap.statistics
             videoFrameStatistics = VideoFrameStatistics(
@@ -492,8 +576,7 @@ final class RemoteCameraViewModel: ObservableObject {
             return
         }
         detectionStatus = .unavailable(reason: error.message)
-        detections = .empty
-        ingredients = .empty
+        clearDetections()
         // Nothing further will succeed, so stop sampling rather than burning
         // CPU on frames that will fail the same way.
         detectionTap?.setEnabled(false)

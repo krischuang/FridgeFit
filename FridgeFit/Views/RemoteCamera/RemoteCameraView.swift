@@ -390,6 +390,19 @@ struct RemoteCameraView: View {
             // a stuck zero means no frames are arriving at all. "Video live"
             // cannot tell those apart - it latches on the first frame and is
             // never revisited.
+            // What the filter withheld, so a demo can tell "the model found
+            // nothing" from "the model found something too weak to draw".
+            // Withheld candidates are not discarded - the snapshot analysis
+            // works from the same list the overlay filtered down from.
+            if viewModel.detectionStatus.isRunning, viewModel.withheldCandidateCount > 0 {
+                Text("\(viewModel.withheldCandidateCount) below the "
+                     + "\(Int(viewModel.detectionPolicy.displayThreshold * 100))% display "
+                     + "threshold - hidden here, still analysed on capture")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .accessibilityIdentifier("withheld-candidates")
+            }
+
             if let statistics = viewModel.videoFrameStatistics {
                 Text("Frames received: \(statistics.total) (\(statistics.processed) analysed, \(statistics.dropped) skipped)")
                     .font(.caption2)
