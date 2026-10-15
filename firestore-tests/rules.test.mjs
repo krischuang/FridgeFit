@@ -24,6 +24,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -430,6 +431,131 @@ describe("inventory events", () => {
     // Nothing nests under an event; the grant stops at the document.
     await assertFails(
       setDoc(doc(asUser(ALICE), `${eventPath(ALICE, "event-1")}/extra/doc-1`), { a: 1 })
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Recipes saved from Discover — users/{uid}/savedRecipes/{recipeId}
+// ---------------------------------------------------------------------------
+
+describe("saved recipes", () => {
+  // Matches FirestoreSavedRecipeRepository.encode: the Recipe travels as one
+  // JSON string, with title and sourceRecipeID beside it for reference and
+  // savedAt for the ordered query the Recipes tab runs.
+  const RECIPE_ID = "00000000-0000-4000-8000-00000000a1b2";
+  const savedRecipePath = (uid, recipeId) => `users/${uid}/savedRecipes/${recipeId}`;
+  const sampleSavedRecipe = {
+    title: "Tomato Pasta",
+    sourceRecipeID: 41394,
+    recipeJSON: JSON.stringify({
+      id: RECIPE_ID,
+      title: "Tomato Pasta",
+      summary: "Saved from Discover, via Spoonacular.",
+      ingredients: [],
+      instructions: ["Boil the pasta."],
+    }),
+    savedAt: serverTimestamp(),
+  };
+
+  it("lets a user save a recipe of their own", async () => {
+    await assertSucceeds(
+      setDoc(doc(asUser(ALICE), savedRecipePath(ALICE, RECIPE_ID)), sampleSavedRecipe)
+    );
+  });
+
+  it("lets a user overwrite the same recipe, which is what re-saving does", async () => {
+    await assertSucceeds(
+      setDoc(doc(asUser(ALICE), savedRecipePath(ALICE, RECIPE_ID)), sampleSavedRecipe)
+    );
+    await assertSucceeds(
+      setDoc(doc(asUser(ALICE), savedRecipePath(ALICE, RECIPE_ID)), sampleSavedRecipe)
+    );
+  });
+
+  it("lets a user read back a saved recipe", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), savedRecipePath(ALICE, RECIPE_ID)),
+        { ...sampleSavedRecipe, savedAt: new Date() }
+      );
+    });
+
+    await assertSucceeds(getDoc(doc(asUser(ALICE), savedRecipePath(ALICE, RECIPE_ID))));
+  });
+
+  it("lets a user run the ordered list query the Recipes tab uses", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), savedRecipePath(ALICE, RECIPE_ID)),
+        { ...sampleSavedRecipe, savedAt: new Date() }
+      );
+    });
+
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(asUser(ALICE), `users/${ALICE}/savedRecipes`),
+          orderBy("savedAt", "desc")
+        )
+      )
+    );
+  });
+
+  it("lets a user remove their own saved recipe", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), savedRecipePath(ALICE, RECIPE_ID)),
+        { ...sampleSavedRecipe, savedAt: new Date() }
+      );
+    });
+
+    await assertSucceeds(deleteDoc(doc(asUser(ALICE), savedRecipePath(ALICE, RECIPE_ID))));
+  });
+
+  it("denies reading another user's saved recipes", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), savedRecipePath(ALICE, RECIPE_ID)),
+        { ...sampleSavedRecipe, savedAt: new Date() }
+      );
+    });
+
+    await assertFails(getDoc(doc(asUser(BOB), savedRecipePath(ALICE, RECIPE_ID))));
+    await assertFails(getDocs(collection(asUser(BOB), `users/${ALICE}/savedRecipes`)));
+  });
+
+  it("denies writing into another user's saved recipes", async () => {
+    await assertFails(
+      setDoc(doc(asUser(BOB), savedRecipePath(ALICE, RECIPE_ID)), sampleSavedRecipe)
+    );
+  });
+
+  it("denies deleting another user's saved recipe", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), savedRecipePath(ALICE, RECIPE_ID)),
+        { ...sampleSavedRecipe, savedAt: new Date() }
+      );
+    });
+
+    await assertFails(deleteDoc(doc(asUser(BOB), savedRecipePath(ALICE, RECIPE_ID))));
+  });
+
+  it("denies unauthenticated access to saved recipes", async () => {
+    await assertFails(getDoc(doc(asAnonymous(), savedRecipePath(ALICE, RECIPE_ID))));
+    await assertFails(
+      setDoc(doc(asAnonymous(), savedRecipePath(ALICE, RECIPE_ID)), sampleSavedRecipe)
+    );
+  });
+
+  it("does not open a subcollection beneath a saved recipe", async () => {
+    // Nothing nests under a saved recipe; the grant stops at the document.
+    await assertFails(
+      setDoc(
+        doc(asUser(ALICE), `${savedRecipePath(ALICE, RECIPE_ID)}/extra/doc-1`),
+        { a: 1 }
+      )
     );
   });
 });
