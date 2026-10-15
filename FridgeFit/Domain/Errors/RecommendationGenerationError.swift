@@ -27,6 +27,15 @@ nonisolated enum RecommendationGenerationError: Error, Equatable, LocalizedError
     case noRealisticallySuitableRecipes
     /// Every remaining recipe was skipped by the user in this session.
     case everyRecipeSkippedInSession
+    /// The context asked for a restriction FridgeFit cannot assess from
+    /// recipe ingredients, such as gluten-free or nut-free.
+    ///
+    /// Fails the whole run rather than returning a filtered list, because
+    /// any list returned under this filter would imply a check that was
+    /// never performed. The preference form does not offer these, so this
+    /// is a guard against a context built in code - see
+    /// `DietaryRestriction.assessmentBasis`.
+    case dietaryRestrictionNotAssessable(Set<DietaryRestriction>)
 
     /// Picks the clearest explanation for a run that evaluated recipes but
     /// produced nothing to show.
@@ -70,6 +79,12 @@ nonisolated enum RecommendationGenerationError: Error, Equatable, LocalizedError
             return "No meal is close enough to cookable with your pantry right now."
         case .everyRecipeSkippedInSession:
             return "You've skipped every meal in this session."
+        case .dietaryRestrictionNotAssessable(let restrictions):
+            let names = restrictions
+                .map(\.displayName)
+                .sorted()
+                .joined(separator: " and ")
+            return "FridgeFit can't check \(names)."
         }
     }
 
@@ -89,6 +104,8 @@ nonisolated enum RecommendationGenerationError: Error, Equatable, LocalizedError
             return "Add more ingredients, or allow meals that need one or two additions."
         case .everyRecipeSkippedInSession:
             return "Start a new session to see those meals again."
+        case .dietaryRestrictionNotAssessable:
+            return "It knows each recipe's ingredient names, not the brands or processing behind them. Remove this requirement to see ingredient-based matches, and check the packaging yourself."
         }
     }
 

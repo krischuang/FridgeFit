@@ -68,6 +68,13 @@ nonisolated struct GenerateContextAwareRecommendationsUseCase {
         now: Date = .now
     ) async throws -> [RecipeRecommendation] {
 
+        // Before any data is read: refuse a filter FridgeFit cannot
+        // honour, rather than returning a list that would imply it had.
+        let unassessable = context.dietaryRestrictions.filter { !$0.isAssessableFromIngredients }
+        guard unassessable.isEmpty else {
+            throw RecommendationGenerationError.dietaryRestrictionNotAssessable(unassessable)
+        }
+
         let pantryItems: [PantryItem]
         do {
             pantryItems = try await pantryRepository.fetchAll()

@@ -184,6 +184,54 @@ final class RecipeMetadataCompatibilityTests: XCTestCase {
         }
     }
 
+    /// The release audit, pinned.
+    ///
+    /// Each expected set below was checked by hand against that recipe's
+    /// own ingredient list, optional ingredients included. Changing a
+    /// bundled recipe's dietary labels must mean changing this table too,
+    /// which is the point: a label is a claim about what someone can
+    /// safely eat, and it should not be possible to adjust one quietly.
+    func testBundledDietaryLabelsMatchTheAudit() async throws {
+        let expected: [String: Set<DietaryRestriction>] = [
+            // Chicken, cream, wheat pasta.
+            "Creamy Chicken Pasta": [],
+            // Egg rules out vegan; nothing dairy.
+            "Vegetable Fried Rice": [.vegetarian, .dairyFree],
+            // Milk, cheddar, butter.
+            "Classic Cheese Omelette": [.vegetarian],
+            // Beef, cheddar, wheat tortilla.
+            "Beef Tacos": [],
+            // Optional cream still counts against dairy free and vegan.
+            "Tomato Soup": [.vegetarian],
+            // Milk, egg, butter.
+            "Banana Pancakes": [.vegetarian],
+            // Cheddar and butter.
+            "Grilled Cheese Sandwich": [.vegetarian],
+            // Chicken, parmesan, and a dressing conventionally containing
+            // anchovy and egg.
+            "Chicken Caesar Salad": [],
+            // No animal product at all, optional cumin included.
+            "Rice and Beans": [.vegetarian, .vegan, .dairyFree],
+            // Yogurt rules out dairy free; honey also rules out vegan.
+            "Greek Yogurt Parfait": [.vegetarian],
+        ]
+
+        let recipes = try await BundledRecipeRepository().fetchAll()
+        XCTAssertEqual(recipes.count, expected.count)
+
+        for recipe in recipes {
+            guard let expectedLabels = expected[recipe.title] else {
+                XCTFail("\(recipe.title) is not covered by the dietary audit.")
+                continue
+            }
+            XCTAssertEqual(
+                recipe.dietaryLabels,
+                expectedLabels,
+                "\(recipe.title) labels drifted from the audited set."
+            )
+        }
+    }
+
     /// The bundled labels must not contradict the bundled ingredients.
     /// This is the check that would catch someone labelling a dish vegan
     /// while it still lists cream.
@@ -217,6 +265,21 @@ final class RecipeMetadataCompatibilityTests: XCTestCase {
                 XCTAssertFalse(
                     categories.contains(.dairy),
                     "\(recipe.title) is labelled dairy free but lists a dairy ingredient."
+                )
+            }
+
+            // The inverse direction: a dish that clearly *does* contain an
+            // animal product must not be missing from that exclusion.
+            if categories.contains(.meat) {
+                XCTAssertFalse(
+                    labels.contains(.vegetarian) || labels.contains(.vegan),
+                    "\(recipe.title) lists meat but claims a meat-free label."
+                )
+            }
+            if categories.contains(.dairy) {
+                XCTAssertFalse(
+                    labels.contains(.dairyFree) || labels.contains(.vegan),
+                    "\(recipe.title) lists dairy but claims a dairy-free label."
                 )
             }
         }

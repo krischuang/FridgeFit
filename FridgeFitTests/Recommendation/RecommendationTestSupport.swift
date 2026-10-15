@@ -113,6 +113,27 @@ enum RecommendationFixture {
         )
     }
 
+    /// A pantry item whose expiry is relative to the *real* clock.
+    ///
+    /// For callers that go through `RecommendationViewModel`, which takes
+    /// no injected `now` and so measures expiry from `Date.now`. Use
+    /// `pantryItem(_:_:_:expiresInDays:)` instead wherever the use case
+    /// can be called directly with the fixed `now` - that is the
+    /// deterministic path and is what the rule tests use.
+    static func pantryItemExpiringFromToday(
+        _ name: String,
+        _ quantity: Double,
+        _ unit: MeasurementUnit,
+        inDays days: Int
+    ) -> PantryItem {
+        PantryItem(
+            ingredient: Ingredient(name: name),
+            quantity: quantity,
+            unit: unit,
+            expiryDate: Calendar.current.date(byAdding: .day, value: days, to: .now)
+        )
+    }
+
     /// A pantry holding more than enough of both default recipe
     /// ingredients, with no expiry dates recorded.
     static var stockedPantry: [PantryItem] {

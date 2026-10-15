@@ -73,11 +73,13 @@ struct CookingContextFormView: View {
 
                 multiSelectSection(
                     title: "Dietary requirements",
-                    footer: "FridgeFit only matches a requirement a recipe has been explicitly assessed for. Recipes with no dietary information are withheld rather than assumed safe, and none of the bundled recipes are assessed for nut content.",
-                    options: DietaryRestriction.allCases,
+                    footer: "Matched from each recipe's ingredients. A recipe with no dietary information recorded is withheld rather than assumed to comply.",
+                    options: DietaryRestriction.assessableCases,
                     selection: $context.dietaryRestrictions,
                     label: \.displayName
                 )
+
+                unassessableRestrictionsSection
 
                 Section {
                     Button("Reset to no preferences") {
@@ -97,6 +99,45 @@ struct CookingContextFormView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// The restrictions FridgeFit will not claim, shown as information
+    /// rather than as controls.
+    ///
+    /// Deliberately not selectable. A gluten-free or nut-free filter would
+    /// match nothing - FridgeFit has ingredient names and no product data
+    /// - and a filter that always returns an empty list reads as "there's
+    /// nothing you can cook" when the truth is "this app can't tell you".
+    /// Saying so here, before the user applies anything, is the honest
+    /// version.
+    @ViewBuilder
+    private var unassessableRestrictionsSection: some View {
+        Section {
+            ForEach(DietaryRestriction.unassessableCases) { restriction in
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.circle")
+                            .foregroundStyle(.secondary)
+                        Text(restriction.displayName)
+                        Spacer()
+                        Text("Not matched")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let explanation = restriction.unassessableExplanation {
+                        Text(explanation)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 2)
+                .accessibilityElement(children: .combine)
+            }
+        } header: {
+            Text("Not matched by FridgeFit")
+        } footer: {
+            Text("FridgeFit knows each recipe's ingredient names, not the brands or processing behind them. For coeliac disease or a nut allergy a trace matters, so it doesn't offer these as filters rather than implying a check it hasn't done.")
         }
     }
 

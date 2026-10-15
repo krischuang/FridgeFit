@@ -113,14 +113,38 @@ final class EvaluateRecipeSuitabilityUseCaseTests: XCTestCase {
 
     func testUnknownDietaryComplianceIsWithheldNotAssumedSafe() {
         let recipe = Fixture.recipe(title: "Unlabelled", dietaryLabels: nil)
-        let context = CookingContext(dietaryRestrictions: [.nutFree])
+        let context = CookingContext(dietaryRestrictions: [.vegan])
 
         XCTAssertEqual(
             Fixture.suitability(of: recipe, pantry: Fixture.stockedPantry, context: context).exclusion,
             .dietaryComplianceUnknown
         )
-        XCTAssertEqual(recipe.dietaryCompliance(with: [.nutFree]), .unknown)
         XCTAssertFalse(DietaryCompliance.unknown.isSafeToRecommend)
+    }
+
+    /// The compliance rule itself is restriction-agnostic - it fails
+    /// closed for every restriction, including the ones the form doesn't
+    /// offer. The generator refuses those earlier (see
+    /// `GenerateContextAwareRecommendationsUseCaseTests`); this is the
+    /// second layer.
+    func testUnknownComplianceFailsClosedForEveryRestriction() {
+        let unlabelled = Fixture.recipe(title: "Unlabelled", dietaryLabels: nil)
+
+        for restriction in DietaryRestriction.allCases {
+            XCTAssertEqual(
+                unlabelled.dietaryCompliance(with: [restriction]),
+                .unknown,
+                "\(restriction.rawValue) must not be assumed from absent labels."
+            )
+            XCTAssertEqual(
+                Fixture.suitability(
+                    of: unlabelled,
+                    pantry: Fixture.stockedPantry,
+                    context: CookingContext(dietaryRestrictions: [restriction])
+                ).exclusion,
+                .dietaryComplianceUnknown
+            )
+        }
     }
 
     func testAssessedButNonCompliantRecipeReportsWhichRestrictionIsMissing() {

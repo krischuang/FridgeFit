@@ -36,7 +36,9 @@ extension BundledRecipeRepository {
     /// claim - the worst a wrong one can do is rank a dish badly.
     ///
     /// `dietaryLabels` is held to a stricter rule, because it *is* a safety
-    /// claim. A restriction is listed only when every ingredient the recipe
+    /// claim. Only the restrictions whose
+    /// `DietaryRestriction.assessmentBasis` is `.composition` are ever
+    /// listed, and one is listed only when every ingredient the recipe
     /// names - optional ones included - establishes it:
     ///
     /// - `vegetarian` / `vegan` / `dairyFree` follow from the stated
@@ -44,18 +46,29 @@ extension BundledRecipeRepository {
     ///   tomato soup lists cream as optional, so it is not labelled
     ///   `dairyFree`; a label that only holds if you skip an ingredient is
     ///   not a label.
-    /// - `glutenFree` is listed only where no grain-derived ingredient
-    ///   appears at all. It is withheld from recipes containing soy sauce
-    ///   or stock, which commonly contain wheat without saying so.
-    /// - `nutFree` is listed on **no** recipe. The absence of a nut from an
-    ///   ingredient list is not evidence of nut safety - shared equipment
-    ///   and "may contain" labelling are exactly the risk a nut-free diner
-    ///   is managing, and this dataset has no provenance to rule them out.
+    /// - `glutenFree` and `nutFree` are listed on **no** recipe, because
+    ///   this dataset cannot establish either. Twenty of its thirty-two
+    ///   ingredients are processed or composite products recorded by
+    ///   generic name only - "Cheddar", "Butter", "Cumin", "Vegetable
+    ///   Stock", "Granola", "Caesar Dressing" - with no brand, no
+    ///   processing information and no allergen declaration. Whether any
+    ///   of them contains gluten or nuts is a property of the specific
+    ///   product bought, not of the word. For coeliac disease and nut
+    ///   allergy a trace is the whole problem, so "no gluten-bearing
+    ///   ingredient is named" is not the same claim as "gluten-free" and
+    ///   must not be published as if it were.
     ///
-    /// An empty set therefore means *assessed, and satisfies none of the
-    /// restrictions FridgeFit models* - which is a different fact from
-    /// `nil`, meaning never assessed. See `Recipe.dietaryLabels` and
-    /// `DietaryCompliance`.
+    ///   An earlier revision of this dataset did label the cheese omelette
+    ///   and the rice and beans `glutenFree` on the grounds that no grain
+    ///   appeared in them. That was withdrawn: it applied a weaker
+    ///   standard to gluten than the one already applied to nuts, and the
+    ///   cross-contamination argument that rules out a nut-free claim
+    ///   rules out a gluten-free claim for exactly the same reason.
+    ///
+    /// An empty set therefore means *assessed against every restriction
+    /// FridgeFit can assess, and satisfies none of them* - a different
+    /// fact from `nil`, meaning never assessed. See `Recipe.dietaryLabels`
+    /// and `DietaryCompliance`.
     static var sampleRecipes: [Recipe] {
         [
             Recipe(
@@ -130,9 +143,11 @@ extension BundledRecipeRepository {
                 symbolName: "circle.grid.2x2.fill",
                 cuisine: .comfortFood,
                 tastePreferences: [.savoury, .mild],
-                // No grain-derived ingredient at all, so gluten free holds.
-                // Milk and cheddar rule out vegan and dairy free.
-                dietaryLabels: [.vegetarian, .glutenFree],
+                // Milk, cheddar and butter rule out vegan and dairy free.
+                // No gluten-bearing ingredient is named, but cheddar and
+                // butter are processed products with no provenance here, so
+                // no gluten-free claim is made.
+                dietaryLabels: [.vegetarian],
                 totalCookingTimeInMinutes: 10,
                 difficulty: .easy
             ),
@@ -281,10 +296,12 @@ extension BundledRecipeRepository {
                 symbolName: "square.grid.3x3.fill",
                 cuisine: .mexican,
                 tastePreferences: [.hearty, .savoury],
-                // Rice, beans, aromatics and a spice: no animal product
-                // and no gluten-bearing grain, optional ingredients
-                // included.
-                dietaryLabels: [.vegetarian, .vegan, .dairyFree, .glutenFree],
+                // Rice, beans and aromatics: no animal product at all,
+                // optional cumin included. Not labelled gluten free -
+                // canned beans and ground spice blends are processed
+                // products whose gluten status this dataset cannot
+                // establish.
+                dietaryLabels: [.vegetarian, .vegan, .dairyFree],
                 totalCookingTimeInMinutes: 30,
                 difficulty: .easy
             ),

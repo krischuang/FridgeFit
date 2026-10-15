@@ -84,9 +84,42 @@ final class GenerateContextAwareRecommendationsUseCaseTests: XCTestCase {
         }
     }
 
-    /// Selecting a restriction nothing is assessed for is honest, not
-    /// broken: the list is empty and the error points at the filter.
-    func testRestrictionNoRecipeIsAssessedForYieldsFilterExclusion() async {
+    /// A restriction FridgeFit cannot assess must fail the run with a
+    /// message about the app's limits, not one about the user's filters.
+    ///
+    /// It fails closed before any data is read: any list returned under a
+    /// gluten-free filter would imply a check that was never performed.
+    func testUnassessableRestrictionFailsClosedWithItsOwnError() async {
+        for restriction in DietaryRestriction.unassessableCases {
+            await assertThrows(.dietaryRestrictionNotAssessable([restriction])) {
+                try await Fixture.recommendations(
+                    recipes: [
+                        // Labelled with the restriction anyway - the guard
+                        // must not be satisfiable by a label.
+                        Fixture.recipe(title: "A", dietaryLabels: [restriction]),
+                        Fixture.recipe(title: "B", dietaryLabels: nil),
+                    ],
+                    pantry: Fixture.stockedPantry,
+                    context: CookingContext(dietaryRestrictions: [restriction])
+                )
+            }
+        }
+    }
+
+    func testUnassessableRestrictionIsRefusedEvenAlongsideAssessableOnes() async {
+        await assertThrows(.dietaryRestrictionNotAssessable([.glutenFree])) {
+            try await Fixture.recommendations(
+                recipes: [Fixture.recipe(title: "A", dietaryLabels: [.vegan, .glutenFree])],
+                pantry: Fixture.stockedPantry,
+                context: CookingContext(dietaryRestrictions: [.vegan, .glutenFree])
+            )
+        }
+    }
+
+    /// An assessable restriction that nothing is labelled for is a
+    /// different situation: the filter genuinely excluded the options, and
+    /// relaxing it is the fix.
+    func testAssessableRestrictionWithNoMatchesReportsFilterExclusion() async {
         await assertThrows(.filtersExcludeFeasibleRecipes) {
             try await Fixture.recommendations(
                 recipes: [
@@ -94,7 +127,7 @@ final class GenerateContextAwareRecommendationsUseCaseTests: XCTestCase {
                     Fixture.recipe(title: "B", dietaryLabels: nil),
                 ],
                 pantry: Fixture.stockedPantry,
-                context: CookingContext(dietaryRestrictions: [.nutFree])
+                context: CookingContext(dietaryRestrictions: [.vegan])
             )
         }
     }
@@ -400,21 +433,60 @@ final class GenerateContextAwareRecommendationsUseCaseTests: XCTestCase {
         XCTAssertEqual(recommendations.first?.readiness, .readyToCook)
     }
 
-    func testBundledCatalogueSupportsEveryModelledRestrictionExceptNutFree() async throws {
+    /// Every restriction the form actually offers must be satisfiable by
+    /// at least one bundled recipe, or it is a filter that silently
+    /// returns nothing.
+    func testEveryOfferedRestrictionIsSatisfiableByABundledRecipe() async throws {
         let recipes = try await BundledRecipeRepository().fetchAll()
 
-        for restriction in DietaryRestriction.allCases where restriction != .nutFree {
+        for restriction in DietaryRestriction.assessableCases {
             let matching = recipes.filter { $0.dietaryLabels?.contains(restriction) == true }
             XCTAssertFalse(
                 matching.isEmpty,
                 "No bundled recipe is labelled \(restriction.rawValue), so that filter can never return anything."
             )
         }
+    }
 
-        XCTAssertTrue(
-            recipes.allSatisfy { $0.dietaryLabels?.contains(.nutFree) != true },
-            "Nut-free is a safety claim this dataset has no provenance to make."
+    /// The safety invariant: FridgeFit must not publish an allergen-grade
+    /// claim it has no product data to support.
+    ///
+    /// This is the test that would have caught the gluten-free labels on
+    /// the cheese omelette and the rice and beans.
+    func testNoBundledRecipeClaimsAnAllergenGradeRestriction() async throws {
+        let recipes = try await BundledRecipeRepository().fetchAll()
+
+        for restriction in DietaryRestriction.unassessableCases {
+            let offenders = recipes
+                .filter { $0.dietaryLabels?.contains(restriction) == true }
+                .map(\.title)
+
+            XCTAssertTrue(
+                offenders.isEmpty,
+                "\(restriction.rawValue) depends on product provenance this dataset does not have, but it is claimed by: \(offenders.joined(separator: ", "))."
+            )
+        }
+    }
+
+    func testAllergenGradeRestrictionsAreNotOfferedAsFilters() {
+        XCTAssertEqual(Set(DietaryRestriction.unassessableCases), [.glutenFree, .nutFree])
+        XCTAssertEqual(Set(DietaryRestriction.assessableCases), [.vegetarian, .vegan, .dairyFree])
+        XCTAssertEqual(
+            Set(DietaryRestriction.allCases),
+            Set(DietaryRestriction.assessableCases)
+                .union(DietaryRestriction.unassessableCases),
+            "Every restriction must be classified one way or the other."
         )
+
+        for restriction in DietaryRestriction.unassessableCases {
+            XCTAssertNotNil(
+                restriction.unassessableExplanation,
+                "\(restriction.rawValue) is withheld, so the UI needs a reason to show."
+            )
+        }
+        for restriction in DietaryRestriction.assessableCases {
+            XCTAssertNil(restriction.unassessableExplanation)
+        }
     }
 
     // MARK: - Helpers
