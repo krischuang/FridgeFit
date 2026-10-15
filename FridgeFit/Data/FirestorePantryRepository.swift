@@ -72,7 +72,7 @@ final class FirestorePantryRepository: PantryRepository {
 
 extension FirestorePantryRepository {
     static func encodeForCreate(_ item: PantryItem) -> [String: Any] {
-        [
+        var data: [String: Any] = [
             "ingredientName": item.ingredient.name,
             "ingredientCategory": item.ingredient.category.rawValue,
             "quantity": item.quantity,
@@ -80,20 +80,82 @@ extension FirestorePantryRepository {
             "createdAt": FieldValue.serverTimestamp(),
             "updatedAt": FieldValue.serverTimestamp(),
         ]
+        // Kitchen fields are written only when the user actually set one.
+        // An absent key is how "not tracked" is stored, and it is the same
+        // state every pre-existing document is already in - so a document
+        // written by this app and one written before these fields existed
+        // decode identically.
+        for (key, value) in kitchenFields(of: item) {
+            data[key] = value
+        }
+        return data
     }
 
     /// Deliberately omits `createdAt` - including it here would reset the
     /// original creation time to "now" on every edit.
+    ///
+    /// Kitchen fields the user has cleared are sent as `FieldValue.delete()`
+    /// rather than left out: `updateData` ignores absent keys, so omitting a
+    /// now-`nil` expiry date would silently keep the old one and the item
+    /// would go back to claiming it expires on a date the user just removed.
     static func encodeForUpdate(_ item: PantryItem) -> [String: Any] {
-        [
+        var data: [String: Any] = [
             "ingredientName": item.ingredient.name,
             "ingredientCategory": item.ingredient.category.rawValue,
             "quantity": item.quantity,
             "unit": item.unit.rawValue,
             "updatedAt": FieldValue.serverTimestamp(),
         ]
+        let present = kitchenFields(of: item)
+        for key in kitchenFieldKeys {
+            data[key] = present[key] ?? FieldValue.delete()
+        }
+        return data
     }
 
+    /// Every key the kitchen fields can occupy, so `encodeForUpdate` can
+    /// clear the ones that are absent without listing them twice.
+    static let kitchenFieldKeys = [
+        "expiryDate",
+        "storageLocation",
+        "openedState",
+        "lowStockThreshold",
+        "packageUnit",
+        "packageLevel",
+    ]
+
+    /// The kitchen fields that have a value on `item`, keyed as stored.
+    private static func kitchenFields(of item: PantryItem) -> [String: Any] {
+        var data: [String: Any] = [:]
+        if let expiryDate = item.expiryDate {
+            data["expiryDate"] = Timestamp(date: expiryDate)
+        }
+        if let storageLocation = item.storageLocation {
+            data["storageLocation"] = storageLocation.rawValue
+        }
+        if let openedState = item.openedState {
+            data["openedState"] = openedState.rawValue
+        }
+        if let lowStockThreshold = item.lowStockThreshold {
+            data["lowStockThreshold"] = lowStockThreshold
+        }
+        if let packageUnit = item.packageUnit {
+            data["packageUnit"] = packageUnit.rawValue
+        }
+        if let packageLevel = item.packageLevel {
+            data["packageLevel"] = packageLevel.rawValue
+        }
+        return data
+    }
+
+    /// Decodes one document.
+    ///
+    /// The four original fields stay required - a document without a name or
+    /// an amount is not a pantry item and is skipped, exactly as before. The
+    /// kitchen fields are all optional reads, and an unrecognised stored
+    /// value (a storage location this build doesn't know) decodes as `nil`
+    /// rather than discarding the whole item: losing a fridge/pantry label
+    /// is recoverable, losing the user's food is not.
     static func decode(id: String, data: [String: Any]) -> PantryItem? {
         guard
             let uuid = UUID(uuidString: id),
@@ -106,6 +168,17 @@ extension FirestorePantryRepository {
         else {
             return nil
         }
-        return PantryItem(id: uuid, ingredient: Ingredient(name: name, category: category), quantity: quantity, unit: unit)
+        return PantryItem(
+            id: uuid,
+            ingredient: Ingredient(name: name, category: category),
+            quantity: quantity,
+            unit: unit,
+            expiryDate: (data["expiryDate"] as? Timestamp)?.dateValue(),
+            storageLocation: (data["storageLocation"] as? String).flatMap(StorageLocation.init(rawValue:)),
+            openedState: (data["openedState"] as? String).flatMap(OpenedState.init(rawValue:)),
+            lowStockThreshold: data["lowStockThreshold"] as? Double,
+            packageUnit: (data["packageUnit"] as? String).flatMap(PackageUnit.init(rawValue:)),
+            packageLevel: (data["packageLevel"] as? Double).flatMap(PackageLevel.init(rawValue:))
+        )
     }
 }

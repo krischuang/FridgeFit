@@ -30,6 +30,12 @@ Pods/
 # credentials; Firestore rules are the actual security boundary. If this repo
 # ever goes public, re-ignore it and distribute it separately instead.
 
+# Emulator output, written into the repo root by `npm test` in
+# firestore-tests/. Regenerated on every run.
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+
 # Local secrets (see Secrets.xcconfig.example)
 Secrets.xcconfig
 

@@ -11,6 +11,7 @@ rules_version = '2';
 // FirestoreSignalingTransport):
 //
 //   users/{uid}/pantry/{pantryItemId}
+//   users/{uid}/inventoryEvents/{eventId}
 //   users/{uid}/devices/{deviceId}
 //   users/{uid}/webrtcSessions/{sessionId}
 //   users/{uid}/webrtcSessions/{sessionId}/callerCandidates/{candidateId}
@@ -37,6 +38,27 @@ service cloud.firestore {
     //
     // A signed-in user may only read or write their own pantry.
     match /users/{uid}/pantry/{pantryItemId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // --- Kitchen activity history -----------------------------------------
+    //
+    // One document per committed action - added, used, finished, discarded,
+    // quantity corrected (see InventoryEvent and
+    // FirestoreInventoryEventRepository).
+    //
+    // Its own match rather than sharing the pantry's: a rule on one
+    // collection does not cover a sibling, and these documents outlive the
+    // pantry item they describe - finishing food removes the item but keeps
+    // its history, which is the only place "we ate it" and "we threw it out"
+    // stay distinguishable.
+    //
+    // `read` covers the ordered, limited query the activity sheet runs.
+    // `write` covers appending an event and the batched delete that backs
+    // undo. Deliberately no narrower than the pantry it sits beside: the
+    // security boundary is the uid in the path, and nothing here is readable
+    // or writable by anyone else's account.
+    match /users/{uid}/inventoryEvents/{eventId} {
       allow read, write: if isOwner(uid);
     }
 
