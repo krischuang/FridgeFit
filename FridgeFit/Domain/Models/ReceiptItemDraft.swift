@@ -29,6 +29,9 @@ struct ReceiptItemDraft: Identifiable, Equatable {
     /// Empty means the receipt didn't say and the user hasn't decided.
     var quantityText: String
     var unit: MeasurementUnit
+    /// What was paid, prefilled from the receipt line. Empty if the line had no
+    /// price; the user can fix or clear it before adding.
+    var priceText: String
 
     var id: UUID { candidate.id }
     var sourceText: String { candidate.sourceText }
@@ -50,6 +53,7 @@ struct ReceiptItemDraft: Identifiable, Equatable {
         // Falls back to pieces purely as the picker's starting position; with
         // an empty quantity nothing is stored until the user types a number.
         self.unit = candidate.quantity?.unit ?? .pieces
+        self.priceText = candidate.price.map { String(format: "%.2f", NSDecimalNumber(decimal: $0).doubleValue) } ?? ""
     }
 
     /// The quantity to store, or `nil` if the field is empty or unusable.
@@ -59,6 +63,15 @@ struct ReceiptItemDraft: Identifiable, Equatable {
         guard let value = Double(trimmed), value >= 0 else { return nil }
         return value
     }
+
+    /// The price to record, or `nil` if the field is empty or isn't a sensible number.
+    var price: Decimal? {
+        let trimmed = priceText.trimmingCharacters(in: .whitespaces)
+        guard let value = Decimal(string: trimmed, locale: Locale(identifier: "en_US_POSIX")), value >= 0 else { return nil }
+        return value
+    }
+
+    var hasDetectedPrice: Bool { candidate.price != nil }
 
     var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)

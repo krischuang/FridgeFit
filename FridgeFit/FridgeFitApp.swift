@@ -8,6 +8,7 @@
 import SwiftUI
 import FirebaseCore
 import GoogleSignIn
+import UIKit
 
 @main
 struct FridgeFitApp: App {
@@ -15,6 +16,10 @@ struct FridgeFitApp: App {
 
     init() {
         FirebaseApp.configure()
+        if UITestSupport.isEnabled {
+            // no point waiting on animations in UI tests, it just makes them slow and flaky
+            UIView.setAnimationsEnabled(false)
+        }
         if let clientID = FirebaseApp.app()?.options.clientID {
             GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
         }
@@ -23,7 +28,10 @@ struct FridgeFitApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if authViewModel.isAuthenticated {
+                if UITestSupport.isEnabled {
+                    // skip login entirely, UI tests run against in-memory data
+                    ContentView(dependencies: .uiTesting())
+                } else if authViewModel.isAuthenticated {
                     ContentView()
                 } else {
                     LoginView()

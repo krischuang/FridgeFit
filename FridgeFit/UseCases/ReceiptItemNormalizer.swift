@@ -101,8 +101,16 @@ struct ReceiptItemNormalizer {
             category: IngredientCategory(rawValue: raw.category) ?? .other,
             quantity: resolvedQuantity(for: raw, from: line),
             sourceText: line.originalText,
-            order: line.order
+            order: line.order,
+            price: Self.decimalPrice(line.price)
         )
+    }
+
+    /// The parser gives prices as Double; go through a 2dp string so 8.5 ends up
+    /// as exactly 8.50 and not 8.4999999.
+    private static func decimalPrice(_ price: Double?) -> Decimal? {
+        guard let price, price >= 0 else { return nil }
+        return Decimal(string: String(format: "%.2f", price), locale: Locale(identifier: "en_US_POSIX"))
     }
 
     /// Decides the quantity, preferring what is written on the receipt.
@@ -225,7 +233,10 @@ struct ReceiptItemNormalizer {
                 ? existing.sourceText
                 : "\(existing.sourceText) · \(candidate.sourceText)",
             order: existing.order,
-            isAlreadyInPantry: existing.isAlreadyInPantry
+            isAlreadyInPantry: existing.isAlreadyInPantry,
+            // two lines of the same thing = paid twice. if either line had no price
+            // we don't know the total, so don't pretend we do
+            price: existing.price.flatMap { a in candidate.price.map { a + $0 } }
         )
     }
 }

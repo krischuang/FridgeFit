@@ -167,4 +167,18 @@ final class AddDetectedIngredientsUseCaseTests: XCTestCase {
         XCTAssertEqual(summary.userMessage, "Nothing was added to your pantry.")
         XCTAssertEqual(summary.addedCount, 0)
     }
+
+    // A blank name still gets rejected (see the test above), but the error
+    // should use the scanned name. "Couldn't add ." tells the user nothing
+    // about which row to go fix.
+    func test_addDetectedIngredients_blankNameFailure_isReportedUnderTheScannedName() async {
+        let useCase = AddDetectedIngredientsUseCase(pantryRepository: InMemoryPantryRepository())
+        var cleared = draft(name: "Chicken Breast", category: .meat, quantityText: "500", unit: .grams)
+        cleared.name = "   "
+
+        let summary = await useCase.execute(drafts: [cleared])
+
+        XCTAssertEqual(summary.failures.map(\.name), ["Chicken Breast"])
+        XCTAssertTrue(summary.userMessage.contains("Chicken Breast"))
+    }
 }

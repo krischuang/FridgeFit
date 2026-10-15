@@ -64,11 +64,15 @@ struct PantryView: View {
                                     .monospacedDigit()
                             }
                             .padding(.vertical, 2)
+                            // without this only the text/icon is tappable, the empty
+                            // middle of the row (the Spacer) ignores taps
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("\(item.name), \(item.ingredient.category.rawValue), \(item.formattedQuantity)")
                         .accessibilityHint("Double tap to update quantity")
+                        .accessibilityIdentifier("pantry.row.\(item.name)")
                     }
                     .onDelete(perform: removeItems)
                 }
@@ -84,6 +88,7 @@ struct PantryView: View {
                 } label: {
                     Label("Add Ingredient", systemImage: "plus")
                 }
+                .accessibilityIdentifier("pantry.addButton")
             }
             ToolbarItem(placement: .secondaryAction) {
                 Button {

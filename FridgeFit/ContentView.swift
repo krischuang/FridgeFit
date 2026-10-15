@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-/// Root of the authenticated app: Pantry, Recipes, and Profile, each in
+/// Root of the authenticated app: Pantry, Recipes, Budget and Profile, each in
 /// its own tab with its own navigation stack.
 struct ContentView: View {
     @StateObject private var pantryViewModel: PantryViewModel
@@ -15,10 +15,22 @@ struct ContentView: View {
     @StateObject private var substitutionViewModel: SubstitutionViewModel
     @StateObject private var scannerViewModel: ReceiptScannerViewModel
     @StateObject private var recipeSuggestionViewModel: RecipeSuggestionViewModel
+    // FridgeFunds (budget + waste cost). @State so the same environment - and the
+    // data it has loaded - sticks around while the tab view is rebuilt
+    @State private var fundsEnvironment: FundsEnvironment
 
-    init() {
-        let pantryRepository = FirestorePantryRepository()
-        _pantryViewModel = StateObject(wrappedValue: PantryViewModel(pantryRepository: pantryRepository))
+    init(dependencies: AppDependencies = .live()) {
+        let pantryRepository = dependencies.pantryRepository
+
+        // FridgeFunds is built first so the add form and the receipt scanner can
+        // pass prices to it
+        let fundsEnvironment = dependencies.makeFundsEnvironment(pantryRepository)
+        _fundsEnvironment = State(initialValue: fundsEnvironment)
+
+        _pantryViewModel = StateObject(wrappedValue: PantryViewModel(
+            pantryRepository: pantryRepository,
+            priceRecorder: FundsPurchasePriceRecorder(environment: fundsEnvironment)
+        ))
         _recipeViewModel = StateObject(wrappedValue: RecipeViewModel(pantryRepository: pantryRepository))
 
         // Apple Intelligence, on-device. Both of these degrade to an
@@ -30,25 +42,23 @@ struct ContentView: View {
         // device, and the photo never reaches the language model.
         _scannerViewModel = StateObject(
             wrappedValue: ReceiptScannerViewModel(
-                textRecognizer: VisionReceiptTextRecognizer(),
-                interpreter: AppleReceiptIngredientInterpreter(),
-                pantryRepository: pantryRepository
+                textRecognizer: dependencies.textRecognizer,
+                interpreter: dependencies.interpreter,
+                pantryRepository: pantryRepository,
+                priceRecorder: FundsPurchasePriceRecorder(environment: fundsEnvironment)
             )
         )
         _recipeSuggestionViewModel = StateObject(
             wrappedValue: RecipeSuggestionViewModel(
                 useCase: SuggestRecipesFromPantryUseCase(
-                    suggestionService: AppleRecipeSuggestionService(),
+                    suggestionService: dependencies.recipeSuggestionService,
                     pantryRepository: pantryRepository
                 )
             )
         )
 
-        let substitutionService: SubstitutionService = OpenRouterConfiguration.loadFromInfoPlist()
-            .map { OpenRouterSubstitutionService(configuration: $0) }
-            ?? UnconfiguredSubstitutionService()
         let substitutionUseCase = GetIngredientSubstitutionsUseCase(
-            substitutionService: substitutionService,
+            substitutionService: dependencies.substitutionService,
             pantryRepository: pantryRepository,
             cache: SubstitutionCache()
         )
@@ -70,6 +80,11 @@ struct ContentView: View {
                 )
             }
             .tabItem { Label("Recipes", systemImage: "fork.knife") }
+
+            NavigationStack {
+                BudgetDashboardView(environment: fundsEnvironment)
+            }
+            .tabItem { Label("Budget", systemImage: "chart.pie.fill") }
 
             NavigationStack {
                 ProfileView()

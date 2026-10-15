@@ -31,6 +31,7 @@ struct RecipeListView: View {
                     } label: {
                         RecipeRow(recipe: recipe, feasibility: viewModel.feasibility(for: recipe))
                     }
+                    .accessibilityIdentifier("recipe.row.\(recipe.title)")
                 }
                 .listStyle(.insetGrouped)
                 .refreshable { await viewModel.refreshFeasibility() }

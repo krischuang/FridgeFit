@@ -53,6 +53,7 @@ struct SubstitutionSectionView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .accessibilityIdentifier("substitute.find.\(recipeIngredient.ingredient.name)")
 
                 if let errorMessage = viewModel.errorMessage(for: recipeIngredient) {
                     Text(errorMessage)

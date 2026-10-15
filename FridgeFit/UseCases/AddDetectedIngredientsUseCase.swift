@@ -64,13 +64,18 @@ struct AddDetectedIngredientsSummary: Equatable {
 /// repository and no Firestore access of its own.
 struct AddDetectedIngredientsUseCase {
     private let addPantryItemUseCase: AddPantryItemUseCase
+    /// Gets told what each added item cost, when the receipt said. Optional so
+    /// the scanner still works fine without the Budget tab.
+    private let priceRecorder: PurchasePriceRecording?
 
-    init(addPantryItemUseCase: AddPantryItemUseCase) {
+    init(addPantryItemUseCase: AddPantryItemUseCase, priceRecorder: PurchasePriceRecording? = nil) {
         self.addPantryItemUseCase = addPantryItemUseCase
+        self.priceRecorder = priceRecorder
     }
 
-    init(pantryRepository: PantryRepository) {
-        self.init(addPantryItemUseCase: AddPantryItemUseCase(pantryRepository: pantryRepository))
+    init(pantryRepository: PantryRepository, priceRecorder: PurchasePriceRecording? = nil) {
+        self.init(addPantryItemUseCase: AddPantryItemUseCase(pantryRepository: pantryRepository),
+                  priceRecorder: priceRecorder)
     }
 
     /// Adds each draft through `AddPantryItemUseCase`, in order.
@@ -93,13 +98,18 @@ struct AddDetectedIngredientsUseCase {
             }
 
             do {
-                try await addPantryItemUseCase.execute(
+                let added = try await addPantryItemUseCase.execute(
                     name: draft.trimmedName,
                     quantity: quantity,
                     unit: draft.unit,
                     category: draft.category
                 )
                 addedNames.append(name)
+                // only for items that actually went in - a rejected duplicate
+                // shouldn't get a price attached to the old entry
+                if let price = draft.price {
+                    priceRecorder?.recordPurchasePrice(price, for: added)
+                }
             } catch AddPantryItemError.duplicateIngredient(let existingName) {
                 duplicateNames.append(existingName)
             } catch let error as AddPantryItemError {

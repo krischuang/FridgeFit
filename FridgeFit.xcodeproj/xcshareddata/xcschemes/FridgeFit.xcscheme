@@ -39,6 +39,16 @@
                ReferencedContainer = "container:FridgeFit.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A1C0FFEE0000000000000007"
+               BuildableName = "FridgeFitUITests.xctest"
+               BlueprintName = "FridgeFitUITests"
+               ReferencedContainer = "container:FridgeFit.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

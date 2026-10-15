@@ -9,6 +9,13 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // FridgeFunds (budget, spends, waste, item prices) - same rule, own data only.
+    match /users/{uid}/{collection}/{docId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == uid
+        && collection in ['fundsBudget', 'fundsSpends', 'fundsWaste', 'fundsItemPrices'];
+    }
+
     // Everything else is denied by default.
     match /{document=**} {
       allow read, write: if false;

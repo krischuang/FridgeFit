@@ -63,7 +63,8 @@ final class ReceiptScannerViewModel: ObservableObject {
     convenience init(
         textRecognizer: ReceiptTextRecognizer,
         interpreter: ReceiptIngredientInterpreter,
-        pantryRepository: PantryRepository
+        pantryRepository: PantryRepository,
+        priceRecorder: PurchasePriceRecording? = nil
     ) {
         self.init(
             scanReceiptUseCase: ScanReceiptUseCase(
@@ -71,7 +72,10 @@ final class ReceiptScannerViewModel: ObservableObject {
                 interpreter: interpreter,
                 pantryRepository: pantryRepository
             ),
-            addDetectedIngredientsUseCase: AddDetectedIngredientsUseCase(pantryRepository: pantryRepository)
+            addDetectedIngredientsUseCase: AddDetectedIngredientsUseCase(
+                pantryRepository: pantryRepository,
+                priceRecorder: priceRecorder
+            )
         )
     }
 
@@ -271,6 +275,11 @@ final class ReceiptScannerViewModel: ObservableObject {
     func updateQuantityText(_ quantityText: String, for draftID: UUID) {
         guard let index = drafts.firstIndex(where: { $0.id == draftID }) else { return }
         drafts[index].quantityText = quantityText
+    }
+
+    func updatePriceText(_ priceText: String, for draftID: UUID) {
+        guard let index = drafts.firstIndex(where: { $0.id == draftID }) else { return }
+        drafts[index].priceText = priceText
     }
 
     func updateUnit(_ unit: MeasurementUnit, for draftID: UUID) {

@@ -19,6 +19,9 @@ substitutions.
   built from what's actually in your pantry.
 - **Substitutions** — for any ingredient you're short on, get alternatives
   via OpenRouter, validated against your pantry before being shown.
+- **Budget (FridgeFunds)** — weekly/fortnightly food budget, spend
+  logging, how much money is sitting in your fridge and how much of it is
+  about to go off, and what you've lost to waste. Lives in the Budget tab.
 - **Accounts** — Firebase Authentication, including Google Sign-In.
 
 Architecture is layered: `Domain` (models, protocols, errors) → `UseCases`
@@ -232,6 +235,25 @@ key. See [OpenRouter API key](#openrouter-api-key).
 Xcode older than 26.1. Update Xcode.
 
 ---
+
+## FridgeFunds (Budget tab)
+
+FridgeFunds started as its own app and now lives in `FridgeFit/Funds/`.
+It **reads** the pantry but never writes to it.
+
+- `FridgeFitPantryReading` turns FridgeFit's async `PantryRepository` into
+  the sync, read-only `PantryReading` FridgeFunds was built against.
+- FridgeFit's pantry has no price or expiry, so FridgeFunds keeps its own
+  `ItemPriceInfo` per pantry item id. You fill it in from *Budget → Money
+  in my fridge* by tapping an item. You enter what you paid in total and
+  it works out the per-unit cost.
+- Data is saved per user in Firestore, next to the pantry:
+  `users/{uid}/fundsBudget`, `fundsSpends`, `fundsWaste`,
+  `fundsItemPrices`. Stores keep a local copy for the sync reads and save
+  to Firestore in the background.
+- **`firestore.rules` was extended for these collections. Deploy it**
+  (`firebase deploy --only firestore:rules`) or the Budget tab can't load
+  or save anything on a project that enforces the committed rules.
 
 ## Repository layout
 

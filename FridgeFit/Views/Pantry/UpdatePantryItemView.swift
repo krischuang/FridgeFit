@@ -30,6 +30,7 @@ struct UpdatePantryItemView: View {
                     TextField("Quantity", text: $quantityText)
                         .keyboardType(.decimalPad)
                         .accessibilityLabel("Quantity")
+                        .accessibilityIdentifier("updateItem.quantity")
                     Picker("Unit", selection: $unit) {
                         ForEach(MeasurementUnit.allCases) { unit in
                             Text(unit.symbol).tag(unit)
@@ -54,6 +55,7 @@ struct UpdatePantryItemView: View {
                         ProgressView()
                     } else {
                         Button("Save") { save() }
+                            .accessibilityIdentifier("updateItem.save")
                     }
                 }
             }

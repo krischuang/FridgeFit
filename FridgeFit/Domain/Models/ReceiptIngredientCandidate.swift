@@ -34,6 +34,9 @@ struct ReceiptIngredientCandidate: Identifiable, Equatable {
     let order: Int
     /// Set by `ScanReceiptUseCase` from the real pantry.
     let isAlreadyInPantry: Bool
+    /// What the receipt line charged for this item, if it showed a price.
+    /// Only used to tell the Budget tab what the item cost.
+    let price: Decimal?
 
     init(
         id: UUID = UUID(),
@@ -44,7 +47,8 @@ struct ReceiptIngredientCandidate: Identifiable, Equatable {
         quantity: ReceiptQuantity?,
         sourceText: String,
         order: Int,
-        isAlreadyInPantry: Bool = false
+        isAlreadyInPantry: Bool = false,
+        price: Decimal? = nil
     ) {
         self.id = id
         self.displayName = displayName
@@ -55,6 +59,7 @@ struct ReceiptIngredientCandidate: Identifiable, Equatable {
         self.sourceText = sourceText
         self.order = order
         self.isAlreadyInPantry = isAlreadyInPantry
+        self.price = price
     }
 
     /// Copy of this candidate with pantry knowledge applied.
@@ -68,7 +73,8 @@ struct ReceiptIngredientCandidate: Identifiable, Equatable {
             quantity: quantity,
             sourceText: sourceText,
             order: order,
-            isAlreadyInPantry: isAlreadyInPantry
+            isAlreadyInPantry: isAlreadyInPantry,
+            price: price
         )
     }
 }

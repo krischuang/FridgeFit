@@ -28,9 +28,13 @@ final class PantryViewModel: ObservableObject {
     private let addPantryItemUseCase: AddPantryItemUseCase
     private let updatePantryItemUseCase: UpdatePantryItemUseCase
     private let removePantryItemUseCase: RemovePantryItemUseCase
+    /// Where the optional price/expiry from the add form goes (the Budget tab).
+    private let priceRecorder: PurchasePriceRecording?
 
-    init(pantryRepository: PantryRepository = InMemoryPantryRepository()) {
+    init(pantryRepository: PantryRepository = InMemoryPantryRepository(),
+         priceRecorder: PurchasePriceRecording? = nil) {
         self.pantryRepository = pantryRepository
+        self.priceRecorder = priceRecorder
         self.addPantryItemUseCase = AddPantryItemUseCase(pantryRepository: pantryRepository)
         self.updatePantryItemUseCase = UpdatePantryItemUseCase(pantryRepository: pantryRepository)
         self.removePantryItemUseCase = RemovePantryItemUseCase(pantryRepository: pantryRepository)
@@ -49,11 +53,20 @@ final class PantryViewModel: ObservableObject {
 
     /// Adds a pantry item. On failure, sets `errorMessage` for the view to
     /// display.
-    func addItem(name: String, quantity: Double, unit: MeasurementUnit, category: IngredientCategory) async {
+    func addItem(name: String, quantity: Double, unit: MeasurementUnit, category: IngredientCategory,
+                 pricePaid: Decimal? = nil, expiryDate: Date? = nil) async {
         errorMessage = nil
         duplicateItem = nil
         do {
-            try await addPantryItemUseCase.execute(name: name, quantity: quantity, unit: unit, category: category)
+            let added = try await addPantryItemUseCase.execute(name: name, quantity: quantity, unit: unit, category: category)
+            // price/expiry are optional extras for the Budget tab - only sent once
+            // the item is actually in the pantry
+            if let pricePaid {
+                priceRecorder?.recordPurchasePrice(pricePaid, for: added)
+            }
+            if let expiryDate {
+                priceRecorder?.recordExpiryDate(expiryDate, for: added)
+            }
             await loadItems()
         } catch let error as AddPantryItemError {
             errorMessage = error.errorDescription

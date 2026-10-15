@@ -232,6 +232,29 @@ private struct ReceiptItemRow: View {
             }
             .font(.callout)
 
+            // what it cost - goes to the Budget tab, doesn't affect the pantry at all
+            HStack(spacing: 6) {
+                Text("Paid $")
+                    .foregroundStyle(.secondary)
+                TextField(
+                    "Price",
+                    text: Binding(
+                        get: { draft.priceText },
+                        set: { viewModel.updatePriceText($0, for: draft.id) }
+                    )
+                )
+                .keyboardType(.decimalPad)
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 90)
+                .accessibilityLabel("Price paid for \(draft.name)")
+                .accessibilityIdentifier("review.price.\(draft.name)")
+
+                Text(draft.hasDetectedPrice ? "from receipt" : "optional")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .font(.callout)
+
             // The receipt didn't say how much, so the user has to. Said
             // plainly rather than filled in with a made-up "1 pcs".
             if !draft.hasDetectedQuantity && draft.quantity == nil {

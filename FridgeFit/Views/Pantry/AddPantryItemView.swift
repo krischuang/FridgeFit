@@ -21,6 +21,10 @@ struct AddPantryItemView: View {
     @State private var quantityText: String = ""
     @State private var unit: MeasurementUnit = .grams
     @State private var category: IngredientCategory = .other
+    @State private var priceText: String = ""
+    @State private var hasExpiry = false
+    @State private var expiryDate = Date()
+    @State private var priceError: String?
 
     var body: some View {
         NavigationStack {
@@ -28,6 +32,7 @@ struct AddPantryItemView: View {
                 Section("Ingredient") {
                     TextField("Name", text: $name)
                         .accessibilityLabel("Ingredient name")
+                        .accessibilityIdentifier("addItem.name")
                     Picker("Category", selection: $category) {
                         ForEach(IngredientCategory.allCases) { category in
                             Text(category.rawValue).tag(category)
@@ -38,10 +43,36 @@ struct AddPantryItemView: View {
                     TextField("Quantity", text: $quantityText)
                         .keyboardType(.decimalPad)
                         .accessibilityLabel("Quantity")
+                        .accessibilityIdentifier("addItem.quantity")
                     Picker("Unit", selection: $unit) {
                         ForEach(MeasurementUnit.allCases) { unit in
                             Text(unit.symbol).tag(unit)
                         }
+                    }
+                }
+                // optional - only used by the Budget tab to work out what's in your fridge
+                Section {
+                    HStack {
+                        Text("$").foregroundStyle(.secondary)
+                        TextField("What you paid (optional)", text: $priceText)
+                            .keyboardType(.decimalPad)
+                            .accessibilityIdentifier("addItem.price")
+                    }
+                    Toggle("Has an expiry date", isOn: $hasExpiry)
+                        .accessibilityIdentifier("addItem.hasExpiry")
+                    if hasExpiry {
+                        DatePicker("Expires", selection: $expiryDate, displayedComponents: .date)
+                    }
+                } header: {
+                    Text("Price & Expiry")
+                } footer: {
+                    Text("For the whole amount above. Shows up in the Budget tab.")
+                }
+                if let priceError {
+                    Section {
+                        InlineErrorBanner(message: priceError)
+                            .listRowInsets(EdgeInsets())
+                            .padding(.vertical, 2)
                     }
                 }
                 if let errorMessage = viewModel.errorMessage {
@@ -71,6 +102,7 @@ struct AddPantryItemView: View {
                         ProgressView()
                     } else {
                         Button("Add") { addItem() }
+                            .accessibilityIdentifier("addItem.save")
                     }
                 }
             }
@@ -79,8 +111,16 @@ struct AddPantryItemView: View {
 
     private func addItem() {
         let quantity = Double(quantityText) ?? -1
+        let trimmedPrice = priceText.trimmingCharacters(in: .whitespaces)
+        let price = Decimal(string: trimmedPrice, locale: Locale(identifier: "en_US_POSIX"))
+        if !trimmedPrice.isEmpty, price == nil || price! < 0 {
+            priceError = "Enter what you paid as a number, e.g. 4.50 - or leave it empty."
+            return
+        }
+        priceError = nil
         Task {
-            await viewModel.addItem(name: name, quantity: quantity, unit: unit, category: category)
+            await viewModel.addItem(name: name, quantity: quantity, unit: unit, category: category,
+                                    pricePaid: price, expiryDate: hasExpiry ? expiryDate : nil)
             if viewModel.errorMessage == nil {
                 dismiss()
             }
