@@ -61,6 +61,16 @@ nonisolated struct DetectionFusionService: Sendable {
     }
 
     nonisolated struct Configuration: Sendable {
+        /// Detector confidence a localised claim needs to be offered for
+        /// review at all.
+        ///
+        /// Stage 4's own floor, independent of the live overlay's. It is set
+        /// to `DetectionFilterPolicy.reviewThreshold` rather than
+        /// `displayThreshold` on purpose: review is the one place a second
+        /// method's opinion is available, so it sees *more* than the overlay,
+        /// not less. A detection hidden from the Controller that Apple Vision
+        /// then independently names still reaches the user here.
+        var detectorThreshold: Float = DetectionFilterPolicy.default.reviewThreshold
         /// A region classification below this is ignored rather than treated
         /// as a disagreement. A weak second opinion is not a conflict.
         var regionAgreementThreshold: Float = 0.20
@@ -104,11 +114,20 @@ nonisolated struct DetectionFusionService: Sendable {
         var localised: [FusedIngredient] = []
 
         for detection in detections.ingredients {
-            let best = regionClassifications[detection.id]?.ingredients
+            guard detection.confidence >= configuration.detectorThreshold else { continue }
+            // Absent key and present-but-empty are different facts. "We never
+            // asked" is not evidence; "we asked and it named nothing" is weak
+            // evidence against, and the two must not collapse into one.
+            let regionResult = regionClassifications[detection.id]
+            let best = regionResult?.ingredients
                 .filter { $0.confidence >= configuration.regionAgreementThreshold }
                 .max { $0.confidence < $1.confidence }
 
-            localised.append(fuse(detection: detection, regionBest: best))
+            localised.append(fuse(
+                detection: detection,
+                regionBest: best,
+                wasRegionClassified: regionResult != nil
+            ))
         }
 
         // Anything the classifier found in a region that the detector did not
@@ -140,12 +159,21 @@ nonisolated struct DetectionFusionService: Sendable {
 
     private func fuse(
         detection: DetectedIngredient,
-        regionBest: ClassifiedIngredient?
+        regionBest: ClassifiedIngredient?,
+        wasRegionClassified: Bool
     ) -> FusedIngredient {
         guard let classified = regionBest else {
             // Detector only. Still carries whatever review reason the
             // normaliser already assigned - a generic "Red Meat" stays
             // generic.
+            //
+            // If the classifier *did* run on this crop and came back with
+            // nothing, that is recorded. It is not a conflict - no competing
+            // label exists - but it is also not the same as a box nobody
+            // double-checked, and the review sheet is entitled to know which
+            // of the two it is looking at.
+            let reason = detection.reviewReason
+                ?? (wasRegionClassified ? ReviewReason.notCorroborated : nil)
             return FusedIngredient(
                 ingredientId: detection.ingredientId,
                 displayName: detection.displayName,
@@ -155,7 +183,7 @@ nonisolated struct DetectionFusionService: Sendable {
                 boundingBox: detection.boundingBox,
                 detectorConfidence: detection.confidence,
                 detectorTerm: detection.rawTerm,
-                reviewReason: detection.reviewReason
+                reviewReason: reason
             )
         }
 
