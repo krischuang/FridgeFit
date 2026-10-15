@@ -27,12 +27,35 @@ struct EvaluateRecipeFeasibilityUseCase {
     /// so id equality would never match.
     func execute(recipe: Recipe) async throws -> RecipeFeasibilityResult {
         let pantryItems = try await pantryRepository.fetchAll()
+        return Self.evaluate(recipe: recipe, against: pantryItems)
+    }
+
+    /// The same comparison as `execute(recipe:)`, against a pantry the
+    /// caller has already read.
+    ///
+    /// Exists so a caller that evaluates *many* recipes - the
+    /// context-aware recommendation flow - can fetch the pantry once
+    /// instead of once per recipe. Evaluating ten recipes through
+    /// `execute(recipe:)` means ten Firestore reads of the same
+    /// collection, with the added hazard that the pantry could change
+    /// between them and produce a list ranked against two different
+    /// pantries.
+    ///
+    /// This is a pure extraction, not a second engine: `execute(recipe:)`
+    /// now delegates here, so there is exactly one implementation of the
+    /// rule and no way for the two entry points to disagree. `static` and
+    /// `nonisolated` because it reads nothing but its arguments, which also
+    /// lets the recommendation flow run it off the main actor.
+    nonisolated static func evaluate(
+        recipe: Recipe,
+        against pantryItems: [PantryItem]
+    ) -> RecipeFeasibilityResult {
         let evaluatedIngredients = recipe.ingredients.map { evaluate($0, against: pantryItems) }
-        let status = Self.status(for: evaluatedIngredients)
+        let status = status(for: evaluatedIngredients)
         return RecipeFeasibilityResult(recipe: recipe, evaluatedIngredients: evaluatedIngredients, status: status)
     }
 
-    private func evaluate(_ recipeIngredient: RecipeIngredient, against pantryItems: [PantryItem]) -> RecipeIngredientEvaluation {
+    nonisolated private static func evaluate(_ recipeIngredient: RecipeIngredient, against pantryItems: [PantryItem]) -> RecipeIngredientEvaluation {
         guard let pantryItem = pantryItems.first(where: { $0.ingredient.matches(name: recipeIngredient.ingredient.name) }) else {
             return RecipeIngredientEvaluation(recipeIngredient: recipeIngredient, pantryQuantity: nil, pantryUnit: nil, availability: .missing)
         }
@@ -58,7 +81,7 @@ struct EvaluateRecipeFeasibilityUseCase {
     ///
     /// Optional ingredients never factor in - see
     /// `RecipeFeasibilityResult.optionalMissingIngredients`.
-    private static func status(for evaluatedIngredients: [RecipeIngredientEvaluation]) -> RecipeFeasibilityStatus {
+    nonisolated private static func status(for evaluatedIngredients: [RecipeIngredientEvaluation]) -> RecipeFeasibilityStatus {
         let essential = evaluatedIngredients.filter { $0.role == .essential }
         guard !essential.isEmpty else { return .makeable }
 

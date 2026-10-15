@@ -15,6 +15,12 @@ struct ContentView: View {
     @StateObject private var substitutionViewModel: SubstitutionViewModel
     @StateObject private var scannerViewModel: ReceiptScannerViewModel
     @StateObject private var recipeSuggestionViewModel: RecipeSuggestionViewModel
+    /// Context-aware recommendations. Built on the *same*
+    /// `pantryRepository` and the same `BundledRecipeRepository` instance
+    /// as `recipeViewModel`, so a ranked meal and a browsed recipe are
+    /// judged against one pantry and one catalogue - there is no separate
+    /// sample store behind this feature.
+    @StateObject private var recommendationViewModel: RecommendationViewModel
     /// The Kitchen tab's state. Built on the *same* `pantryRepository` as
     /// every other tab, so an item added here shows up in the Pantry list
     /// and counts towards recipe feasibility with no sync step - they are
@@ -27,8 +33,22 @@ struct ContentView: View {
     init() {
         let pantryRepository = FirestorePantryRepository()
         self.pantryRepository = pantryRepository
+        let recipeRepository = BundledRecipeRepository()
         _pantryViewModel = StateObject(wrappedValue: PantryViewModel(pantryRepository: pantryRepository))
-        _recipeViewModel = StateObject(wrappedValue: RecipeViewModel(pantryRepository: pantryRepository))
+        _recipeViewModel = StateObject(
+            wrappedValue: RecipeViewModel(
+                recipeRepository: recipeRepository,
+                pantryRepository: pantryRepository
+            )
+        )
+        _recommendationViewModel = StateObject(
+            wrappedValue: RecommendationViewModel(
+                generateUseCase: GenerateContextAwareRecommendationsUseCase(
+                    recipeRepository: recipeRepository,
+                    pantryRepository: pantryRepository
+                )
+            )
+        )
         _inventoryStore = StateObject(
             wrappedValue: InventoryStore(
                 pantryRepository: pantryRepository,
@@ -93,7 +113,8 @@ struct ContentView: View {
                 RecipeListView(
                     viewModel: recipeViewModel,
                     substitutionViewModel: substitutionViewModel,
-                    suggestionViewModel: recipeSuggestionViewModel
+                    suggestionViewModel: recipeSuggestionViewModel,
+                    recommendationViewModel: recommendationViewModel
                 )
             }
             .tabItem { Label("Recipes", systemImage: "fork.knife") }
