@@ -175,7 +175,10 @@ nonisolated struct EvaluateRecipeSuitabilityUseCase {
     ///   same call the Kitchen screen's "Use First" section makes, so a
     ///   recipe can never call something urgent that the Kitchen tab calls
     ///   fine. The source branch had its own flat "expires within two
-    ///   days" rule; it is not reimplemented here.
+    ///   days" rule; it is not reimplemented here. `ExpiryService` is
+    ///   called directly rather than through `PantryItem.expiryState`,
+    ///   which hardcodes `.now` - going through it would silently ignore
+    ///   the injected `now` and make these rules untestable.
     /// - **Expired food earns nothing.** `.expired` is filtered out of the
     ///   urgent list and collected separately. Ranking a dish *up* for
     ///   using food that has gone off would be recommending that someone
@@ -207,7 +210,7 @@ nonisolated struct EvaluateRecipeSuitabilityUseCase {
 
             guard creditedItemIDs.insert(item.id).inserted else { continue }
 
-            guard let state = item.expiryState else { continue }
+            guard let state = ExpiryService.state(for: item.expiryDate, now: now) else { continue }
 
             if state.urgency == .expired {
                 expired.append(item.name)
