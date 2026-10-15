@@ -28,11 +28,40 @@ struct RecipeListView: View {
                     Text("Check back later for recipes to cook.")
                 }
             } else {
-                List(viewModel.recipes) { recipe in
-                    NavigationLink {
-                        RecipeDetailView(recipe: recipe, viewModel: viewModel, substitutionViewModel: substitutionViewModel)
-                    } label: {
-                        RecipeRow(recipe: recipe, feasibility: viewModel.feasibility(for: recipe))
+                // Two sections only when there is something saved from
+                // Discover. With saving gated off `savedRecipes` is always
+                // empty, so this renders as the single unheaded list it
+                // always has - the section split appears the first time it
+                // means something.
+                List {
+                    if !viewModel.savedRecipes.isEmpty {
+                        Section {
+                            ForEach(viewModel.savedRecipes) { recipe in
+                                recipeLink(recipe)
+                            }
+                            .onDelete { offsets in
+                                let targets = offsets.map { viewModel.savedRecipes[$0] }
+                                Task {
+                                    for recipe in targets {
+                                        await viewModel.removeSavedRecipe(recipe)
+                                    }
+                                }
+                            }
+                        } header: {
+                            Text("Saved from Discover")
+                        } footer: {
+                            Text("Recipe data via Spoonacular. Checked against your pantry like any other recipe. Swipe left to remove.")
+                        }
+                    }
+
+                    Section {
+                        ForEach(viewModel.bundledRecipes) { recipe in
+                            recipeLink(recipe)
+                        }
+                    } header: {
+                        if !viewModel.savedRecipes.isEmpty {
+                            Text("FridgeFit Recipes")
+                        }
                     }
                 }
                 .listStyle(.insetGrouped)
@@ -83,6 +112,34 @@ struct RecipeListView: View {
             Button("OK") { viewModel.errorMessage = nil }
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+        // Saved-recipe problems are reported separately so a Firestore
+        // failure never shows up as "Couldn't Load Recipes". Gated on
+        // `errorMessage == nil` to give the two alerts a deterministic
+        // precedence rather than letting both bindings go true at once.
+        .alert(
+            "Saved Recipes",
+            isPresented: Binding(
+                get: { viewModel.savedRecipeErrorMessage != nil && viewModel.errorMessage == nil },
+                set: { isPresented in
+                    if !isPresented { viewModel.savedRecipeErrorMessage = nil }
+                }
+            )
+        ) {
+            Button("OK") { viewModel.savedRecipeErrorMessage = nil }
+        } message: {
+            Text(viewModel.savedRecipeErrorMessage ?? "")
+        }
+    }
+
+    /// One row, pushing the existing detail screen. Shared by both sections
+    /// so a saved recipe and a bundled one are presented identically - same
+    /// detail view, same feasibility verdict, same substitutions.
+    private func recipeLink(_ recipe: Recipe) -> some View {
+        NavigationLink {
+            RecipeDetailView(recipe: recipe, viewModel: viewModel, substitutionViewModel: substitutionViewModel)
+        } label: {
+            RecipeRow(recipe: recipe, feasibility: viewModel.feasibility(for: recipe))
         }
     }
 }
