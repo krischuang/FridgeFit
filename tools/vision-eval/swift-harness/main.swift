@@ -287,6 +287,23 @@ if arguments.count > 4, arguments[4] == "bands" {
 // MARK: - Run every candidate
 
 var detectorSets: [String: Set<String>] = [:]
+// Before/after for the display policy, both built from the shipped source.
+//
+// "before" reproduces what the old `IngredientNormalizer` did in one step: a
+// 0.40 floor and a flat top-12-by-confidence cap, with no per-ingredient
+// budget. "after" is the shipped two-stage chain - candidates at 0.30, then
+// `DetectionDisplayFilter`.
+let beforeNormalizer: IngredientNormalizer = {
+    var policy = DetectionFilterPolicy.default
+    policy.candidateThreshold = policy.displayThreshold   // 0.40, as it was
+    policy.maximumCandidates = policy.maximumDisplayedBoxes  // flat cap of 12
+    return IngredientNormalizer(taxonomy: resolved.taxonomy, policy: policy)
+}()
+var beforeSets: [String: Set<String>] = [:]
+var afterSets: [String: Set<String>] = [:]
+var beforeBoxes: [String: Int] = [:]
+var afterBoxes: [String: Int] = [:]
+
 var fullImage30: [String: Set<String>] = [:]
 var fullImage10: [String: Set<String>] = [:]
 var cropSets: [String: Set<String>] = [:]
@@ -322,6 +339,17 @@ for name in annotations.keys.sorted() {
     let detectMs = try elapsed { raw = try detector.detect(in: image) }
     let normalised = resolved.normalizer.normalize(raw, source: resolved.source)
     detectorSets[name] = Set(normalised.ingredients.map(\.ingredientId))
+
+    // Each image gets a fresh filter: these are 11 unrelated stills, so
+    // carrying hysteresis between them would be meaningless.
+    var displayFilter = DetectionDisplayFilter(policy: resolved.policy)
+    let displayed = displayFilter.display(normalised)
+    afterSets[name] = Set(displayed.ingredients.map(\.ingredientId))
+    afterBoxes[name] = displayed.ingredients.count
+
+    let before = beforeNormalizer.normalize(raw, source: resolved.source)
+    beforeSets[name] = Set(before.ingredients.map(\.ingredientId))
+    beforeBoxes[name] = before.ingredients.count
 
     var scene = ClassificationResult.empty
     let sceneMs = try elapsed { scene = try sceneHigh.classify(image, orientation: .up) }
@@ -410,7 +438,9 @@ for strategy in DetectionFusionService.ConflictStrategy.allCases {
 }
 
 let scores = [
-    score(detectorSets, annotations, "yolo-world (swift)"),
+    score(beforeSets, annotations, "overlay BEFORE (flat cap)"),
+    score(afterSets, annotations, "overlay AFTER (budgeted)"),
+    score(detectorSets, annotations, "yolo-world candidates"),
     score(fullImage30, annotations, "vision full-image @0.30"),
     score(fullImage10, annotations, "vision full-image @0.10"),
     score(cropSets, annotations, "vision crop-based @0.20"),
@@ -420,14 +450,37 @@ let scores = [
 ]
 report(scores)
 
-print("--- false negatives: yolo-world ---")
-print(scores[0].missed.sorted().joined(separator: ", "))
+// Looked up by label rather than index, so adding a row above cannot silently
+// relabel what is printed below.
+func scored(_ label: String) -> Score { scores.first { $0.label == label }! }
+
+print("--- displayed boxes per image: before -> after ---")
+var beforeTotal = 0, afterTotal = 0
+for name in annotations.keys.sorted() {
+    let b = beforeBoxes[name] ?? 0, a = afterBoxes[name] ?? 0
+    beforeTotal += b
+    afterTotal += a
+    let names = afterSets[name]?.sorted().joined(separator: ", ") ?? ""
+    print(String(format: "  %-16s %3d -> %3d   %@",
+                 (name as NSString).utf8String!, b, a, names as NSString))
+}
+let imageCount = max(annotations.count, 1)
+print(String(format: "  %-16s %3d -> %3d   (%.2f -> %.2f per image)",
+             ("TOTAL" as NSString).utf8String!, beforeTotal, afterTotal,
+             Double(beforeTotal) / Double(imageCount), Double(afterTotal) / Double(imageCount)))
+
+print("--- false negatives: overlay AFTER ---")
+print(scored("overlay AFTER (budgeted)").missed.sorted().joined(separator: ", "))
+print("--- false positives: overlay BEFORE ---")
+print(scored("overlay BEFORE (flat cap)").spurious.sorted().joined(separator: ", "))
+print("--- false positives: overlay AFTER ---")
+print(scored("overlay AFTER (budgeted)").spurious.sorted().joined(separator: ", "))
 print("--- false negatives: vision full-image @0.30 ---")
-print(scores[1].missed.sorted().joined(separator: ", "))
+print(scored("vision full-image @0.30").missed.sorted().joined(separator: ", "))
 print("--- false positives: vision full-image @0.30 ---")
-print(scores[1].spurious.sorted().joined(separator: ", "))
+print(scored("vision full-image @0.30").spurious.sorted().joined(separator: ", "))
 print("--- false positives: crop-based @0.20 ---")
-print(scores[3].spurious.sorted().joined(separator: ", "))
+print(scored("vision crop-based @0.20").spurious.sorted().joined(separator: ", "))
 print("--- conflicts per image ---")
 print(conflictCounts.filter { $0.value > 0 }.sorted { $0.key < $1.key }
         .map { "\($0.key):\($0.value)" }.joined(separator: ", "))
@@ -470,6 +523,8 @@ struct Output: Encodable {
     let perImage: [String: [String: [String]]]
 }
 let perImage: [String: [String: [String]]] = [
+    "overlayBefore": beforeSets.mapValues { $0.sorted() },
+    "overlayAfter": afterSets.mapValues { $0.sorted() },
     "yolo": detectorSets.mapValues { $0.sorted() },
     "visionFull30": fullImage30.mapValues { $0.sorted() },
     "crops": cropSets.mapValues { $0.sorted() },

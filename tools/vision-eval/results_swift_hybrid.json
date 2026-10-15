@@ -16,6 +16,7 @@
       "fruits_mixed" : [
         "apple",
         "banana",
+        "pear",
         "pineapple"
       ],
       "market_crowded" : [
@@ -49,13 +50,15 @@
         "egg_carton"
       ],
       "fish_platter" : [
-        "rice"
+        "rice",
+        "salmon_fillet"
       ],
       "fruits_mixed" : [
         "apple",
         "banana",
         "mango",
         "orange",
+        "pear",
         "pineapple",
         "strawberry"
       ],
@@ -79,6 +82,100 @@
         "carrot",
         "cucumber",
         "zucchini"
+      ]
+    },
+    "overlayAfter" : {
+      "beef_raw" : [
+        "bread_loaf"
+      ],
+      "chicken_raw" : [
+        "carrot"
+      ],
+      "eggs_carton" : [
+        "apple",
+        "orange"
+      ],
+      "fish_platter" : [
+        "bread_loaf",
+        "zucchini"
+      ],
+      "fruits_mixed" : [
+        "apple",
+        "banana",
+        "orange",
+        "pear",
+        "pineapple",
+        "strawberry"
+      ],
+      "market_crowded" : [
+        "apple",
+        "banana",
+        "bell_pepper",
+        "pumpkin",
+        "tomato"
+      ],
+      "prawns" : [
+
+      ],
+      "shelf_packaged" : [
+        "bread_loaf",
+        "sauce_bottle"
+      ],
+      "supermarket" : [
+        "sauce_bottle"
+      ],
+      "tapas_cheese" : [
+        "milk_bottle"
+      ],
+      "veg_mixed" : [
+        "bell_pepper",
+        "carrot"
+      ]
+    },
+    "overlayBefore" : {
+      "beef_raw" : [
+        "bread_loaf"
+      ],
+      "chicken_raw" : [
+        "carrot"
+      ],
+      "eggs_carton" : [
+        "apple",
+        "orange"
+      ],
+      "fish_platter" : [
+        "bread_loaf",
+        "zucchini"
+      ],
+      "fruits_mixed" : [
+        "apple",
+        "banana",
+        "pineapple",
+        "strawberry"
+      ],
+      "market_crowded" : [
+        "apple",
+        "banana",
+        "bell_pepper",
+        "pumpkin",
+        "tomato"
+      ],
+      "prawns" : [
+
+      ],
+      "shelf_packaged" : [
+        "bread_loaf",
+        "sauce_bottle"
+      ],
+      "supermarket" : [
+        "sauce_bottle"
+      ],
+      "tapas_cheese" : [
+        "milk_bottle"
+      ],
+      "veg_mixed" : [
+        "bell_pepper",
+        "carrot"
       ]
     },
     "visionFull30" : {
@@ -146,11 +243,14 @@
       ],
       "fish_platter" : [
         "bread_loaf",
+        "carrot",
         "zucchini"
       ],
       "fruits_mixed" : [
         "apple",
         "banana",
+        "orange",
+        "pear",
         "pineapple",
         "strawberry"
       ],
@@ -172,6 +272,7 @@
         "sauce_bottle"
       ],
       "tapas_cheese" : [
+        "butter",
         "milk_bottle"
       ],
       "veg_mixed" : [
@@ -185,7 +286,7 @@
       "expected" : 38,
       "falsePositives" : 12,
       "found" : 9,
-      "label" : "yolo-world (swift)",
+      "label" : "overlay BEFORE (flat cap)",
       "perCategory" : {
         "dairy" : 0,
         "fruit" : 0.4375,
@@ -196,6 +297,38 @@
       },
       "precision" : 0.42857142857142855,
       "recall" : 0.23684210526315788
+    },
+    {
+      "expected" : 38,
+      "falsePositives" : 12,
+      "found" : 11,
+      "label" : "overlay AFTER (budgeted)",
+      "perCategory" : {
+        "dairy" : 0,
+        "fruit" : 0.5625,
+        "meat" : 0,
+        "pantry" : 0.25,
+        "seafood" : 0,
+        "vegetable" : 0.2
+      },
+      "precision" : 0.4782608695652174,
+      "recall" : 0.2894736842105263
+    },
+    {
+      "expected" : 38,
+      "falsePositives" : 14,
+      "found" : 11,
+      "label" : "yolo-world candidates",
+      "perCategory" : {
+        "dairy" : 0,
+        "fruit" : 0.5625,
+        "meat" : 0,
+        "pantry" : 0.25,
+        "seafood" : 0,
+        "vegetable" : 0.2
+      },
+      "precision" : 0.44,
+      "recall" : 0.2894736842105263
     },
     {
       "expected" : 38,
@@ -232,38 +365,38 @@
     {
       "expected" : 38,
       "falsePositives" : 3,
-      "found" : 12,
+      "found" : 14,
       "label" : "vision crop-based @0.20",
       "perCategory" : {
         "dairy" : 0.2,
-        "fruit" : 0.4375,
+        "fruit" : 0.5,
         "meat" : 0.5,
         "pantry" : 0,
-        "seafood" : 0,
+        "seafood" : 0.16666666666666666,
         "vegetable" : 0.6
       },
-      "precision" : 0.8,
-      "recall" : 0.3157894736842105
+      "precision" : 0.8235294117647058,
+      "recall" : 0.3684210526315789
     },
     {
       "expected" : 38,
-      "falsePositives" : 14,
-      "found" : 15,
+      "falsePositives" : 16,
+      "found" : 17,
       "label" : "hybrid: yolo + crops",
       "perCategory" : {
         "dairy" : 0.2,
-        "fruit" : 0.5625,
+        "fruit" : 0.625,
         "meat" : 0.5,
         "pantry" : 0.25,
-        "seafood" : 0,
+        "seafood" : 0.16666666666666666,
         "vegetable" : 0.6
       },
-      "precision" : 0.5172413793103449,
-      "recall" : 0.39473684210526316
+      "precision" : 0.5151515151515151,
+      "recall" : 0.4473684210526316
     },
     {
       "expected" : 38,
-      "falsePositives" : 18,
+      "falsePositives" : 20,
       "found" : 19,
       "label" : "hybrid: yolo + full-image",
       "perCategory" : {
@@ -274,24 +407,24 @@
         "seafood" : 0.16666666666666666,
         "vegetable" : 0.6
       },
-      "precision" : 0.5135135135135135,
+      "precision" : 0.48717948717948717,
       "recall" : 0.5
     },
     {
       "expected" : 38,
       "falsePositives" : 1,
-      "found" : 5,
+      "found" : 6,
       "label" : "agreement (localised)",
       "perCategory" : {
         "dairy" : 0,
-        "fruit" : 0.25,
+        "fruit" : 0.3125,
         "meat" : 0,
         "pantry" : 0,
         "seafood" : 0,
         "vegetable" : 0.2
       },
-      "precision" : 0.8333333333333334,
-      "recall" : 0.13157894736842105
+      "precision" : 0.8571428571428571,
+      "recall" : 0.15789473684210525
     }
   ]
 }

@@ -35,6 +35,8 @@ SOURCES=(
   "$ROOT/FridgeFit/Data/RemoteCamera/RegionIngredientClassifier.swift"
   "$ROOT/FridgeFit/Data/RemoteCamera/PackagedFoodTextReader.swift"
   "$ROOT/FridgeFit/Data/RemoteCamera/YOLOFoodDetectionService.swift"
+  "$ROOT/FridgeFit/UseCases/DetectionFilterPolicy.swift"
+  "$ROOT/FridgeFit/UseCases/DetectionDisplayFilter.swift"
   "$ROOT/FridgeFit/UseCases/IngredientNormalizer.swift"
   "$ROOT/FridgeFit/UseCases/DetectionFusionService.swift"
   "$ROOT/FridgeFit/Data/RemoteCamera/IngredientDetectorFactory.swift"
