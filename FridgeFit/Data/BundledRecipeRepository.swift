@@ -24,6 +24,38 @@ final class BundledRecipeRepository: RecipeRepository {
 }
 
 extension BundledRecipeRepository {
+    /// The bundled dataset, including the recommendation metadata the
+    /// context-aware ranking reads.
+    ///
+    /// ## How the metadata was assigned
+    ///
+    /// `cuisine`, `tastePreferences`, `totalCookingTimeInMinutes` and
+    /// `difficulty` are editorial values for this curated dataset, derived
+    /// from each recipe's own ingredients, steps and serving count. They
+    /// are ordinary recipe-card information, and none of them is a safety
+    /// claim - the worst a wrong one can do is rank a dish badly.
+    ///
+    /// `dietaryLabels` is held to a stricter rule, because it *is* a safety
+    /// claim. A restriction is listed only when every ingredient the recipe
+    /// names - optional ones included - establishes it:
+    ///
+    /// - `vegetarian` / `vegan` / `dairyFree` follow from the stated
+    ///   ingredients, counting optional ingredients against the label. The
+    ///   tomato soup lists cream as optional, so it is not labelled
+    ///   `dairyFree`; a label that only holds if you skip an ingredient is
+    ///   not a label.
+    /// - `glutenFree` is listed only where no grain-derived ingredient
+    ///   appears at all. It is withheld from recipes containing soy sauce
+    ///   or stock, which commonly contain wheat without saying so.
+    /// - `nutFree` is listed on **no** recipe. The absence of a nut from an
+    ///   ingredient list is not evidence of nut safety - shared equipment
+    ///   and "may contain" labelling are exactly the risk a nut-free diner
+    ///   is managing, and this dataset has no provenance to rule them out.
+    ///
+    /// An empty set therefore means *assessed, and satisfies none of the
+    /// restrictions FridgeFit models* - which is a different fact from
+    /// `nil`, meaning never assessed. See `Recipe.dietaryLabels` and
+    /// `DietaryCompliance`.
     static var sampleRecipes: [Recipe] {
         [
             Recipe(
@@ -44,7 +76,14 @@ extension BundledRecipeRepository {
                     "Toss the pasta and chicken through the sauce.",
                     "Garnish with parsley if you have it.",
                 ],
-                symbolName: "fork.knife"
+                symbolName: "fork.knife",
+                cuisine: .italian,
+                tastePreferences: [.savoury, .hearty],
+                // Chicken, cream and wheat pasta: satisfies none of the
+                // restrictions modelled here.
+                dietaryLabels: [],
+                totalCookingTimeInMinutes: 30,
+                difficulty: .easy
             ),
             Recipe(
                 title: "Vegetable Fried Rice",
@@ -63,7 +102,14 @@ extension BundledRecipeRepository {
                     "Stir-fry onion and carrot until softened.",
                     "Add the rice, egg, and soy sauce, tossing until combined.",
                 ],
-                symbolName: "leaf.fill"
+                symbolName: "leaf.fill",
+                cuisine: .asian,
+                tastePreferences: [.savoury],
+                // Egg rules out vegan; no dairy anywhere. Not labelled
+                // gluten free - soy sauce commonly contains wheat.
+                dietaryLabels: [.vegetarian, .dairyFree],
+                totalCookingTimeInMinutes: 25,
+                difficulty: .easy
             ),
             Recipe(
                 title: "Classic Cheese Omelette",
@@ -81,7 +127,14 @@ extension BundledRecipeRepository {
                     "Pour in the eggs and cook until nearly set.",
                     "Sprinkle cheddar over half, fold, and serve.",
                 ],
-                symbolName: "circle.grid.2x2.fill"
+                symbolName: "circle.grid.2x2.fill",
+                cuisine: .comfortFood,
+                tastePreferences: [.savoury, .mild],
+                // No grain-derived ingredient at all, so gluten free holds.
+                // Milk and cheddar rule out vegan and dairy free.
+                dietaryLabels: [.vegetarian, .glutenFree],
+                totalCookingTimeInMinutes: 10,
+                difficulty: .easy
             ),
             Recipe(
                 title: "Beef Tacos",
@@ -101,7 +154,13 @@ extension BundledRecipeRepository {
                     "Fill each tortilla with beef and cheddar.",
                     "Top with lettuce and salsa if you have them.",
                 ],
-                symbolName: "flame.fill"
+                symbolName: "flame.fill",
+                cuisine: .mexican,
+                tastePreferences: [.savoury, .spicy, .hearty],
+                // Beef, cheddar and wheat tortillas.
+                dietaryLabels: [],
+                totalCookingTimeInMinutes: 25,
+                difficulty: .easy
             ),
             Recipe(
                 title: "Tomato Soup",
@@ -120,7 +179,15 @@ extension BundledRecipeRepository {
                     "Blend until smooth.",
                     "Stir in cream and basil to finish, if using.",
                 ],
-                symbolName: "drop.fill"
+                symbolName: "drop.fill",
+                cuisine: .mediterranean,
+                tastePreferences: [.fresh, .mild],
+                // Cream is optional, but a label that only holds if you
+                // skip an ingredient is not a label - so no dairy free and
+                // no vegan. Stock provenance is unknown, so no gluten free.
+                dietaryLabels: [.vegetarian],
+                totalCookingTimeInMinutes: 35,
+                difficulty: .easy
             ),
             Recipe(
                 title: "Banana Pancakes",
@@ -139,7 +206,13 @@ extension BundledRecipeRepository {
                     "Cook spoonfuls of batter on a buttered griddle until golden.",
                     "Top with banana slices and butter.",
                 ],
-                symbolName: "square.grid.3x3.fill"
+                symbolName: "square.grid.3x3.fill",
+                cuisine: .comfortFood,
+                tastePreferences: [.mild],
+                // Wheat flour, milk, egg and butter.
+                dietaryLabels: [.vegetarian],
+                totalCookingTimeInMinutes: 25,
+                difficulty: .moderate
             ),
             Recipe(
                 title: "Grilled Cheese Sandwich",
@@ -155,7 +228,13 @@ extension BundledRecipeRepository {
                     "Layer cheddar between the slices, buttered sides out.",
                     "Grill in a pan over medium heat until golden on both sides.",
                 ],
-                symbolName: "square.stack.fill"
+                symbolName: "square.stack.fill",
+                cuisine: .comfortFood,
+                tastePreferences: [.savoury, .mild, .hearty],
+                // Wheat bread, cheddar and butter.
+                dietaryLabels: [.vegetarian],
+                totalCookingTimeInMinutes: 10,
+                difficulty: .easy
             ),
             Recipe(
                 title: "Chicken Caesar Salad",
@@ -173,7 +252,14 @@ extension BundledRecipeRepository {
                     "Toss the lettuce with the dressing.",
                     "Top with chicken, parmesan, and croutons if you have them.",
                 ],
-                symbolName: "leaf.fill"
+                symbolName: "leaf.fill",
+                cuisine: .mediterranean,
+                tastePreferences: [.fresh, .savoury],
+                // Chicken, parmesan, and dressing that conventionally
+                // contains anchovy and egg.
+                dietaryLabels: [],
+                totalCookingTimeInMinutes: 20,
+                difficulty: .easy
             ),
             Recipe(
                 title: "Rice and Beans",
@@ -192,7 +278,15 @@ extension BundledRecipeRepository {
                     "Add the beans and cumin, simmering until heated through.",
                     "Serve the beans over rice.",
                 ],
-                symbolName: "square.grid.3x3.fill"
+                symbolName: "square.grid.3x3.fill",
+                cuisine: .mexican,
+                tastePreferences: [.hearty, .savoury],
+                // Rice, beans, aromatics and a spice: no animal product
+                // and no gluten-bearing grain, optional ingredients
+                // included.
+                dietaryLabels: [.vegetarian, .vegan, .dairyFree, .glutenFree],
+                totalCookingTimeInMinutes: 30,
+                difficulty: .easy
             ),
             Recipe(
                 title: "Greek Yogurt Parfait",
@@ -208,7 +302,14 @@ extension BundledRecipeRepository {
                     "Layer yogurt and granola in a glass.",
                     "Top with berries and a drizzle of honey if you have them.",
                 ],
-                symbolName: "drop.fill"
+                symbolName: "drop.fill",
+                cuisine: .mediterranean,
+                tastePreferences: [.fresh, .mild],
+                // Yogurt rules out vegan and dairy free; granola is
+                // oat/wheat based, so no gluten free.
+                dietaryLabels: [.vegetarian],
+                totalCookingTimeInMinutes: 5,
+                difficulty: .easy
             ),
         ]
     }

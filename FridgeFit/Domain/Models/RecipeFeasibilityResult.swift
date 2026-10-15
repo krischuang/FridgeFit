@@ -58,7 +58,11 @@ struct RecipeIngredientEvaluation: Identifiable, Hashable {
 ///
 /// One model instead of scattered booleans, so the list row, the detail
 /// screen, and the tests all read the same verdict.
-struct RecipeFeasibilityResult {
+///
+/// `Equatable` so types that carry a verdict forward - `RecipeSuitability`
+/// - can be compared in tests. Every stored property was already
+/// `Equatable`, so the conformance is synthesized and adds no behaviour.
+struct RecipeFeasibilityResult: Equatable {
     let recipe: Recipe
     /// Every ingredient the recipe calls for, already compared against the
     /// pantry, in the recipe's own order.
