@@ -7,11 +7,16 @@ import CoreGraphics
 import XCTest
 @testable import FridgeFit
 
-/// The policy layer: what the app is willing to claim.
+/// Stage 2 of the policy layer: what the app is willing to *consider*.
 ///
-/// Measured precision of the ingredient model is around 56% at the default
-/// threshold, so these rules are what stand between a confident-sounding
-/// label and the user. They are pure functions, and tested as such.
+/// What it is willing to *draw* is `DetectionDisplayFilterTests`. The split
+/// matters - the normaliser's floor is `candidateThreshold`, deliberately
+/// lower than the overlay's, so the snapshot pipeline can still corroborate a
+/// box the Controller withholds.
+///
+/// Measured precision of the ingredient model is around 56% at the display
+/// floor, so these rules are what stand between a confident-sounding label and
+/// the user. They are pure functions, and tested as such.
 final class IngredientNormalizerTests: XCTestCase {
 
     private func taxonomy() throws -> IngredientTaxonomy {
@@ -19,17 +24,17 @@ final class IngredientNormalizerTests: XCTestCase {
     }
 
     private func normalizer(
-        display: Float = 0.40,
-        trust: Float = 0.60,
+        candidate: Float = 0.30,
+        strong: Float = 0.60,
         duplicateIoU: CGFloat = 0.55,
-        maximum: Int = 12
+        maximum: Int = 24
     ) throws -> IngredientNormalizer {
-        var configuration = IngredientNormalizer.Configuration.default
-        configuration.displayThreshold = display
-        configuration.trustThreshold = trust
-        configuration.duplicateIoU = duplicateIoU
-        configuration.maximumIngredients = maximum
-        return IngredientNormalizer(taxonomy: try taxonomy(), configuration: configuration)
+        var policy = DetectionFilterPolicy.default
+        policy.candidateThreshold = candidate
+        policy.strongThreshold = strong
+        policy.duplicateIoU = duplicateIoU
+        policy.maximumCandidates = maximum
+        return IngredientNormalizer(taxonomy: try taxonomy(), policy: policy)
     }
 
     private func frame(_ objects: [(String, Float, CGRect)]) -> DetectionFrame {
@@ -48,46 +53,67 @@ final class IngredientNormalizerTests: XCTestCase {
 
     // MARK: - Confidence filtering
 
-    func test_detectionsBelowTheDisplayThresholdAreDropped() throws {
+    func test_detectionsBelowTheCandidateThresholdAreDropped() throws {
         let result = try normalizer().normalize(
-            frame([("apple", 0.39, box)]), source: .ingredientDetector
+            frame([("apple", 0.29, box)]), source: .ingredientDetector
         )
 
-        XCTAssertTrue(result.isEmpty, "0.39 is below the 0.40 floor")
+        XCTAssertTrue(result.isEmpty, "0.29 is below the 0.30 candidate floor")
     }
 
-    func test_theDisplayThresholdIsInclusive() throws {
+    func test_theCandidateThresholdIsInclusive() throws {
         let result = try normalizer().normalize(
-            frame([("apple", 0.40, box)]), source: .ingredientDetector
+            frame([("apple", 0.30, box)]), source: .ingredientDetector
         )
 
         XCTAssertEqual(result.ingredients.count, 1)
     }
 
-    func test_detectionsBetweenTheThresholdsAreFlaggedForReview() throws {
+    /// The whole reason stage 2 exists. A 0.34 apple is below the overlay's
+    /// 0.40 floor and must still become a candidate, because the snapshot
+    /// pipeline runs region classification over candidates - and a second
+    /// method agreeing is exactly how a weak box earns its place.
+    func test_candidatesBelowTheDisplayThresholdSurviveNormalisation() throws {
+        let policy = DetectionFilterPolicy.default
+        let result = try normalizer().normalize(
+            frame([("apple", 0.34, box)]), source: .ingredientDetector
+        )
+
+        XCTAssertLessThan(0.34, policy.displayThreshold)
+        XCTAssertEqual(result.ingredients.count, 1,
+                       "a sub-display candidate must still reach fusion")
+    }
+
+    func test_detectionsBelowTheStrongThresholdAreFlaggedForReview() throws {
         let result = try normalizer().normalize(
             frame([("apple", 0.50, box)]), source: .ingredientDetector
         )
 
         let apple = try XCTUnwrap(result.ingredients.first)
         XCTAssertEqual(apple.reviewReason, .lowConfidence)
-        XCTAssertTrue(apple.requiresReview)
+        XCTAssertTrue(apple.hasReviewFlag)
+        XCTAssertEqual(apple.band, .tentative)
         XCTAssertEqual(result.reviewCount, 1)
     }
 
-    func test_confidentDetectionsAreNotFlagged() throws {
+    func test_confidentDetectionsCarryNoFlagButAreStillNotVerified() throws {
         let result = try normalizer().normalize(
             frame([("apple", 0.85, box)]), source: .ingredientDetector
         )
 
         let apple = try XCTUnwrap(result.ingredients.first)
         XCTAssertNil(apple.reviewReason)
-        XCTAssertFalse(apple.requiresReview)
+        XCTAssertFalse(apple.hasReviewFlag)
+        XCTAssertEqual(apple.band, .strong, "0.85 is in the strong band")
+        // The band changes how it is drawn, never whether it is believed. The
+        // most confident detection on the evaluation set is wrong.
+        XCTAssertFalse(apple.isVerified)
+        XCTAssertTrue(apple.requiresConfirmation)
     }
 
-    func test_theThresholdIsConfigurable() throws {
-        let permissive = try normalizer(display: 0.20)
-        let strict = try normalizer(display: 0.80)
+    func test_theCandidateThresholdIsConfigurable() throws {
+        let permissive = try normalizer(candidate: 0.20)
+        let strict = try normalizer(candidate: 0.80)
         let detections = frame([("apple", 0.50, box)])
 
         XCTAssertEqual(permissive.normalize(detections, source: .ingredientDetector).ingredients.count, 1)
@@ -320,8 +346,9 @@ final class IngredientNormalizerTests: XCTestCase {
     }
 
     func test_reviewReasonsExplainThemselves() {
-        XCTAssertFalse(ReviewReason.lowConfidence.message.isEmpty)
-        XCTAssertFalse(ReviewReason.ambiguousClass.message.isEmpty)
+        for reason in [ReviewReason.lowConfidence, .ambiguousClass, .notCorroborated] {
+            XCTAssertFalse(reason.message.isEmpty, "\(reason) needs a message")
+        }
     }
 
     func test_detectionSourcesAreDistinguishable() {

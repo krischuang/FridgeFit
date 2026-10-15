@@ -87,14 +87,47 @@ final class IngredientDetectorFactoryTests: XCTestCase {
         XCTAssertIdentical(resolved.detector as AnyObject, resolved.detector as AnyObject)
     }
 
-    func test_theShippedFilteringPolicyIsTheOneThatWasTuned() {
-        let policy = IngredientNormalizer.Configuration.default
+    /// Pins every measured number so re-tuning has to be deliberate.
+    ///
+    /// Each value here was chosen from the sweep in
+    /// `docs/detection-confidence-filtering.md`. Changing one without
+    /// re-running `tools/yolo-export/sweep_display_policy.py` means the
+    /// documented precision and recall no longer describe the app.
+    func test_theShippedFilteringPolicyIsTheOneThatWasMeasured() {
+        let policy = DetectionFilterPolicy.default
 
-        // 0.40 came from a threshold sweep over the annotated evaluation set:
-        // same recall as 0.35, precision 42% -> 56%, false positives halved.
+        // 0.40 maximises F1 (0.357) on the annotated set. 0.45 trades 10.5
+        // points of recall for 4.4 of precision; at 0.80 recall is zero and
+        // the only surviving detection is a wrong one.
         XCTAssertEqual(policy.displayThreshold, 0.40)
-        XCTAssertEqual(policy.trustThreshold, 0.60)
-        XCTAssertLessThan(policy.displayThreshold, policy.trustThreshold)
+        // Below the display floor on purpose, so the snapshot pipeline keeps
+        // boxes the overlay withholds.
+        XCTAssertEqual(policy.candidateThreshold, 0.30)
+        XCTAssertEqual(policy.reviewThreshold, 0.30)
+        XCTAssertEqual(policy.strongThreshold, 0.60)
+        // Where the precision actually came from: 0.417 -> 0.556 with the box
+        // count going *down*, 3.27 -> 2.82 per image.
+        XCTAssertEqual(policy.maximumBoxesPerIngredient, 3)
+        XCTAssertEqual(policy.maximumDisplayedBoxes, 12)
+        XCTAssertEqual(policy.duplicateIoU, 0.55)
+
+        XCTAssertLessThan(policy.candidateThreshold, policy.displayThreshold,
+                          "stage 2 must be wider than stage 3 or hidden boxes are lost")
+        XCTAssertLessThan(policy.displayReleaseThreshold, policy.displayThreshold,
+                          "hysteresis must only retain, never admit")
+        XCTAssertLessThan(policy.displayThreshold, policy.strongThreshold)
+        XCTAssertLessThanOrEqual(policy.reviewThreshold, policy.candidateThreshold,
+                                 "review cannot ask for more than normalisation keeps")
+    }
+
+    /// The COCO fallback is a different model and keeps its own numbers.
+    func test_theFallbackPolicyIsSeparateFromTheIngredientPolicy() {
+        let coco = DetectionFilterPolicy.cocoFallback
+
+        XCTAssertNotEqual(coco, .default)
+        XCTAssertEqual(coco.displayThreshold, 0.45)
+        XCTAssertEqual(coco.candidateThreshold, 0.40)
+        XCTAssertLessThan(coco.candidateThreshold, coco.displayThreshold)
     }
 
     // MARK: - Real inference
@@ -107,10 +140,10 @@ final class IngredientDetectorFactoryTests: XCTestCase {
     /// production threshold here would make them a test of one synthetic
     /// fixture's confidence rather than of inference.
     private func permissiveNormalizer(_ taxonomy: IngredientTaxonomy) -> IngredientNormalizer {
-        var policy = IngredientNormalizer.Configuration.default
-        policy.displayThreshold = 0.0
-        policy.trustThreshold = 1.0
-        return IngredientNormalizer(taxonomy: taxonomy, configuration: policy)
+        var policy = DetectionFilterPolicy.default
+        policy.candidateThreshold = 0.0
+        policy.strongThreshold = 1.0
+        return IngredientNormalizer(taxonomy: taxonomy, policy: policy)
     }
 
     /// A 640x640 white frame with a solid orange disc.

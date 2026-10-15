@@ -62,12 +62,15 @@ final class RemoteCameraDetectionTests: XCTestCase {
             makeDetector: {
                 if let detectorError { throw detectorError }
                 // A permissive policy: these tests are about lifecycle, not
-                // filtering, so stub detections should survive normalisation.
-                var policy = IngredientNormalizer.Configuration.default
+                // filtering, so stub detections should survive normalisation
+                // *and* the display filter.
+                var policy = DetectionFilterPolicy.default
+                policy.candidateThreshold = 0.0
                 policy.displayThreshold = 0.0
+                policy.displayReleaseThreshold = 0.0
                 return ResolvedDetector(
                     detector: detector!,
-                    normalizer: IngredientNormalizer(taxonomy: .coco, configuration: policy),
+                    normalizer: IngredientNormalizer(taxonomy: .coco, policy: policy),
                     source: source,
                     fallbackReason: nil
                 )
@@ -155,6 +158,125 @@ final class RemoteCameraDetectionTests: XCTestCase {
 
         XCTAssertEqual(viewModel.detectionStatus, .off)
         XCTAssertTrue(viewModel.ingredients.isEmpty)
+    }
+
+    // MARK: - The stages stay separate
+
+    /// A view model running the *shipped* policy, so the stage boundaries are
+    /// the real ones rather than a permissive test configuration.
+    private func makeShippedPolicyViewModel(
+        detector: any FrameDetecting
+    ) -> RemoteCameraViewModel {
+        RemoteCameraViewModel(
+            identity: identity,
+            registry: InMemoryDeviceRegistry(),
+            transport: InMemorySignalingTransport(),
+            makeDetector: {
+                ResolvedDetector(
+                    detector: detector,
+                    normalizer: IngredientNormalizer(taxonomy: .coco, policy: .default),
+                    source: .ingredientDetector,
+                    fallbackReason: nil
+                )
+            }
+        )
+    }
+
+    /// The Controller sees fewer boxes than the pipeline accepted, and the
+    /// difference is not thrown away - it is what the snapshot analysis works
+    /// from.
+    func test_theOverlayIsNarrowerThanTheCandidateList() async {
+        let viewModel = makeShippedPolicyViewModel(detector: StubDetector(objects: [
+            // Above the 0.40 display floor.
+            DetectedObject(label: "banana", confidence: 0.72,
+                           boundingBox: .init(x: 0.05, y: 0.05, width: 0.15, height: 0.15)),
+            // Above the 0.30 candidate floor, below the display floor.
+            DetectedObject(label: "apple", confidence: 0.34,
+                           boundingBox: .init(x: 0.60, y: 0.60, width: 0.15, height: 0.15)),
+        ]))
+        let source = SyntheticVideoSource(trackId: "stages")
+        videoSource = source
+
+        viewModel.adoptRemoteVideoTrack(source.videoTrack)
+        source.start()
+        await poll { !viewModel.candidateIngredients.isEmpty }
+
+        XCTAssertEqual(viewModel.candidateIngredients.ingredients.count, 2,
+                       "both clear the candidate floor")
+        XCTAssertEqual(viewModel.ingredients.ingredients.map(\.ingredientId), ["banana"],
+                       "only one clears the display floor")
+        XCTAssertEqual(viewModel.detectionCount, 1)
+    }
+
+    /// One ingredient with many instances must not fill the overlay and push
+    /// the others out - the measured regression this change exists to fix.
+    func test_theOverlayKeepsRoomForEveryIngredientItFound() async {
+        var objects = (0..<10).map { index in
+            DetectedObject(
+                label: "apple", confidence: 0.90 - Float(index) * 0.01,
+                boundingBox: .init(x: CGFloat(index) * 0.09, y: 0.05, width: 0.05, height: 0.05)
+            )
+        }
+        objects.append(DetectedObject(label: "banana", confidence: 0.55,
+                                      boundingBox: .init(x: 0.1, y: 0.7, width: 0.1, height: 0.1)))
+        objects.append(DetectedObject(label: "carrot", confidence: 0.52,
+                                      boundingBox: .init(x: 0.5, y: 0.7, width: 0.1, height: 0.1)))
+        let viewModel = makeShippedPolicyViewModel(detector: StubDetector(objects: objects))
+        let source = SyntheticVideoSource(trackId: "budget")
+        videoSource = source
+
+        viewModel.adoptRemoteVideoTrack(source.videoTrack)
+        source.start()
+        await poll { !viewModel.ingredients.isEmpty }
+
+        let drawn = Set(viewModel.ingredients.ingredients.map(\.ingredientId))
+        XCTAssertEqual(drawn, ["apple", "banana", "carrot"])
+        XCTAssertEqual(
+            viewModel.ingredients.ingredients.filter { $0.ingredientId == "apple" }.count, 3,
+            "apples are budgeted, not suppressed - three of the real ones are kept"
+        )
+    }
+
+    /// Nothing the live path publishes may be presented as confirmed.
+    func test_noLiveDetectionIsMarkedVerified() async {
+        let viewModel = makeShippedPolicyViewModel(detector: StubDetector(objects: [
+            DetectedObject(label: "banana", confidence: 0.98,
+                           boundingBox: .init(x: 0.1, y: 0.1, width: 0.2, height: 0.2)),
+        ]))
+        let source = SyntheticVideoSource(trackId: "verified")
+        videoSource = source
+
+        viewModel.adoptRemoteVideoTrack(source.videoTrack)
+        source.start()
+        await poll { !viewModel.ingredients.isEmpty }
+
+        XCTAssertTrue(viewModel.ingredients.ingredients.allSatisfy { !$0.isVerified })
+        XCTAssertTrue(viewModel.ingredients.ingredients.allSatisfy(\.requiresConfirmation))
+    }
+
+    /// Boxes measured against a frame that has stopped arriving describe
+    /// pixels that are no longer on screen, so they are cleared rather than
+    /// left to drift.
+    func test_detectionsAreClearedWhenResultsStopArriving() async {
+        let viewModel = makeShippedPolicyViewModel(detector: StubDetector(objects: [
+            DetectedObject(label: "banana", confidence: 0.72,
+                           boundingBox: .init(x: 0.1, y: 0.1, width: 0.2, height: 0.2)),
+        ]))
+        let source = SyntheticVideoSource(trackId: "stale")
+        videoSource = source
+
+        viewModel.adoptRemoteVideoTrack(source.videoTrack)
+        source.start()
+        await poll { !viewModel.ingredients.isEmpty }
+
+        // Stop the stream; nothing further reaches the tap.
+        source.stop()
+        videoSource = nil
+
+        await poll(timeout: .seconds(6)) { viewModel.ingredients.isEmpty }
+        XCTAssertTrue(viewModel.ingredients.isEmpty,
+                      "the overlay should empty itself within the staleness window")
+        XCTAssertTrue(viewModel.candidateIngredients.isEmpty)
     }
 
     // MARK: - The toggle
