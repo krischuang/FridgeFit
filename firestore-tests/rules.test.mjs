@@ -363,6 +363,78 @@ describe("pantry (pre-existing)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Kitchen activity history — users/{uid}/inventoryEvents/{eventId}
+// ---------------------------------------------------------------------------
+
+describe("inventory events", () => {
+  const eventPath = (uid, id) => `users/${uid}/inventoryEvents/${id}`;
+  const sampleEvent = {
+    pantryItemId: "11111111-1111-1111-1111-111111111111",
+    itemName: "Milk",
+    kind: "used",
+    note: "Used 200 ml",
+    date: new Date("2026-06-15T09:00:00Z"),
+  };
+
+  it("lets a user append their own activity event", async () => {
+    await assertSucceeds(
+      setDoc(doc(asUser(ALICE), eventPath(ALICE, "event-1")), sampleEvent)
+    );
+  });
+
+  it("lets a user read their own activity history", async () => {
+    await assertSucceeds(
+      getDocs(collection(asUser(ALICE), `users/${ALICE}/inventoryEvents`))
+    );
+  });
+
+  it("lets a user delete their own event, which is what undo does", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), eventPath(ALICE, "event-1")), sampleEvent);
+    });
+
+    await assertSucceeds(deleteDoc(doc(asUser(ALICE), eventPath(ALICE, "event-1"))));
+  });
+
+  it("denies reading another user's activity history", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), eventPath(ALICE, "event-1")), sampleEvent);
+    });
+
+    await assertFails(getDoc(doc(asUser(BOB), eventPath(ALICE, "event-1"))));
+    await assertFails(getDocs(collection(asUser(BOB), `users/${ALICE}/inventoryEvents`)));
+  });
+
+  it("denies writing into another user's activity history", async () => {
+    await assertFails(
+      setDoc(doc(asUser(BOB), eventPath(ALICE, "event-2")), sampleEvent)
+    );
+  });
+
+  it("denies deleting another user's event", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), eventPath(ALICE, "event-1")), sampleEvent);
+    });
+
+    await assertFails(deleteDoc(doc(asUser(BOB), eventPath(ALICE, "event-1"))));
+  });
+
+  it("denies unauthenticated access to activity history", async () => {
+    await assertFails(getDoc(doc(asAnonymous(), eventPath(ALICE, "event-1"))));
+    await assertFails(
+      setDoc(doc(asAnonymous(), eventPath(ALICE, "event-3")), sampleEvent)
+    );
+  });
+
+  it("does not open a subcollection beneath an event", async () => {
+    // Nothing nests under an event; the grant stops at the document.
+    await assertFails(
+      setDoc(doc(asUser(ALICE), `${eventPath(ALICE, "event-1")}/extra/doc-1`), { a: 1 })
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Default deny
 // ---------------------------------------------------------------------------
 
