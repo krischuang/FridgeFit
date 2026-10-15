@@ -184,10 +184,19 @@ ingredient that is actually present?
 | 0.50 | 13.2% | 62.5% | 3 | 14 |
 
 0.40 is the knee: identical recall to 0.35, precision up 14 points, false
-positives halved. Above it recall collapses. This is why
-`IngredientNormalizer.Configuration.default.displayThreshold` is 0.40, and
-`test_theShippedFilteringPolicyIsTheOneThatWasTuned` pins it so the tuning
-cannot be silently undone.
+positives halved. Above it recall collapses.
+
+> This table measures *raw model output*, not what the overlay draws, and it
+> stops at 0.50. The sweep through the app's actual display policy, extended to
+> 0.80 and with F1, false negatives, boxes per image and high-confidence
+> misclassification counts, is in
+> [`detection-confidence-filtering.md`](detection-confidence-filtering.md) §3.
+> It confirms 0.40 and shows that at 0.80 the only surviving detection in all
+> 11 images is a wrong one.
+
+`DetectionFilterPolicy.default.displayThreshold` is 0.40, and
+`test_theShippedFilteringPolicyIsTheOneThatWasMeasured` pins it — along with
+every other number — so the tuning cannot be silently undone.
 
 ### The honest headline: protein and dairy do not work
 
@@ -278,7 +287,9 @@ RemoteVideoFrameTap ──► YOLOFoodDetectionService ──► DetectionFrame 
 |---|---|
 | `Domain/Models/RemoteCamera/IngredientTaxonomy.swift` | Loads the bundled vocabulary; `IngredientGroup`, `IngredientDefinition` |
 | `Domain/Models/RemoteCamera/DetectedIngredient.swift` | `DetectedIngredient`, `IngredientDetectionFrame`, `DetectionSource`, `ReviewReason` |
-| `UseCases/IngredientNormalizer.swift` | All policy: thresholds, decoys, genericisation, duplicate suppression, caps |
+| `UseCases/IngredientNormalizer.swift` | Stage 2: candidates — decoys, genericisation, duplicate suppression |
+| `UseCases/DetectionFilterPolicy.swift` | Every threshold and budget, in one place |
+| `UseCases/DetectionDisplayFilter.swift` | Stage 3: what the overlay draws — display floor, box budgets, hysteresis |
 | `Data/RemoteCamera/IngredientDetectorFactory.swift` | Model selection and the COCO fallback |
 
 `IngredientGroup` is deliberately separate from the Pantry's existing
@@ -288,27 +299,42 @@ Nothing in the Pantry was modified.
 
 ### Normalisation policy
 
+> **Superseded in part.** This describes one combined filtering step. It is now
+> split into stage 2 (`IngredientNormalizer`, candidate floor 0.30) and stage 3
+> (`DetectionDisplayFilter`, display floor 0.40 plus per-ingredient box
+> budgets), with every number in `DetectionFilterPolicy`. The split, the
+> measured threshold sweep to 0.80 and the before/after figures are in
+> [`detection-confidence-filtering.md`](detection-confidence-filtering.md).
+> Rules 1, 2, 4, 6 below are unchanged; 3, 5 and 7 moved.
+
 `IngredientNormalizer` is where the app decides what it is willing to claim.
 Pure functions, no I/O, fully unit-tested.
 
 1. **Unknown terms are dropped.** A label outside the taxonomy is never
    invented into an ingredient.
 2. **Decoys are dropped.**
-3. **Below 0.40 is dropped** (inclusive at 0.40).
+3. **Below the candidate floor (0.30) is dropped.** The *display* floor is
+   0.40 and now lives one stage later, so the snapshot pipeline can still
+   corroborate a box the overlay withholds.
 4. **Ambiguous classes are genericised.** 9 terms carry `requiresReview` with a
    `genericFallback`: `raw beef steak`, `lamb chop`, `raw pork` → **Red Meat**;
    poultry terms → **Poultry**. Per the brief, uncertain raw meat is never
    asserted as a species. High confidence does not change this — an
    indistinguishable class stays indistinguishable
    (`test_ambiguousClassesStayFlaggedEvenAtHighConfidence`).
-5. **0.40–0.60 is flagged `.lowConfidence`**, rendered with a dashed orange box
-   and a trailing `?`.
+5. **Below 0.60 is flagged `.lowConfidence`**, rendered with a dashed orange
+   box and a trailing `?`. Above it the box is solid — which says the model is
+   confident, not that it is correct. No live detection is ever marked
+   verified; see `detection-confidence-filtering.md` §6.
 6. **Duplicates are suppressed within the same ingredient only** (IoU > 0.55).
    Two vocabulary terms mapping to one ingredient (`raw beef steak` +
    `minced beef`) survive the model's per-class NMS and would otherwise draw
    two boxes on one steak. A tomato overlapping a lettuce leaf is two real
    things and both survive.
-7. **Sorted by confidence, capped at 12.**
+7. **Sorted by confidence, capped at 24 candidates.** The *overlay's* budget is
+   12 boxes with at most 3 per ingredient identity, applied in stage 3. A flat
+   cap here was letting one ingredient take every slot and hide the rest —
+   measured, and fixed.
 
 The raw model term is preserved on every result (`rawTerm`) so a reviewer can
 always see what the model actually said.

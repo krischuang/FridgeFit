@@ -50,7 +50,7 @@ recognise.**
 
 ### Why it is presented as certain
 
-`IngredientNormalizer` marks anything above `trustThreshold` (0.60) as
+`IngredientNormalizer` marked anything above the trust threshold (0.60) as
 needing no review. That threshold had never been validated against outcomes,
 so it was measured (`harness … bands`):
 
@@ -77,6 +77,14 @@ review sheet already requires review for everything single-source, and the
 pantry already refuses anything unticked, so no incorrect ingredient can reach
 storage from this. Changing it is a policy decision with user-visible effect
 and a wide test blast radius; it is flagged rather than taken unilaterally.
+
+> **Since applied.** `DetectedIngredient.isVerified` is now a computed
+> property that always returns `false` and `requiresConfirmation` always
+> returns `true`, so no detector-only claim can be presented as settled at any
+> confidence. The 0.60 boundary survives as `strongThreshold`, which chooses a
+> solid stroke over a dashed one and nothing else, and the overlay carries a
+> standing "unconfirmed" caption. See
+> [`detection-confidence-filtering.md`](detection-confidence-filtering.md) §6.
 
 **No egg→orange mapping was added**, and none should be. The model is wrong
 about a whole category, not about one pair of labels; a lookup would hide the
