@@ -16,6 +16,10 @@ nonisolated struct ResolvedDetector: Sendable {
     let fallbackReason: String?
 
     var taxonomy: IngredientTaxonomy { normalizer.taxonomy }
+    /// The filtering policy this detector was loaded with. Carried so the live
+    /// display filter and the snapshot path use the same numbers the detector
+    /// was configured against, rather than each reaching for a default.
+    var policy: DetectionFilterPolicy { normalizer.policy }
 }
 
 /// Chooses which detector to run.
@@ -59,7 +63,10 @@ nonisolated enum IngredientDetectorFactory {
     }
 
     /// YOLO-World with FridgeFit's ingredient vocabulary.
-    static func makeIngredientDetector(bundle: Bundle = .main) throws -> ResolvedDetector {
+    static func makeIngredientDetector(
+        bundle: Bundle = .main,
+        policy: DetectionFilterPolicy = .default
+    ) throws -> ResolvedDetector {
         let taxonomy = try IngredientTaxonomy.load(in: bundle)
 
         var configuration = YOLOFoodDetectionService.Configuration.default
@@ -68,20 +75,24 @@ nonisolated enum IngredientDetectorFactory {
         // model* so non-food objects land on them instead of being forced
         // onto a food class; `IngredientNormalizer` drops them afterwards.
         configuration.allowedLabels = taxonomy.allTerms
-        // The real gate is the normaliser's display threshold. Keeping the
-        // model's own threshold just below it leaves the policy in one place.
-        configuration.confidenceThreshold = IngredientNormalizer.Configuration.default.displayThreshold - 0.05
+        // The model is asked for stage-1 candidates, not for what the overlay
+        // will draw. That floor is `candidateThreshold`, deliberately below
+        // the display floor so the snapshot pipeline still sees boxes the
+        // live overlay suppresses - see `DetectionFilterPolicy`.
+        configuration.confidenceThreshold = policy.candidateThreshold
         // Generous, because decoys consume slots before normalisation.
         configuration.maximumDetections = 40
 
         let detector = try YOLOFoodDetectionService(configuration: configuration, bundle: bundle)
         logger.info("""
         Ingredient detector loaded: \(taxonomy.ingredientCount) ingredients, \
-        \(taxonomy.definitions.count) vocabulary terms, model \(taxonomy.modelIdentifier, privacy: .public)
+        \(taxonomy.definitions.count) vocabulary terms, model \(taxonomy.modelIdentifier, privacy: .public), \
+        candidate=\(policy.candidateThreshold) display=\(policy.displayThreshold) \
+        strong=\(policy.strongThreshold) boxesPerIngredient=\(policy.maximumBoxesPerIngredient)
         """)
         return ResolvedDetector(
             detector: detector,
-            normalizer: IngredientNormalizer(taxonomy: taxonomy),
+            normalizer: IngredientNormalizer(taxonomy: taxonomy, policy: policy),
             source: .ingredientDetector,
             fallbackReason: nil
         )
@@ -89,21 +100,22 @@ nonisolated enum IngredientDetectorFactory {
 
     /// The original COCO detector, wrapped in the same ingredient interface.
     static func makeFallbackDetector(bundle: Bundle = .main) throws -> ResolvedDetector {
+        // COCO's ten classes are closed-vocabulary and better calibrated than
+        // the open-vocabulary model's, so this path keeps its own policy. The
+        // display sweep measured the YOLO-World export and says nothing about
+        // this model, so none of it is applied here.
+        let policy = DetectionFilterPolicy.cocoFallback
+
         var configuration = YOLOFoodDetectionService.Configuration.default
         configuration.modelName = fallbackModelName
         configuration.allowedLabels = COCOFoodClass.all
-        configuration.confidenceThreshold = 0.45
+        configuration.confidenceThreshold = policy.candidateThreshold
 
         let detector = try YOLOFoodDetectionService(configuration: configuration, bundle: bundle)
-        // COCO's confidences are better calibrated than the open-vocabulary
-        // model's, so this path keeps the thresholds it was tuned with.
-        var policy = IngredientNormalizer.Configuration.default
-        policy.displayThreshold = 0.45
-        policy.trustThreshold = 0.60
 
         return ResolvedDetector(
             detector: detector,
-            normalizer: IngredientNormalizer(taxonomy: .coco, configuration: policy),
+            normalizer: IngredientNormalizer(taxonomy: .coco, policy: policy),
             source: .cocoFallback,
             fallbackReason: nil
         )

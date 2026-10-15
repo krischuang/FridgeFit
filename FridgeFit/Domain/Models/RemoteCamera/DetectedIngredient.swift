@@ -39,11 +39,23 @@ nonisolated enum ReviewReason: String, Codable, Equatable, Sendable {
     /// The class itself is not visually distinguishable - raw beef, lamb and
     /// pork, for instance. Reported generically rather than guessed.
     case ambiguousClass
+    /// Apple Vision classified this exact crop and named nothing recognisable
+    /// in it, so the detector's label stands alone on pixels a second method
+    /// has already looked at and declined to support.
+    ///
+    /// Weaker evidence against the claim than an outright disagreement, which
+    /// is `ConfidenceTier.conflicting`, but stronger than never having asked.
+    /// On the evaluation set, when the two methods *did* disagree about a
+    /// region, keeping the detector's label was right 1 time out of 11 - which
+    /// is why the absence of corroboration is worth recording rather than
+    /// ignoring.
+    case notCorroborated
 
     var message: String {
         switch self {
         case .lowConfidence: return "Low confidence - please confirm"
         case .ambiguousClass: return "Looks similar to other ingredients - please confirm"
+        case .notCorroborated: return "Only the detector saw this - please confirm"
         }
     }
 }
@@ -79,6 +91,11 @@ nonisolated struct DetectedIngredient: Identifiable, Equatable, Sendable {
     /// The raw model term, kept for diagnostics and so a reviewer can see
     /// what the model actually said.
     let rawTerm: String
+    /// How confident the detector is, bucketed for display.
+    ///
+    /// Affects stroke style only. `.strong` does **not** mean verified - see
+    /// `isVerified`.
+    let band: DetectionConfidenceBand
 
     init(
         id: UUID = UUID(),
@@ -89,7 +106,8 @@ nonisolated struct DetectedIngredient: Identifiable, Equatable, Sendable {
         boundingBox: CGRect,
         source: DetectionSource,
         reviewReason: ReviewReason? = nil,
-        rawTerm: String
+        rawTerm: String,
+        band: DetectionConfidenceBand = .tentative
     ) {
         self.id = id
         self.ingredientId = ingredientId
@@ -100,16 +118,44 @@ nonisolated struct DetectedIngredient: Identifiable, Equatable, Sendable {
         self.source = source
         self.reviewReason = reviewReason
         self.rawTerm = rawTerm
+        self.band = band
     }
 
-    var requiresReview: Bool { reviewReason != nil }
+    /// Whether a second, independent method corroborated this.
+    ///
+    /// **Always `false`, and not a stored property.** A `DetectedIngredient`
+    /// is by definition one detector's opinion about one frame, and the
+    /// evaluation set contains a detector-only claim at 0.837 confidence that
+    /// is simply wrong - the single most confident detection across all 11
+    /// images. Confidence is therefore not evidence of correctness, and there
+    /// is no value this type can hold that makes it verified.
+    ///
+    /// Corroboration is `ConfidenceTier.agreed` on `FusedIngredient`, which
+    /// requires Apple Vision to have independently named the same ingredient
+    /// in the same region. That only exists on the snapshot path.
+    var isVerified: Bool { false }
+
+    /// Whether the user must confirm before this is acted on.
+    ///
+    /// Always true, for the reason above. `reviewReason` still distinguishes
+    /// *why* a particular candidate is more doubtful than the baseline.
+    var requiresConfirmation: Bool { true }
+
+    /// Whether there is something specific wrong beyond being single-source.
+    ///
+    /// This is what drives the amber treatment; `requiresConfirmation` is
+    /// universal and so cannot be a visual signal.
+    var hasReviewFlag: Bool { reviewReason != nil }
 
     var confidencePercentage: Int { Int((confidence * 100).rounded()) }
 
-    /// What the overlay prints. Flagged items are marked rather than hidden,
-    /// so the user sees the uncertainty instead of a confident-looking label.
+    /// What the overlay prints: the ingredient name and its confidence.
+    ///
+    /// Flagged candidates carry a `?`. An unflagged one carries no mark of
+    /// approval either - it is simply the name and the number, and the
+    /// overlay's own caption states that nothing live is confirmed.
     var overlayLabel: String {
-        requiresReview
+        hasReviewFlag
             ? "\(displayName)? \(confidencePercentage)%"
             : "\(displayName) \(confidencePercentage)%"
     }
@@ -128,7 +174,9 @@ nonisolated struct IngredientDetectionFrame: Equatable, Sendable {
     )
 
     var isEmpty: Bool { ingredients.isEmpty }
-    var reviewCount: Int { ingredients.filter(\.requiresReview).count }
+    /// How many carry a specific review flag, as opposed to the universal
+    /// "one method said so" caveat that applies to all of them.
+    var reviewCount: Int { ingredients.filter(\.hasReviewFlag).count }
 
     /// Distinct categories present, in display order.
     var categories: [IngredientGroup] {

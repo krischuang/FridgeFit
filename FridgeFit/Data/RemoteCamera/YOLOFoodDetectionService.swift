@@ -39,6 +39,12 @@ nonisolated final class YOLOFoodDetectionService: FrameDetecting, @unchecked Sen
         var modelName: String = "YOLO11n"
         /// Detections below this are discarded.
         ///
+        /// This is stage 1 of the four stages `DetectionFilterPolicy`
+        /// documents, so it is set from `candidateThreshold` - the *candidate*
+        /// floor, not the floor for what gets drawn. The overlay's threshold
+        /// is applied two stages later by `DetectionDisplayFilter`; putting it
+        /// here would delete boxes the snapshot pipeline still wants.
+        ///
         /// Applied in Swift on top of the model's own baked-in NMS threshold
         /// (0.25 from the export). Raising it here is always safe; lowering
         /// it below 0.25 has no effect, because the pipeline has already
