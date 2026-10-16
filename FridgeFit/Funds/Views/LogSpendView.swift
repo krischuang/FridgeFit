@@ -1,3 +1,8 @@
+//
+//  LogSpendView.swift
+//  FridgeFit
+//
+
 import SwiftUI
 
 // screen 2 - log a grocery spend against the budget. on save, shows either a plain

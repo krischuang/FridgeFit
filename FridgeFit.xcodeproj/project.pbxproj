@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		4C4AA1041869C9AE83349E2D /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = A33105392B7C6EF6C33290E6 /* GoogleSignInSwift */; };
 		89CB0E06E185C91A995F878D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 432FCA6D9680CAA14967130D /* Foundation.framework */; };
+		AA1000000000000000000004 /* WebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = AA1000000000000000000002 /* WebRTC */; };
+		AA1000000000000000000005 /* WebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = AA1000000000000000000003 /* WebRTC */; };
 		C8ED1E66BF188F6DDC94A9D5 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 5575BFD813A75E3190B13428 /* FirebaseFirestore */; };
 		DCCE30E2166A5CA7EA26DCC0 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = B2B19C79C7CDE2A5D8299505 /* FirebaseCore */; };
 		FAB752160D9F984B40CAB423 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = ED9DF0389D44056354FD852E /* FirebaseAuth */; };
@@ -82,6 +84,7 @@
 				FCB8BC08B1D04A779509E274 /* GoogleSignIn in Frameworks */,
 				4C4AA1041869C9AE83349E2D /* GoogleSignInSwift in Frameworks */,
 				C8ED1E66BF188F6DDC94A9D5 /* FirebaseFirestore in Frameworks */,
+				AA1000000000000000000004 /* WebRTC in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,6 +93,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				89CB0E06E185C91A995F878D /* Foundation.framework in Frameworks */,
+				AA1000000000000000000005 /* WebRTC in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -167,6 +171,7 @@
 				D2749F77276CA117F8ECFB1B /* GoogleSignIn */,
 				A33105392B7C6EF6C33290E6 /* GoogleSignInSwift */,
 				5575BFD813A75E3190B13428 /* FirebaseFirestore */,
+				AA1000000000000000000002 /* WebRTC */,
 			);
 			productName = FridgeFit;
 			productReference = 2AF9856E30518F9E0065A469 /* FridgeFit.app */;
@@ -210,6 +215,9 @@
 				5921EE0D09BD997FDB717209 /* FridgeFitTests */,
 			);
 			name = FridgeFitTests;
+			packageProductDependencies = (
+				AA1000000000000000000003 /* WebRTC */,
+			);
 			productName = FridgeFitTests;
 			productReference = 4ED902A1A70855916CA73C63 /* FridgeFitTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -249,6 +257,7 @@
 			packageReferences = (
 				5739C9EE32136E4787E904A7 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				558CD5B0251C9DE99F5AF4AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				AA1000000000000000000001 /* XCRemoteSwiftPackageReference "WebRTC" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2AF9856F30518F9E0065A469 /* Products */;
@@ -453,6 +462,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V6V6VZ2F4Z;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FridgeFit/Info.plist;
@@ -485,6 +495,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = V6V6VZ2F4Z;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FridgeFit/Info.plist;
@@ -653,6 +664,14 @@
 				minimumVersion = 11.0.0;
 			};
 		};
+		AA1000000000000000000001 /* XCRemoteSwiftPackageReference "WebRTC" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stasel/WebRTC";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 154.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -665,6 +684,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 558CD5B0251C9DE99F5AF4AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignInSwift;
+		};
+		AA1000000000000000000002 /* WebRTC */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA1000000000000000000001 /* XCRemoteSwiftPackageReference "WebRTC" */;
+			productName = WebRTC;
+		};
+		AA1000000000000000000003 /* WebRTC */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA1000000000000000000001 /* XCRemoteSwiftPackageReference "WebRTC" */;
+			productName = WebRTC;
 		};
 		B2B19C79C7CDE2A5D8299505 /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;

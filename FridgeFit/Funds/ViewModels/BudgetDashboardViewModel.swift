@@ -1,3 +1,8 @@
+//
+//  BudgetDashboardViewModel.swift
+//  FridgeFit
+//
+
 import Foundation
 import Observation
 

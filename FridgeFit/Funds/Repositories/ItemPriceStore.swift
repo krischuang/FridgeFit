@@ -1,3 +1,8 @@
+//
+//  ItemPriceStore.swift
+//  FridgeFit
+//
+
 import Foundation
 
 // where the price + expiry we attach to pantry items lives. same idea as BudgetStore:

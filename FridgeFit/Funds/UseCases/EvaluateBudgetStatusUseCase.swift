@@ -1,15 +1,20 @@
+//
+//  EvaluateBudgetStatusUseCase.swift
+//  FridgeFit
+//
+
 import Foundation
 
-/// Works out how the user's food spending is tracking against their budget: how
-/// much is left, how much can still be spent today, and — at the current pace —
-/// whether they're heading for an overspend before the period ends. This forecast
-/// is what powers the app's supportive over-budget warning, never a hard block.
+// Works out how the user's food spending is tracking against their budget: how
+// much is left, how much can still be spent today, and — at the current pace —
+// whether they're heading for an overspend before the period ends. This forecast
+// is what powers the app's supportive over-budget warning, never a hard block.
 struct EvaluateBudgetStatusUseCase {
     let budgetStore: BudgetStore
 
-    /// Failures that stop a status from being computed.
+    // Failures that stop a status from being computed.
     enum Failure: LocalizedError, Equatable {
-        /// No budget has been set, so there is nothing to evaluate.
+        // No budget has been set, so there is nothing to evaluate.
         case noActiveBudgetPeriod
 
         var errorDescription: String? {
@@ -20,9 +25,9 @@ struct EvaluateBudgetStatusUseCase {
         }
     }
 
-    /// Computes the current budget status.
-    /// - Parameter now: the reference "today" (injectable for testing).
-    /// - Throws: ``Failure/noActiveBudgetPeriod`` when no budget is set.
+    // Computes the current budget status.
+    // - Parameter now: the reference "today" (injectable for testing).
+    // - Throws: ``Failure/noActiveBudgetPeriod`` when no budget is set.
     func execute(now: Date = Date()) throws -> BudgetStatus {
         guard let budget = budgetStore.activeBudget() else {
             throw Failure.noActiveBudgetPeriod

@@ -15,6 +15,13 @@ final class BudgetUITests: FridgeFitUITestCase {
         let tab = app.tabBars.buttons["Budget"]
         XCTAssertTrue(tab.waitForExistence(timeout: 15))
         tab.tap()
+        // on a cold first launch the first tap sometimes just doesn't register
+        // (the app is still settling) - if we're not on Budget yet, tap again
+        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: tab)
+        if XCTWaiter().wait(for: [selected], timeout: 3) != .completed {
+            tab.tap()
+        }
+        XCTAssertTrue(tab.isSelected, "Never got onto the Budget tab")
     }
 
     private func setBudget(_ amount: String) {

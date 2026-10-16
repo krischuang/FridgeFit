@@ -1,3 +1,8 @@
+//
+//  SpendHistoryViewModel.swift
+//  FridgeFit
+//
+
 import Foundation
 import Observation
 

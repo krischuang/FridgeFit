@@ -1,3 +1,8 @@
+//
+//  MoneyInFridgeView.swift
+//  FridgeFit
+//
+
 import SwiftUI
 
 // screen 3 - every ingredient shown as money, soonest-to-expire first, so the user

@@ -1,3 +1,8 @@
+//
+//  DashboardComponents.swift
+//  FridgeFit
+//
+
 import SwiftUI
 
 // ring showing % of budget spent, value + label in the middle. fraction can go

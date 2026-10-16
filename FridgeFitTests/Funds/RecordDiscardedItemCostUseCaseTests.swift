@@ -1,3 +1,8 @@
+//
+//  RecordDiscardedItemCostUseCaseTests.swift
+//  FridgeFitTests
+//
+
 import XCTest
 @testable import FridgeFit
 

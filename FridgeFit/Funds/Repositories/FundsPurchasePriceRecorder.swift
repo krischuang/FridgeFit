@@ -1,3 +1,8 @@
+//
+//  FundsPurchasePriceRecorder.swift
+//  FridgeFit
+//
+
 import Foundation
 
 // FridgeFunds' side of PurchasePriceRecording: the receipt scanner says "this
@@ -24,12 +29,5 @@ final class FundsPurchasePriceRecorder: PurchasePriceRecording {
             unitCost: Money(total / Decimal(item.quantity), currency),
             expiryDate: existingExpiry
         ))
-    }
-
-    func recordExpiryDate(_ date: Date, for item: PantryItem) {
-        let id = FridgeFitPantryReading.id(for: item)
-        // keep whatever price is already there
-        let existingCost = environment.priceStore.info(for: id)?.unitCost
-        environment.priceStore.save(ItemPriceInfo(pantryItemID: id, unitCost: existingCost, expiryDate: date))
     }
 }

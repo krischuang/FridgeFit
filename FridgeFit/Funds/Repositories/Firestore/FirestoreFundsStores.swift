@@ -1,3 +1,8 @@
+//
+//  FirestoreFundsStores.swift
+//  FridgeFit
+//
+
 import FirebaseAuth
 import FirebaseFirestore
 import Foundation

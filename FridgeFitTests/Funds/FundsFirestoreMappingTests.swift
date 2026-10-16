@@ -1,3 +1,8 @@
+//
+//  FundsFirestoreMappingTests.swift
+//  FridgeFitTests
+//
+
 import XCTest
 import FirebaseFirestore
 @testable import FridgeFit

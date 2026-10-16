@@ -1,22 +1,27 @@
+//
+//  RecordDiscardedItemCostUseCase.swift
+//  FridgeFit
+//
+
 import Foundation
 
-/// Turns a wasted pantry item into a dollar amount, using the item's recorded cost
-/// — so "I threw out some spinach" becomes a number the user actually feels.
+// Turns a wasted pantry item into a dollar amount, using the item's recorded cost
+// — so "I threw out some spinach" becomes a number the user actually feels.
 struct RecordDiscardedItemCostUseCase {
     let pantry: PantryReading
     let budgetStore: BudgetStore
 
-    /// Failures that stop a waste cost from being recorded.
+    // Failures that stop a waste cost from being recorded.
     enum Failure: LocalizedError, Equatable {
-        /// The referenced item is not in the fridge.
+        // The referenced item is not in the fridge.
         case itemNotInPantry
-        /// The discarded quantity was zero or negative.
+        // The discarded quantity was zero or negative.
         case quantityNotPositive
-        /// The discarded quantity is more than what is on hand.
+        // The discarded quantity is more than what is on hand.
         case quantityExceedsOnHand(available: Double, unit: String)
-        /// The item has no recorded price, so its waste cannot be valued.
+        // The item has no recorded price, so its waste cannot be valued.
         case itemHasNoRecordedCost(itemName: String)
-        /// This item was already recorded as wasted today.
+        // This item was already recorded as wasted today.
         case wasteAlreadyRecorded(itemName: String)
 
         var errorDescription: String? {
@@ -40,9 +45,9 @@ struct RecordDiscardedItemCostUseCase {
         }
     }
 
-    /// Values and records a food-waste event.
-    /// - Returns: the persisted ``WastedFoodCost``.
-    /// - Throws: ``Failure`` when the waste cannot be recorded.
+    // Values and records a food-waste event.
+    // - Returns: the persisted ``WastedFoodCost``.
+    // - Throws: ``Failure`` when the waste cannot be recorded.
     @discardableResult
     func execute(itemID: PantryItemID,
                  quantityDiscarded: Double,

@@ -1,3 +1,8 @@
+//
+//  FridgeFitPantryReading.swift
+//  FridgeFit
+//
+
 import Foundation
 
 // the bridge between the two modules. FridgeFunds wants a sync, read-only
@@ -39,7 +44,9 @@ final class FridgeFitPantryReading: PantryReading {
             name: item.name,
             quantity: item.quantity,
             unit: item.unit.symbol,
-            expiryDate: info?.expiryDate,
+            // the pantry owns expiry now (Kitchen tab edits it). ours is only a
+            // fallback for prices saved before that existed
+            expiryDate: item.expiryDate ?? info?.expiryDate,
             unitCost: info?.unitCost
         )
     }

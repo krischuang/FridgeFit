@@ -243,10 +243,16 @@ It **reads** the pantry but never writes to it.
 
 - `FridgeFitPantryReading` turns FridgeFit's async `PantryRepository` into
   the sync, read-only `PantryReading` FridgeFunds was built against.
-- FridgeFit's pantry has no price or expiry, so FridgeFunds keeps its own
-  `ItemPriceInfo` per pantry item id. You fill it in from *Budget → Money
-  in my fridge* by tapping an item. You enter what you paid in total and
-  it works out the per-unit cost.
+- **Expiry** comes from the pantry item itself (`PantryItem.expiryDate`,
+  the same field the Kitchen tab edits).
+- **Price** isn't a pantry field, so FridgeFunds keeps its own
+  `ItemPriceInfo` per pantry item id. It gets filled in three ways: from
+  the receipt scanner (line prices), from the optional "What you paid"
+  field in *Add to Pantry*, or by tapping an item in *Budget → Money in my
+  fridge*. You always enter the total paid; it works out the per-unit cost.
+- With Kitchen, Discover and Budget there'd be six tabs, and iPhone folds
+  anything past five into "More". So Profile is now a button at the top
+  right of the Pantry tab.
 - Data is saved per user in Firestore, next to the pantry:
   `users/{uid}/fundsBudget`, `fundsSpends`, `fundsWaste`,
   `fundsItemPrices`. Stores keep a local copy for the sync reads and save

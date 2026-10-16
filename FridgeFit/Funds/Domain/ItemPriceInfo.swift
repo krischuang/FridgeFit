@@ -1,3 +1,8 @@
+//
+//  ItemPriceInfo.swift
+//  FridgeFit
+//
+
 import Foundation
 
 // FridgeFit's pantry only knows name/quantity/unit, so the money side (what you paid,
@@ -5,7 +10,7 @@ import Foundation
 // FridgeFunds still never writes to the pantry itself.
 struct ItemPriceInfo: Hashable, Codable, Sendable {
     let pantryItemID: PantryItemID
-    /// Cost per one unit of the item, in whatever unit the pantry uses for it.
+    // Cost per one unit of the item, in whatever unit the pantry uses for it.
     let unitCost: Money?
     let expiryDate: Date?
 

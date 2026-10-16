@@ -30,5 +30,70 @@ Pods/
 # credentials; Firestore rules are the actual security boundary. If this repo
 # ever goes public, re-ignore it and distribute it separately instead.
 
+# Emulator output, written into the repo root by `npm test` in
+# firestore-tests/. Regenerated on every run.
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+
 # Local secrets (see Secrets.xcconfig.example)
 Secrets.xcconfig
+
+# Model export tooling (tools/yolo-export)
+#
+# Everything ignored here is regenerable by `./setup.sh` followed by
+# `python export_ingredient_detector.py`, and together it is ~2.3 GB. The
+# vocabulary JSON, the Python scripts, the evaluation images and the recorded
+# experiment results ARE tracked - they are the inputs and the evidence.
+#
+# NOTE: every pattern below is scoped to tools/yolo-export/ on purpose. The
+# shipped Core ML assets live in FridgeFit/Resources/ and MUST stay tracked:
+#   FridgeFit/Resources/FridgeFitIngredients.mlpackage   (24 MB, bundled)
+#   FridgeFit/Resources/YOLO11n.mlpackage                (5 MB, bundled fallback)
+#   FridgeFit/Resources/ingredient_vocabulary.json       (bundled)
+# Do not generalise these to bare `*.pt` / `*.mlpackage` rules.
+
+# Python virtualenv (~970 MB)
+tools/yolo-export/.venv/
+tools/yolo-export/__pycache__/
+
+# Downloaded upstream weights (~125 MB) - re-fetched by Ultralytics on demand
+tools/yolo-export/*.pt
+
+# Intermediate exports staged before installation into Resources/ (~1.2 GB)
+tools/yolo-export/_staged_*
+
+# Working copies of exports; the installed ones live in FridgeFit/Resources/
+tools/yolo-export/*.mlpackage/
+
+# Export logs
+tools/yolo-export/*.log
+
+# Vision evaluation harness (tools/vision-eval)
+#
+# The Swift sources, the scoring scripts and the recorded JSON results ARE
+# tracked - they are the evidence behind docs/hybrid-ingredient-recognition.md.
+# Only the compiled binaries are excluded; rebuild with
+#   swiftc -O classify.swift -o classify
+tools/vision-eval/classify
+tools/vision-eval/taxonomy
+tools/vision-eval/__pycache__/
+tools/vision-eval/*.dSYM/
+
+# Mac Catalyst harness: compiled binary and the staged .mlmodelc copies it
+# needs. Rebuild with tools/vision-eval/swift-harness/build.sh; the sources
+# it compiles are the app's own and are tracked in FridgeFit/.
+tools/vision-eval/swift-harness/harness
+tools/vision-eval/swift-harness/.resources/
+
+# CLIP weights (354 MB), downloaded to the repo root by Ultralytics the first
+# time YOLO-World's set_classes() runs. Re-downloaded automatically on the
+# next export; never edit by hand.
+#
+# The leading slash is load-bearing: a bare `weights/` would also match
+# FridgeFit/Resources/*.mlpackage/Data/com.apple.CoreML/weights/, silently
+# committing both Core ML models without their weight blobs.
+/weights/
+
+# Node dependencies for the Firestore rules tests - restore with `npm install`
+firestore-tests/node_modules/

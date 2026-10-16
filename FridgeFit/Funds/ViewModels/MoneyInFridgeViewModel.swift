@@ -1,3 +1,8 @@
+//
+//  MoneyInFridgeViewModel.swift
+//  FridgeFit
+//
+
 import Foundation
 import Observation
 
@@ -67,7 +72,7 @@ final class MoneyInFridgeViewModel {
     // people know what they paid for the whole pack, not the price per gram, so the
     // form asks for the total and we work out the per-unit cost from the quantity
     // on hand. returns an error message, or nil if it saved.
-    func savePrice(for item: PantryItemSnapshot, totalPaidText: String, expiryDate: Date?) -> String? {
+    func savePrice(for item: PantryItemSnapshot, totalPaidText: String) -> String? {
         let trimmed = totalPaidText.trimmingCharacters(in: .whitespaces)
         var unitCost: Money?
         if !trimmed.isEmpty {
@@ -79,7 +84,9 @@ final class MoneyInFridgeViewModel {
             }
             unitCost = Money(total / Decimal(item.quantity), currency)
         }
-        environment.priceStore.save(ItemPriceInfo(pantryItemID: item.id, unitCost: unitCost, expiryDate: expiryDate))
+        // expiry lives on the pantry item now, just keep whatever old value we had
+        let oldExpiry = environment.priceStore.info(for: item.id)?.expiryDate
+        environment.priceStore.save(ItemPriceInfo(pantryItemID: item.id, unitCost: unitCost, expiryDate: oldExpiry))
         refresh()
         return nil
     }

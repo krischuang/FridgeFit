@@ -5,16 +5,18 @@
 
 import Foundation
 
-/// Everything ContentView needs to build its view models. The real app uses
-/// `live()`; the UI tests launch with `-uiTesting` and get `uiTesting()`
-/// instead, so they never touch Firebase, the camera or Apple Intelligence.
+// Everything ContentView needs to build its view models. The real app uses
+// `live()`; the UI tests launch with `-uiTesting` and get `uiTesting()`
+// instead, so they never touch Firebase, the camera or Apple Intelligence.
 struct AppDependencies {
     let pantryRepository: PantryRepository
     let textRecognizer: ReceiptTextRecognizer
     let interpreter: ReceiptIngredientInterpreter
     let recipeSuggestionService: RecipeSuggestionService
     let substitutionService: SubstitutionService
-    /// FridgeFunds reads the same pantry, so it's built from whichever repository the rest of the app uses.
+    // Kitchen tab's activity history (added / used / thrown out)
+    let inventoryEventRepository: InventoryEventRepository
+    // FridgeFunds reads the same pantry, so it's built from whichever repository the rest of the app uses.
     let makeFundsEnvironment: (PantryRepository) -> FundsEnvironment
 
     static func live() -> AppDependencies {
@@ -26,6 +28,7 @@ struct AppDependencies {
             substitutionService: OpenRouterConfiguration.loadFromInfoPlist()
                 .map { OpenRouterSubstitutionService(configuration: $0) }
                 ?? UnconfiguredSubstitutionService(),
+            inventoryEventRepository: FirestoreInventoryEventRepository(),
             makeFundsEnvironment: { FundsEnvironment.firestore(pantryRepository: $0) }
         )
     }
@@ -53,6 +56,7 @@ struct AppDependencies {
                     limitations: nil
                 )
             ])),
+            inventoryEventRepository: InMemoryInventoryEventRepository(),
             makeFundsEnvironment: { FundsEnvironment.inMemory(pantryRepository: $0) }
         )
     }
@@ -63,9 +67,9 @@ enum UITestSupport {
         ProcessInfo.processInfo.arguments.contains("-uiTesting")
     }
 
-    /// Lets a UI test start with stuff already in the pantry instead of
-    /// typing it all in. Format is `name:quantity:unit`, comma separated,
-    /// e.g. UITEST_PANTRY="Eggs:6:pcs,Milk:500:ml".
+    // Lets a UI test start with stuff already in the pantry instead of
+    // typing it all in. Format is `name:quantity:unit`, comma separated,
+    // e.g. UITEST_PANTRY="Eggs:6:pcs,Milk:500:ml".
     static func seededPantry() -> [PantryItem] {
         guard let raw = ProcessInfo.processInfo.environment["UITEST_PANTRY"], !raw.isEmpty else {
             return []

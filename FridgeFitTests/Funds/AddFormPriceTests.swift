@@ -1,3 +1,8 @@
+//
+//  AddFormPriceTests.swift
+//  FridgeFitTests
+//
+
 import XCTest
 @testable import FridgeFit
 
@@ -27,28 +32,28 @@ final class AddFormPriceTests: XCTestCase {
                        Money(Decimal(string: "0.5")!, .aud))
     }
 
-    func test_addingWithPriceAndExpiry_savesBoth() async throws {
+    func test_addingWithPriceAndExpiry_priceToBudget_expiryOntoThePantryItem() async throws {
         let (pantryViewModel, environment) = setup()
 
         await pantryViewModel.addItem(name: "Milk", quantity: 1, unit: .liters, category: .dairy,
                                       pricePaid: Decimal(string: "4.50"), expiryDate: TestDates.day(3))
 
         let milk = try XCTUnwrap(pantryViewModel.items.first)
-        let info = environment.priceStore.info(for: FridgeFitPantryReading.id(for: milk))
-        XCTAssertEqual(info?.unitCost, Money(Decimal(string: "4.5")!, .aud))
-        XCTAssertEqual(info?.expiryDate, TestDates.day(3))
+        // expiry is a pantry field now, same one the Kitchen tab edits
+        XCTAssertEqual(milk.expiryDate, TestDates.day(3))
+        XCTAssertEqual(environment.priceStore.info(for: FridgeFitPantryReading.id(for: milk))?.unitCost,
+                       Money(Decimal(string: "4.5")!, .aud))
     }
 
-    func test_expiryOnly_isFine() async throws {
+    func test_expiryOnly_goesOnThePantryItem_noPriceSaved() async throws {
         let (pantryViewModel, environment) = setup()
 
         await pantryViewModel.addItem(name: "Bread", quantity: 1, unit: .pieces, category: .grain,
                                       expiryDate: TestDates.day(2))
 
         let bread = try XCTUnwrap(pantryViewModel.items.first)
-        let info = environment.priceStore.info(for: FridgeFitPantryReading.id(for: bread))
-        XCTAssertNil(info?.unitCost)
-        XCTAssertEqual(info?.expiryDate, TestDates.day(2))
+        XCTAssertEqual(bread.expiryDate, TestDates.day(2))
+        XCTAssertNil(environment.priceStore.info(for: FridgeFitPantryReading.id(for: bread)))
     }
 
     func test_noPriceNoExpiry_storesNothingExtra() async throws {

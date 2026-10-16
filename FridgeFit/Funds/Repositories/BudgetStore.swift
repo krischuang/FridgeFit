@@ -1,3 +1,8 @@
+//
+//  BudgetStore.swift
+//  FridgeFit
+//
+
 import Foundation
 
 // where the budget/spends/waste data actually lives is hidden behind this protocol -

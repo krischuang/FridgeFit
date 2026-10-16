@@ -1,3 +1,8 @@
+//
+//  InMemoryPantryReading.swift
+//  FridgeFit
+//
+
 import Foundation
 
 // in-memory PantryReading for the assignment - stands in for the Smart Fridge

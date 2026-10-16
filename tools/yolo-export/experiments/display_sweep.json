@@ -1,0 +1,2982 @@
+{
+  "model": "FridgeFitIngredients.mlpackage",
+  "terms": 113,
+  "imageCount": 11,
+  "modelIoU": 0.45,
+  "policyConstants": {
+    "duplicateIoU": 0.55,
+    "crossClassIoU": 0.7,
+    "decoyIoU": 0.6,
+    "trustThreshold": 0.6,
+    "maximumIngredients": 12,
+    "maximumBoxesPerIngredient": 3
+  },
+  "thresholds": {
+    "0.40": {
+      "before (flat cap)": {
+        "policy": "before (flat cap)",
+        "precision": 0.417,
+        "recall": 0.132,
+        "f1": 0.2,
+        "truePositives": 5,
+        "falsePositives": 7,
+        "falseNegatives": 33,
+        "displayedBoxes": 36,
+        "avgBoxesPerImage": 3.27,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.188,
+            "expected": 16,
+            "tp": 3,
+            "fp": 1,
+            "fn": 13,
+            "boxes": 15
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 12
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 1,
+            "fn": 6,
+            "boxes": 1
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.25,
+            "expected": 4,
+            "tp": 1,
+            "fp": 2,
+            "fn": 3,
+            "boxes": 4
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "seafood": [
+            "fish_platter:zucchini"
+          ],
+          "fruit": [
+            "market_crowded:pumpkin"
+          ],
+          "pantry": [
+            "shelf_packaged:bread_loaf",
+            "shelf_packaged:sauce_bottle"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 23
+      },
+      "after (box budget)": {
+        "policy": "after (box budget)",
+        "precision": 0.556,
+        "recall": 0.263,
+        "f1": 0.357,
+        "truePositives": 10,
+        "falsePositives": 8,
+        "falseNegatives": 28,
+        "displayedBoxes": 31,
+        "avgBoxesPerImage": 2.82,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.438,
+            "expected": 16,
+            "tp": 7,
+            "fp": 1,
+            "fn": 9,
+            "boxes": 14
+          },
+          "vegetable": {
+            "recall": 0.4,
+            "expected": 5,
+            "tp": 2,
+            "fp": 2,
+            "fn": 3,
+            "boxes": 8
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 1,
+            "fn": 6,
+            "boxes": 1
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.25,
+            "expected": 4,
+            "tp": 1,
+            "fp": 2,
+            "fn": 3,
+            "boxes": 4
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "seafood": [
+            "fish_platter:zucchini"
+          ],
+          "fruit": [
+            "market_crowded:pumpkin"
+          ],
+          "pantry": [
+            "shelf_packaged:bread_loaf",
+            "shelf_packaged:sauce_bottle"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper",
+            "veg_mixed:broccoli"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 23
+      },
+      "rejected: +crossClassNMS": {
+        "policy": "rejected: +crossClassNMS",
+        "precision": 0.562,
+        "recall": 0.237,
+        "f1": 0.333,
+        "truePositives": 9,
+        "falsePositives": 7,
+        "falseNegatives": 29,
+        "displayedBoxes": 29,
+        "avgBoxesPerImage": 2.64,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.438,
+            "expected": 16,
+            "tp": 7,
+            "fp": 1,
+            "fn": 9,
+            "boxes": 14
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 6
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 1,
+            "fn": 6,
+            "boxes": 1
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.25,
+            "expected": 4,
+            "tp": 1,
+            "fp": 2,
+            "fn": 3,
+            "boxes": 4
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "seafood": [
+            "fish_platter:zucchini"
+          ],
+          "fruit": [
+            "market_crowded:pumpkin"
+          ],
+          "pantry": [
+            "shelf_packaged:bread_loaf",
+            "shelf_packaged:sauce_bottle"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 23
+      },
+      "rejected: +decoyVeto": {
+        "policy": "rejected: +decoyVeto",
+        "precision": 0.556,
+        "recall": 0.263,
+        "f1": 0.357,
+        "truePositives": 10,
+        "falsePositives": 8,
+        "falseNegatives": 28,
+        "displayedBoxes": 31,
+        "avgBoxesPerImage": 2.82,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.438,
+            "expected": 16,
+            "tp": 7,
+            "fp": 1,
+            "fn": 9,
+            "boxes": 14
+          },
+          "vegetable": {
+            "recall": 0.4,
+            "expected": 5,
+            "tp": 2,
+            "fp": 2,
+            "fn": 3,
+            "boxes": 8
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 1,
+            "fn": 6,
+            "boxes": 1
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.25,
+            "expected": 4,
+            "tp": 1,
+            "fp": 2,
+            "fn": 3,
+            "boxes": 4
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "seafood": [
+            "fish_platter:zucchini"
+          ],
+          "fruit": [
+            "market_crowded:pumpkin"
+          ],
+          "pantry": [
+            "shelf_packaged:bread_loaf",
+            "shelf_packaged:sauce_bottle"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper",
+            "veg_mixed:broccoli"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 23
+      }
+    },
+    "0.45": {
+      "before (flat cap)": {
+        "policy": "before (flat cap)",
+        "precision": 0.556,
+        "recall": 0.132,
+        "f1": 0.213,
+        "truePositives": 5,
+        "falsePositives": 4,
+        "falseNegatives": 33,
+        "displayedBoxes": 31,
+        "avgBoxesPerImage": 2.82,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.188,
+            "expected": 16,
+            "tp": 3,
+            "fp": 1,
+            "fn": 13,
+            "boxes": 13
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 12
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.25,
+            "expected": 4,
+            "tp": 1,
+            "fp": 0,
+            "fn": 3,
+            "boxes": 2
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "fruit": [
+            "market_crowded:pumpkin"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 19
+      },
+      "after (box budget)": {
+        "policy": "after (box budget)",
+        "precision": 0.6,
+        "recall": 0.158,
+        "f1": 0.25,
+        "truePositives": 6,
+        "falsePositives": 4,
+        "falseNegatives": 32,
+        "displayedBoxes": 22,
+        "avgBoxesPerImage": 2.0,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.25,
+            "expected": 16,
+            "tp": 4,
+            "fp": 1,
+            "fn": 12,
+            "boxes": 10
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 6
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.25,
+            "expected": 4,
+            "tp": 1,
+            "fp": 0,
+            "fn": 3,
+            "boxes": 2
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "fruit": [
+            "market_crowded:pumpkin"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 19
+      },
+      "rejected: +crossClassNMS": {
+        "policy": "rejected: +crossClassNMS",
+        "precision": 0.6,
+        "recall": 0.158,
+        "f1": 0.25,
+        "truePositives": 6,
+        "falsePositives": 4,
+        "falseNegatives": 32,
+        "displayedBoxes": 22,
+        "avgBoxesPerImage": 2.0,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.25,
+            "expected": 16,
+            "tp": 4,
+            "fp": 1,
+            "fn": 12,
+            "boxes": 10
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 6
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.25,
+            "expected": 4,
+            "tp": 1,
+            "fp": 0,
+            "fn": 3,
+            "boxes": 2
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "fruit": [
+            "market_crowded:pumpkin"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 19
+      },
+      "rejected: +decoyVeto": {
+        "policy": "rejected: +decoyVeto",
+        "precision": 0.6,
+        "recall": 0.158,
+        "f1": 0.25,
+        "truePositives": 6,
+        "falsePositives": 4,
+        "falseNegatives": 32,
+        "displayedBoxes": 22,
+        "avgBoxesPerImage": 2.0,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.25,
+            "expected": 16,
+            "tp": 4,
+            "fp": 1,
+            "fn": 12,
+            "boxes": 10
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 6
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.25,
+            "expected": 4,
+            "tp": 1,
+            "fp": 0,
+            "fn": 3,
+            "boxes": 2
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "fruit": [
+            "market_crowded:pumpkin"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 19
+      }
+    },
+    "0.50": {
+      "before (flat cap)": {
+        "policy": "before (flat cap)",
+        "precision": 0.625,
+        "recall": 0.132,
+        "f1": 0.217,
+        "truePositives": 5,
+        "falsePositives": 3,
+        "falseNegatives": 33,
+        "displayedBoxes": 29,
+        "avgBoxesPerImage": 2.64,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.188,
+            "expected": 16,
+            "tp": 3,
+            "fp": 0,
+            "fn": 13,
+            "boxes": 12
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 12
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.25,
+            "expected": 4,
+            "tp": 1,
+            "fp": 0,
+            "fn": 3,
+            "boxes": 1
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 14
+      },
+      "after (box budget)": {
+        "policy": "after (box budget)",
+        "precision": 0.625,
+        "recall": 0.132,
+        "f1": 0.217,
+        "truePositives": 5,
+        "falsePositives": 3,
+        "falseNegatives": 33,
+        "displayedBoxes": 18,
+        "avgBoxesPerImage": 1.64,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.188,
+            "expected": 16,
+            "tp": 3,
+            "fp": 0,
+            "fn": 13,
+            "boxes": 7
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 6
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.25,
+            "expected": 4,
+            "tp": 1,
+            "fp": 0,
+            "fn": 3,
+            "boxes": 1
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 14
+      },
+      "rejected: +crossClassNMS": {
+        "policy": "rejected: +crossClassNMS",
+        "precision": 0.625,
+        "recall": 0.132,
+        "f1": 0.217,
+        "truePositives": 5,
+        "falsePositives": 3,
+        "falseNegatives": 33,
+        "displayedBoxes": 18,
+        "avgBoxesPerImage": 1.64,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.188,
+            "expected": 16,
+            "tp": 3,
+            "fp": 0,
+            "fn": 13,
+            "boxes": 7
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 6
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.25,
+            "expected": 4,
+            "tp": 1,
+            "fp": 0,
+            "fn": 3,
+            "boxes": 1
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 14
+      },
+      "rejected: +decoyVeto": {
+        "policy": "rejected: +decoyVeto",
+        "precision": 0.625,
+        "recall": 0.132,
+        "f1": 0.217,
+        "truePositives": 5,
+        "falsePositives": 3,
+        "falseNegatives": 33,
+        "displayedBoxes": 18,
+        "avgBoxesPerImage": 1.64,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.188,
+            "expected": 16,
+            "tp": 3,
+            "fp": 0,
+            "fn": 13,
+            "boxes": 7
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 6
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.25,
+            "expected": 4,
+            "tp": 1,
+            "fp": 0,
+            "fn": 3,
+            "boxes": 1
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 14
+      }
+    },
+    "0.60": {
+      "before (flat cap)": {
+        "policy": "before (flat cap)",
+        "precision": 0.5,
+        "recall": 0.079,
+        "f1": 0.136,
+        "truePositives": 3,
+        "falsePositives": 3,
+        "falseNegatives": 35,
+        "displayedBoxes": 24,
+        "avgBoxesPerImage": 2.18,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 8
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 12
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 11
+      },
+      "after (box budget)": {
+        "policy": "after (box budget)",
+        "precision": 0.5,
+        "recall": 0.079,
+        "f1": 0.136,
+        "truePositives": 3,
+        "falsePositives": 3,
+        "falseNegatives": 35,
+        "displayedBoxes": 13,
+        "avgBoxesPerImage": 1.18,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 5
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 4
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 11
+      },
+      "rejected: +crossClassNMS": {
+        "policy": "rejected: +crossClassNMS",
+        "precision": 0.5,
+        "recall": 0.079,
+        "f1": 0.136,
+        "truePositives": 3,
+        "falsePositives": 3,
+        "falseNegatives": 35,
+        "displayedBoxes": 13,
+        "avgBoxesPerImage": 1.18,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 5
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 4
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 11
+      },
+      "rejected: +decoyVeto": {
+        "policy": "rejected: +decoyVeto",
+        "precision": 0.5,
+        "recall": 0.079,
+        "f1": 0.136,
+        "truePositives": 3,
+        "falsePositives": 3,
+        "falseNegatives": 35,
+        "displayedBoxes": 13,
+        "avgBoxesPerImage": 1.18,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 5
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 4
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 11
+      }
+    },
+    "0.65": {
+      "before (flat cap)": {
+        "policy": "before (flat cap)",
+        "precision": 0.5,
+        "recall": 0.079,
+        "f1": 0.136,
+        "truePositives": 3,
+        "falsePositives": 3,
+        "falseNegatives": 35,
+        "displayedBoxes": 18,
+        "avgBoxesPerImage": 1.64,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 6
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 8
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 9
+      },
+      "after (box budget)": {
+        "policy": "after (box budget)",
+        "precision": 0.5,
+        "recall": 0.079,
+        "f1": 0.136,
+        "truePositives": 3,
+        "falsePositives": 3,
+        "falseNegatives": 35,
+        "displayedBoxes": 13,
+        "avgBoxesPerImage": 1.18,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 5
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 4
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 9
+      },
+      "rejected: +crossClassNMS": {
+        "policy": "rejected: +crossClassNMS",
+        "precision": 0.5,
+        "recall": 0.079,
+        "f1": 0.136,
+        "truePositives": 3,
+        "falsePositives": 3,
+        "falseNegatives": 35,
+        "displayedBoxes": 13,
+        "avgBoxesPerImage": 1.18,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 5
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 4
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 9
+      },
+      "rejected: +decoyVeto": {
+        "policy": "rejected: +decoyVeto",
+        "precision": 0.5,
+        "recall": 0.079,
+        "f1": 0.136,
+        "truePositives": 3,
+        "falsePositives": 3,
+        "falseNegatives": 35,
+        "displayedBoxes": 13,
+        "avgBoxesPerImage": 1.18,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 5
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 4
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 3
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 9
+      }
+    },
+    "0.70": {
+      "before (flat cap)": {
+        "policy": "before (flat cap)",
+        "precision": 0.5,
+        "recall": 0.079,
+        "f1": 0.136,
+        "truePositives": 3,
+        "falsePositives": 3,
+        "falseNegatives": 35,
+        "displayedBoxes": 12,
+        "avgBoxesPerImage": 1.09,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 4
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 6
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 1
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 7
+      },
+      "after (box budget)": {
+        "policy": "after (box budget)",
+        "precision": 0.5,
+        "recall": 0.079,
+        "f1": 0.136,
+        "truePositives": 3,
+        "falsePositives": 3,
+        "falseNegatives": 35,
+        "displayedBoxes": 10,
+        "avgBoxesPerImage": 0.91,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 4
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 4
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 1
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 7
+      },
+      "rejected: +crossClassNMS": {
+        "policy": "rejected: +crossClassNMS",
+        "precision": 0.5,
+        "recall": 0.079,
+        "f1": 0.136,
+        "truePositives": 3,
+        "falsePositives": 3,
+        "falseNegatives": 35,
+        "displayedBoxes": 10,
+        "avgBoxesPerImage": 0.91,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 4
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 4
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 1
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 7
+      },
+      "rejected: +decoyVeto": {
+        "policy": "rejected: +decoyVeto",
+        "precision": 0.5,
+        "recall": 0.079,
+        "f1": 0.136,
+        "truePositives": 3,
+        "falsePositives": 3,
+        "falseNegatives": 35,
+        "displayedBoxes": 10,
+        "avgBoxesPerImage": 0.91,
+        "highConfidenceMisclassifications": 3,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          },
+          {
+            "image": "eggs_carton",
+            "ingredient": "orange",
+            "term": "orange",
+            "confidence": 0.726
+          },
+          {
+            "image": "beef_raw",
+            "ingredient": "bread_loaf",
+            "term": "bread loaf",
+            "confidence": 0.712
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 4
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 4
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 1,
+            "fn": 2,
+            "boxes": 1
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 1
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "meat": [
+            "beef_raw:bread_loaf"
+          ],
+          "dairy": [
+            "eggs_carton:orange"
+          ],
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 7
+      }
+    },
+    "0.75": {
+      "before (flat cap)": {
+        "policy": "before (flat cap)",
+        "precision": 0.75,
+        "recall": 0.079,
+        "f1": 0.143,
+        "truePositives": 3,
+        "falsePositives": 1,
+        "falseNegatives": 35,
+        "displayedBoxes": 5,
+        "avgBoxesPerImage": 0.45,
+        "highConfidenceMisclassifications": 1,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 2
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 3
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 0,
+            "fn": 2,
+            "boxes": 0
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 0,
+            "fn": 5,
+            "boxes": 0
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 7
+      },
+      "after (box budget)": {
+        "policy": "after (box budget)",
+        "precision": 0.75,
+        "recall": 0.079,
+        "f1": 0.143,
+        "truePositives": 3,
+        "falsePositives": 1,
+        "falseNegatives": 35,
+        "displayedBoxes": 5,
+        "avgBoxesPerImage": 0.45,
+        "highConfidenceMisclassifications": 1,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 2
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 3
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 0,
+            "fn": 2,
+            "boxes": 0
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 0,
+            "fn": 5,
+            "boxes": 0
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 7
+      },
+      "rejected: +crossClassNMS": {
+        "policy": "rejected: +crossClassNMS",
+        "precision": 0.75,
+        "recall": 0.079,
+        "f1": 0.143,
+        "truePositives": 3,
+        "falsePositives": 1,
+        "falseNegatives": 35,
+        "displayedBoxes": 5,
+        "avgBoxesPerImage": 0.45,
+        "highConfidenceMisclassifications": 1,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 2
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 3
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 0,
+            "fn": 2,
+            "boxes": 0
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 0,
+            "fn": 5,
+            "boxes": 0
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 7
+      },
+      "rejected: +decoyVeto": {
+        "policy": "rejected: +decoyVeto",
+        "precision": 0.75,
+        "recall": 0.079,
+        "f1": 0.143,
+        "truePositives": 3,
+        "falsePositives": 1,
+        "falseNegatives": 35,
+        "displayedBoxes": 5,
+        "avgBoxesPerImage": 0.45,
+        "highConfidenceMisclassifications": 1,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.125,
+            "expected": 16,
+            "tp": 2,
+            "fp": 0,
+            "fn": 14,
+            "boxes": 2
+          },
+          "vegetable": {
+            "recall": 0.2,
+            "expected": 5,
+            "tp": 1,
+            "fp": 1,
+            "fn": 4,
+            "boxes": 3
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 0,
+            "fn": 2,
+            "boxes": 0
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 0,
+            "fn": 5,
+            "boxes": 0
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 7
+      }
+    },
+    "0.80": {
+      "before (flat cap)": {
+        "policy": "before (flat cap)",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "truePositives": 0,
+        "falsePositives": 1,
+        "falseNegatives": 38,
+        "displayedBoxes": 1,
+        "avgBoxesPerImage": 0.09,
+        "highConfidenceMisclassifications": 1,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.0,
+            "expected": 16,
+            "tp": 0,
+            "fp": 0,
+            "fn": 16,
+            "boxes": 0
+          },
+          "vegetable": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 1
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 0,
+            "fn": 2,
+            "boxes": 0
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 0,
+            "fn": 5,
+            "boxes": 0
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 7
+      },
+      "after (box budget)": {
+        "policy": "after (box budget)",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "truePositives": 0,
+        "falsePositives": 1,
+        "falseNegatives": 38,
+        "displayedBoxes": 1,
+        "avgBoxesPerImage": 0.09,
+        "highConfidenceMisclassifications": 1,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.0,
+            "expected": 16,
+            "tp": 0,
+            "fp": 0,
+            "fn": 16,
+            "boxes": 0
+          },
+          "vegetable": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 1
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 0,
+            "fn": 2,
+            "boxes": 0
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 0,
+            "fn": 5,
+            "boxes": 0
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 7
+      },
+      "rejected: +crossClassNMS": {
+        "policy": "rejected: +crossClassNMS",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "truePositives": 0,
+        "falsePositives": 1,
+        "falseNegatives": 38,
+        "displayedBoxes": 1,
+        "avgBoxesPerImage": 0.09,
+        "highConfidenceMisclassifications": 1,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.0,
+            "expected": 16,
+            "tp": 0,
+            "fp": 0,
+            "fn": 16,
+            "boxes": 0
+          },
+          "vegetable": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 1
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 0,
+            "fn": 2,
+            "boxes": 0
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 0,
+            "fn": 5,
+            "boxes": 0
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 7
+      },
+      "rejected: +decoyVeto": {
+        "policy": "rejected: +decoyVeto",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "truePositives": 0,
+        "falsePositives": 1,
+        "falseNegatives": 38,
+        "displayedBoxes": 1,
+        "avgBoxesPerImage": 0.09,
+        "highConfidenceMisclassifications": 1,
+        "highConfidenceExamples": [
+          {
+            "image": "veg_mixed",
+            "ingredient": "bell_pepper",
+            "term": "bell pepper",
+            "confidence": 0.837
+          }
+        ],
+        "perCategory": {
+          "fruit": {
+            "recall": 0.0,
+            "expected": 16,
+            "tp": 0,
+            "fp": 0,
+            "fn": 16,
+            "boxes": 0
+          },
+          "vegetable": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 1,
+            "fn": 5,
+            "boxes": 1
+          },
+          "meat": {
+            "recall": 0.0,
+            "expected": 2,
+            "tp": 0,
+            "fp": 0,
+            "fn": 2,
+            "boxes": 0
+          },
+          "seafood": {
+            "recall": 0.0,
+            "expected": 6,
+            "tp": 0,
+            "fp": 0,
+            "fn": 6,
+            "boxes": 0
+          },
+          "dairy": {
+            "recall": 0.0,
+            "expected": 5,
+            "tp": 0,
+            "fp": 0,
+            "fn": 5,
+            "boxes": 0
+          },
+          "pantry": {
+            "recall": 0.0,
+            "expected": 4,
+            "tp": 0,
+            "fp": 0,
+            "fn": 4,
+            "boxes": 0
+          }
+        },
+        "falsePositiveExamples": {
+          "vegetable": [
+            "veg_mixed:bell_pepper"
+          ]
+        },
+        "images": 11,
+        "decoyHits": 7
+      }
+    }
+  }
+}

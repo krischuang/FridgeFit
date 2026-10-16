@@ -1,3 +1,8 @@
+//
+//  SpendHistoryView.swift
+//  FridgeFit
+//
+
 import SwiftUI
 
 // screen 4 - the record: total lost to waste, then recent spends and recent waste

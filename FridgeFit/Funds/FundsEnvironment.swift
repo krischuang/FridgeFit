@@ -1,3 +1,8 @@
+//
+//  FundsEnvironment.swift
+//  FridgeFit
+//
+
 import Foundation
 
 // composition root for the FridgeFunds bits - holds whatever BudgetStore /

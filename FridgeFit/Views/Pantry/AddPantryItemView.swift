@@ -66,7 +66,7 @@ struct AddPantryItemView: View {
                 } header: {
                     Text("Price & Expiry")
                 } footer: {
-                    Text("For the whole amount above. Shows up in the Budget tab.")
+                    Text("Price is for the whole amount above and shows up in the Budget tab. Expiry is saved on the item, same as the Kitchen tab.")
                 }
                 if let priceError {
                     Section {

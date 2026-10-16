@@ -28,7 +28,7 @@ final class PantryViewModel: ObservableObject {
     private let addPantryItemUseCase: AddPantryItemUseCase
     private let updatePantryItemUseCase: UpdatePantryItemUseCase
     private let removePantryItemUseCase: RemovePantryItemUseCase
-    /// Where the optional price/expiry from the add form goes (the Budget tab).
+    // where the optional price from the add form goes (the Budget tab)
     private let priceRecorder: PurchasePriceRecording?
 
     init(pantryRepository: PantryRepository = InMemoryPantryRepository(),
@@ -58,14 +58,13 @@ final class PantryViewModel: ObservableObject {
         errorMessage = nil
         duplicateItem = nil
         do {
-            let added = try await addPantryItemUseCase.execute(name: name, quantity: quantity, unit: unit, category: category)
-            // price/expiry are optional extras for the Budget tab - only sent once
-            // the item is actually in the pantry
+            // expiry is a real pantry field now (the Kitchen tab uses it too), so it
+            // goes straight onto the item
+            let added = try await addPantryItemUseCase.execute(name: name, quantity: quantity, unit: unit,
+                                                               category: category, expiryDate: expiryDate)
+            // price is only for the Budget tab, and only once the item is actually in
             if let pricePaid {
                 priceRecorder?.recordPurchasePrice(pricePaid, for: added)
-            }
-            if let expiryDate {
-                priceRecorder?.recordExpiryDate(expiryDate, for: added)
             }
             await loadItems()
         } catch let error as AddPantryItemError {

@@ -1,3 +1,8 @@
+//
+//  MoneyInFridgeViewModelPriceTests.swift
+//  FridgeFitTests
+//
+
 import XCTest
 @testable import FridgeFit
 
@@ -18,7 +23,7 @@ final class MoneyInFridgeViewModelPriceTests: XCTestCase {
         ])
         let eggs = try XCTUnwrap(viewModel.items.first)
 
-        let error = viewModel.savePrice(for: eggs, totalPaidText: "3", expiryDate: nil)
+        let error = viewModel.savePrice(for: eggs, totalPaidText: "3")
 
         XCTAssertNil(error)
         XCTAssertEqual(environment.priceStore.info(for: eggs.id)?.unitCost, Money(Decimal(string: "0.5")!, .aud))
@@ -26,14 +31,14 @@ final class MoneyInFridgeViewModelPriceTests: XCTestCase {
         XCTAssertEqual(viewModel.valuation?.totalValue, Money(3, .aud))
     }
 
-    func test_savePrice_withExpirySoon_countsAsAtRisk() async throws {
+    func test_pricedItem_expiringSoonInThePantry_countsAsAtRisk() async throws {
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
         let (viewModel, _) = try await makeViewModel([
-            PantryItem(ingredient: Ingredient(name: "Milk"), quantity: 1, unit: .liters)
+            PantryItem(ingredient: Ingredient(name: "Milk"), quantity: 1, unit: .liters, expiryDate: tomorrow)
         ])
         let milk = try XCTUnwrap(viewModel.items.first)
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
 
-        _ = viewModel.savePrice(for: milk, totalPaidText: "4.50", expiryDate: tomorrow)
+        _ = viewModel.savePrice(for: milk, totalPaidText: "4.50")
 
         XCTAssertEqual(viewModel.valuation?.atRiskValue, Money(Decimal(string: "4.5")!, .aud))
     }
@@ -44,7 +49,7 @@ final class MoneyInFridgeViewModelPriceTests: XCTestCase {
         ])
         let rice = try XCTUnwrap(viewModel.items.first)
 
-        let error = viewModel.savePrice(for: rice, totalPaidText: "cheap", expiryDate: nil)
+        let error = viewModel.savePrice(for: rice, totalPaidText: "cheap")
 
         XCTAssertNotNil(error)
         XCTAssertNil(environment.priceStore.info(for: rice.id))
@@ -56,21 +61,19 @@ final class MoneyInFridgeViewModelPriceTests: XCTestCase {
         ])
         let salt = try XCTUnwrap(viewModel.items.first)
 
-        XCTAssertNotNil(viewModel.savePrice(for: salt, totalPaidText: "2", expiryDate: nil))
+        XCTAssertNotNil(viewModel.savePrice(for: salt, totalPaidText: "2"))
     }
 
-    func test_emptyPrice_isAllowed_justSavesTheExpiry() async throws {
+    func test_emptyPrice_isAllowed_andClearsIt() async throws {
         let (viewModel, environment) = try await makeViewModel([
             PantryItem(ingredient: Ingredient(name: "Bread"), quantity: 1, unit: .pieces)
         ])
         let bread = try XCTUnwrap(viewModel.items.first)
-        let friday = TestDates.day(4)
+        _ = viewModel.savePrice(for: bread, totalPaidText: "4")
 
-        XCTAssertNil(viewModel.savePrice(for: bread, totalPaidText: "", expiryDate: friday))
+        XCTAssertNil(viewModel.savePrice(for: bread, totalPaidText: ""))
 
-        let info = environment.priceStore.info(for: bread.id)
-        XCTAssertNil(info?.unitCost)
-        XCTAssertEqual(info?.expiryDate, friday)
+        XCTAssertNil(environment.priceStore.info(for: bread.id)?.unitCost)
         XCTAssertEqual(viewModel.valuation?.unvaluedItemCount, 1)
     }
 }

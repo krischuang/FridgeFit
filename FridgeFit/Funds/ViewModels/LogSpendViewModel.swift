@@ -1,3 +1,8 @@
+//
+//  LogSpendViewModel.swift
+//  FridgeFit
+//
+
 import Foundation
 import Observation
 

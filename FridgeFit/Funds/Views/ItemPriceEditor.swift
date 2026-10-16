@@ -1,15 +1,19 @@
+//
+//  ItemPriceEditor.swift
+//  FridgeFit
+//
+
 import SwiftUI
 
-// sheet for attaching a price + expiry to one pantry item. FridgeFit's pantry has
-// neither, and the "money in my fridge" numbers are useless without them.
+// sheet for attaching a price to one pantry item. the pantry doesn't keep prices,
+// and the "money in my fridge" numbers are useless without them. expiry is shown
+// but edited in the Kitchen tab, since that's a real pantry field now.
 struct ItemPriceEditor: View {
     let item: PantryItemSnapshot
     let viewModel: MoneyInFridgeViewModel
 
     @Environment(\.dismiss) private var dismiss
     @State private var totalPaidText = ""
-    @State private var hasExpiry = false
-    @State private var expiryDate = Date()
     @State private var error: String?
 
     private var quantityString: String {
@@ -32,12 +36,16 @@ struct ItemPriceEditor: View {
                     Text("For the \(quantityString) \(item.unit) you have now. Leave it empty if you don't know.")
                 }
 
-                Section("Expiry") {
-                    Toggle("Has an expiry date", isOn: $hasExpiry)
-                        .accessibilityIdentifier("funds.price.hasExpiry")
-                    if hasExpiry {
-                        DatePicker("Expires", selection: $expiryDate, displayedComponents: .date)
+                Section {
+                    if let expiry = item.expiryDate {
+                        LabeledContent("Expires", value: expiry.formatted(date: .abbreviated, time: .omitted))
+                    } else {
+                        Text("No expiry date").foregroundStyle(.secondary)
                     }
+                } header: {
+                    Text("Expiry")
+                } footer: {
+                    Text("Change it in the Kitchen tab.")
                 }
 
                 if let error {
@@ -68,14 +76,10 @@ struct ItemPriceEditor: View {
             // per-unit cost x quantity can come back as 9.9999..., so round it for the field
             totalPaidText = String(format: "%.2f", NSDecimalNumber(decimal: total.amount).doubleValue)
         }
-        if let expiry = viewModel.priceInfo(for: item)?.expiryDate {
-            hasExpiry = true
-            expiryDate = expiry
-        }
     }
 
     private func save() {
-        error = viewModel.savePrice(for: item, totalPaidText: totalPaidText, expiryDate: hasExpiry ? expiryDate : nil)
+        error = viewModel.savePrice(for: item, totalPaidText: totalPaidText)
         if error == nil { dismiss() }
     }
 }

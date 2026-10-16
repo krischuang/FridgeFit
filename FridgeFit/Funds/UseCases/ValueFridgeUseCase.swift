@@ -1,18 +1,23 @@
+//
+//  ValueFridgeUseCase.swift
+//  FridgeFit
+//
+
 import Foundation
 
-/// Adds up how much money is sitting in the fridge, and how much of it is about to
-/// be wasted. Only items with a recorded cost count towards the dollar totals —
-/// unpriced ones are tallied separately instead of just being ignored.
+// Adds up how much money is sitting in the fridge, and how much of it is about to
+// be wasted. Only items with a recorded cost count towards the dollar totals —
+// unpriced ones are tallied separately instead of just being ignored.
 struct ValueFridgeUseCase {
     let pantry: PantryReading
 
-    /// Items expiring within this many days (inclusive) count as at risk.
+    // Items expiring within this many days (inclusive) count as at risk.
     static let atRiskWindowDays = 3
 
-    /// Computes the current fridge valuation.
-    /// - Parameters:
-    ///   - now: the reference "today" (injectable for testing).
-    ///   - currency: the currency to total in — normally the active budget's currency.
+    // Computes the current fridge valuation.
+    // - Parameters:
+    //   - now: the reference "today" (injectable for testing).
+    //   - currency: the currency to total in — normally the active budget's currency.
     func execute(now: Date = Date(), currency: Currency) -> FridgeValuation {
         let items = pantry.allItems()
         let valuedItems = items.filter { $0.unitCost != nil }

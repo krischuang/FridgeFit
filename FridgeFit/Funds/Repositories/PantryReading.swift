@@ -1,3 +1,8 @@
+//
+//  PantryReading.swift
+//  FridgeFit
+//
+
 import Foundation
 
 // read-only window onto the inventory that the Smart Fridge module (Module 1) owns.

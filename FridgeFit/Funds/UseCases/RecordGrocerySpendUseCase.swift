@@ -1,21 +1,26 @@
+//
+//  RecordGrocerySpendUseCase.swift
+//  FridgeFit
+//
+
 import Foundation
 
-/// Logs a grocery purchase against the active budget. Deliberately does not block a
-/// spend that pushes the user over budget: going over is surfaced later as a
-/// supportive warning (see ``EvaluateBudgetStatusUseCase``), never as a failure
-/// here — the user stays in control of their own money.
+// Logs a grocery purchase against the active budget. Deliberately does not block a
+// spend that pushes the user over budget: going over is surfaced later as a
+// supportive warning (see ``EvaluateBudgetStatusUseCase``), never as a failure
+// here — the user stays in control of their own money.
 struct RecordGrocerySpendUseCase {
     let budgetStore: BudgetStore
 
-    /// Failures that stop a spend from being recorded at all.
+    // Failures that stop a spend from being recorded at all.
     enum Failure: LocalizedError, Equatable {
-        /// The entered amount was zero or negative.
+        // The entered amount was zero or negative.
         case amountNotPositive
-        /// No budget has been set, so there is nothing to record the spend against.
+        // No budget has been set, so there is nothing to record the spend against.
         case noActiveBudgetPeriod
-        /// The purchase date is later than today.
+        // The purchase date is later than today.
         case purchaseDatedInFuture
-        /// The spend's currency differs from the budget's currency.
+        // The spend's currency differs from the budget's currency.
         case currencyMismatch(expected: Currency, got: Currency)
 
         var errorDescription: String? {
@@ -32,9 +37,9 @@ struct RecordGrocerySpendUseCase {
         }
     }
 
-    /// Validates and records a grocery spend.
-    /// - Returns: the persisted ``GrocerySpend``.
-    /// - Throws: ``Failure`` when the spend cannot be recorded.
+    // Validates and records a grocery spend.
+    // - Returns: the persisted ``GrocerySpend``.
+    // - Throws: ``Failure`` when the spend cannot be recorded.
     @discardableResult
     func execute(amount: Money,
                  spentOn: Date = Date(),

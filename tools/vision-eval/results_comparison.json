@@ -1,0 +1,152 @@
+{
+  "candidates": [
+    {
+      "label": "yolo-world @0.40",
+      "perCategory": {
+        "fruit": 0.4375,
+        "vegetable": 0.4,
+        "meat": 0.0,
+        "seafood": 0.0,
+        "dairy": 0.0,
+        "pantry": 0.25
+      },
+      "recall": 0.2631578947368421,
+      "precision": 0.5555555555555556,
+      "found": 10,
+      "expected": 38,
+      "falsePositives": 8
+    },
+    {
+      "label": "apple-vision @0.30",
+      "perCategory": {
+        "fruit": 0.6875,
+        "vegetable": 0.6,
+        "meat": 0.0,
+        "seafood": 0.16666666666666666,
+        "dairy": 0.2,
+        "pantry": 0.0
+      },
+      "recall": 0.42105263157894735,
+      "precision": 0.7272727272727273,
+      "found": 16,
+      "expected": 38,
+      "falsePositives": 6
+    },
+    {
+      "label": "apple-vision @0.10",
+      "perCategory": {
+        "fruit": 0.75,
+        "vegetable": 0.8,
+        "meat": 0.5,
+        "seafood": 0.3333333333333333,
+        "dairy": 0.4,
+        "pantry": 0.0
+      },
+      "recall": 0.5526315789473685,
+      "precision": 0.44680851063829785,
+      "found": 21,
+      "expected": 38,
+      "falsePositives": 26
+    },
+    {
+      "label": "hybrid union (v@0.30)",
+      "perCategory": {
+        "fruit": 0.6875,
+        "vegetable": 0.6,
+        "meat": 0.0,
+        "seafood": 0.16666666666666666,
+        "dairy": 0.2,
+        "pantry": 0.25
+      },
+      "recall": 0.4473684210526316,
+      "precision": 0.5483870967741935,
+      "found": 17,
+      "expected": 38,
+      "falsePositives": 14
+    },
+    {
+      "label": "hybrid union (v@0.10)",
+      "perCategory": {
+        "fruit": 0.75,
+        "vegetable": 0.8,
+        "meat": 0.5,
+        "seafood": 0.3333333333333333,
+        "dairy": 0.4,
+        "pantry": 0.25
+      },
+      "recall": 0.5789473684210527,
+      "precision": 0.39285714285714285,
+      "found": 22,
+      "expected": 38,
+      "falsePositives": 34
+    },
+    {
+      "label": "hybrid agreement (AND)",
+      "perCategory": {
+        "fruit": 0.4375,
+        "vegetable": 0.4,
+        "meat": 0.0,
+        "seafood": 0.0,
+        "dairy": 0.0,
+        "pantry": 0.0
+      },
+      "recall": 0.23684210526315788,
+      "precision": 1.0,
+      "found": 9,
+      "expected": 38,
+      "falsePositives": 0
+    }
+  ],
+  "perImage": {
+    "fruits_mixed": [
+      "apple",
+      "banana",
+      "grape",
+      "orange",
+      "papaya",
+      "pear",
+      "pineapple",
+      "strawberry",
+      "watermelon"
+    ],
+    "fish_platter": [
+      "lemon",
+      "lime",
+      "onion",
+      "tomato",
+      "zucchini"
+    ],
+    "chicken_raw": [],
+    "prawns": [],
+    "veg_mixed": [
+      "bell_pepper",
+      "broccoli",
+      "carrot",
+      "garlic",
+      "zucchini"
+    ],
+    "tapas_cheese": [],
+    "market_crowded": [
+      "apple",
+      "grape",
+      "mango",
+      "orange",
+      "pumpkin",
+      "rambutan"
+    ],
+    "shelf_packaged": [
+      "bread_loaf",
+      "sauce_bottle"
+    ],
+    "eggs_carton": [
+      "egg_carton",
+      "orange"
+    ],
+    "beef_raw": [
+      "bread_loaf"
+    ],
+    "supermarket": [
+      "sauce_bottle"
+    ]
+  }
+}

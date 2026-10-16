@@ -1,14 +1,19 @@
+//
+//  PantryItemSnapshot.swift
+//  FridgeFit
+//
+
 import Foundation
 
-/// A read-only snapshot of one pantry item, as reported by the Smart Fridge module.
+// A read-only snapshot of one pantry item, as reported by the Smart Fridge module.
 struct PantryItemSnapshot: Identifiable, Hashable, Codable, Sendable {
     let id: PantryItemID
     let name: String
     let quantity: Double
     let unit: String
-    /// The date the item expires, if known.
+    // The date the item expires, if known.
     let expiryDate: Date?
-    /// The recorded cost per unit, if this item has one.
+    // The recorded cost per unit, if this item has one.
     let unitCost: Money?
 
     init(id: PantryItemID,
@@ -25,15 +30,15 @@ struct PantryItemSnapshot: Identifiable, Hashable, Codable, Sendable {
         self.unitCost = unitCost
     }
 
-    /// The total value of the quantity on hand, or `nil` if the item has no
-    /// recorded cost.
+    // The total value of the quantity on hand, or `nil` if the item has no
+    // recorded cost.
     var lineValue: Money? {
         guard let unitCost else { return nil }
         return unitCost.scaled(by: Decimal(quantity))
     }
 
-    /// Whole days until this item expires, measured from `reference`. Negative if
-    /// already expired, `nil` if there's no expiry date at all.
+    // Whole days until this item expires, measured from `reference`. Negative if
+    // already expired, `nil` if there's no expiry date at all.
     func daysUntilExpiry(from reference: Date = Date()) -> Int? {
         guard let expiryDate else { return nil }
         let start = Calendar.current.startOfDay(for: reference)

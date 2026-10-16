@@ -1,3 +1,8 @@
+//
+//  BudgetDashboardView.swift
+//  FridgeFit
+//
+
 import SwiftUI
 
 // screen 1 - home. how much budget's left this period, what's left today, and how

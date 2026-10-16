@@ -1,22 +1,153 @@
 rules_version = '2';
 
+// FridgeFit Firestore security rules.
+//
+// Everything the app stores lives under users/{uid}/..., and the single
+// security boundary is "the signed-in user owns the uid in the path". That
+// is what makes a Firebase account - not a client-side filter - the limit of
+// what any device can see.
+//
+// Paths in use (see FirestorePantryRepository, FirestoreDeviceRegistry and
+// FirestoreSignalingTransport):
+//
+//   users/{uid}/pantry/{pantryItemId}
+//   users/{uid}/inventoryEvents/{eventId}
+//   users/{uid}/devices/{deviceId}
+//   users/{uid}/webrtcSessions/{sessionId}
+//   users/{uid}/webrtcSessions/{sessionId}/callerCandidates/{candidateId}
+//   users/{uid}/webrtcSessions/{sessionId}/calleeCandidates/{candidateId}
+//   users/{uid}/fundsBudget/current
+//   users/{uid}/fundsSpends/{spendId}
+//   users/{uid}/fundsWaste/{wasteId}
+//   users/{uid}/fundsItemPrices/{pantryItemId}
+//
+// Covered by FirestoreRulesTests (`npm test` in firestore-tests/), which runs
+// these rules against the Firestore emulator.
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Each user's pantry lives at users/{uid}/pantry/{pantryItemId}.
-    // A signed-in user may only read or write their own pantry - uid in
-    // the path must match the authenticated request's uid.
+
+    // The one authorisation question these rules can answer: is the caller
+    // signed in, and is this their own subtree?
+    //
+    // Note it deliberately says nothing about *which device* is asking -
+    // deviceId is not part of the auth token, so per-device authorisation is
+    // enforced client-side in WebRTCSessionCoordinator, which refuses any
+    // session not addressed to it and refuses to answer its own offer.
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // --- Pantry (pre-existing, unchanged behaviour) -----------------------
+    //
+    // A signed-in user may only read or write their own pantry.
     match /users/{uid}/pantry/{pantryItemId} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if isOwner(uid);
     }
 
-    // FridgeFunds (budget, spends, waste, item prices) - same rule, own data only.
-    match /users/{uid}/{collection}/{docId} {
-      allow read, write: if request.auth != null
-        && request.auth.uid == uid
-        && collection in ['fundsBudget', 'fundsSpends', 'fundsWaste', 'fundsItemPrices'];
+    // --- Kitchen activity history -----------------------------------------
+    //
+    // One document per committed action - added, used, finished, discarded,
+    // quantity corrected (see InventoryEvent and
+    // FirestoreInventoryEventRepository).
+    //
+    // Its own match rather than sharing the pantry's: a rule on one
+    // collection does not cover a sibling, and these documents outlive the
+    // pantry item they describe - finishing food removes the item but keeps
+    // its history, which is the only place "we ate it" and "we threw it out"
+    // stay distinguishable.
+    //
+    // `read` covers the ordered, limited query the activity sheet runs.
+    // `write` covers appending an event and the batched delete that backs
+    // undo. Deliberately no narrower than the pantry it sits beside: the
+    // security boundary is the uid in the path, and nothing here is readable
+    // or writable by anyone else's account.
+    match /users/{uid}/inventoryEvents/{eventId} {
+      allow read, write: if isOwner(uid);
     }
 
-    // Everything else is denied by default.
+    // --- Recipes saved from Discover --------------------------------------
+    //
+    // One document per recipe the user saved from an online search, holding
+    // the converted `Recipe` as JSON (see FirestoreSavedRecipeRepository and
+    // SaveOnlineRecipeUseCase). Same own-data-only boundary as the pantry.
+    //
+    // `read` covers the ordered query the Recipes tab runs over savedAt.
+    // `write` covers saving (which overwrites by recipe id, so saving the
+    // same recipe twice is idempotent) and removing.
+    //
+    // NOTE: this block is not yet deployed. Until it is,
+    // `OnlineRecipeFeature.savedRecipeStorage` stays
+    // `.disabledPendingRulesDeployment`, which keeps the app from building a
+    // saved-recipe repository at all - so no write is attempted against the
+    // deployed default-deny rules and no user ever sees a save action fail.
+    // Deploying this file and running the firestore-tests suite against it
+    // are the two prerequisites for flipping that flag.
+    match /users/{uid}/savedRecipes/{recipeId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // --- Remote camera: device registry -----------------------------------
+    //
+    // One document per install, so the app can tell two iPhones on the same
+    // account apart - a Firebase UID identifies the account, not the phone
+    // (see DeviceIdentity).
+    //
+    // `read` covers both getting a single device and listing the collection,
+    // which is how discovery and the presence heartbeat work. `write` covers
+    // registration (create), heartbeat and role changes (update), and
+    // removal (delete).
+    match /users/{uid}/devices/{deviceId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // --- Remote camera: WebRTC signaling ----------------------------------
+    //
+    // Carries SDP offers/answers and ICE candidates only. Video frames and
+    // captured photos never pass through Firestore - they go peer-to-peer
+    // over WebRTC.
+    //
+    // `read` also covers the two queries the app runs here: a camera listens
+    // for sessions where calleeDeviceId == its own id, and the controller
+    // sweeps sessions whose expiresAt has passed.
+    match /users/{uid}/webrtcSessions/{sessionId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ICE candidates, in a subcollection per negotiating role.
+    //
+    // This needs its own match: a rule on the parent document does NOT cascade
+    // to its subcollections. Without this block the session document would be
+    // readable but candidates would be denied, and connections would get as
+    // far as exchanging SDP and then never complete - which is the failure
+    // mode most easily mistaken for a networking problem.
+    //
+    // The collection name is restricted to the two the app actually uses
+    // (see SignalingRole.candidateCollectionName) rather than a recursive
+    // wildcard, so this grants no more than the feature needs.
+    match /users/{uid}/webrtcSessions/{sessionId}/{candidateCollection}/{candidateId} {
+      allow read, write: if isOwner(uid)
+        && candidateCollection in ['callerCandidates', 'calleeCandidates'];
+    }
+
+    // --- FridgeFunds (Budget tab) ------------------------------------------
+    //
+    // The active budget, logged grocery spends, wasted-food costs, and the
+    // price attached to each pantry item (see FirestoreBudgetStore and
+    // FirestoreItemPriceStore). Same own-data-only boundary as the pantry.
+    //
+    // Restricted to the four collection names the module actually uses
+    // rather than a wildcard, same reasoning as the ICE candidate rule above.
+    match /users/{uid}/{fundsCollection}/{docId} {
+      allow read, write: if isOwner(uid)
+        && fundsCollection in ['fundsBudget', 'fundsSpends', 'fundsWaste', 'fundsItemPrices'];
+    }
+
+    // --- Default deny -----------------------------------------------------
+    //
+    // Anything not matched above. Note that in Firestore an `allow` elsewhere
+    // is OR'd in, so this cannot override the rules above - it only closes
+    // off paths nothing has granted.
     match /{document=**} {
       allow read, write: if false;
     }

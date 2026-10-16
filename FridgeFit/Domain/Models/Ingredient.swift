@@ -41,6 +41,14 @@ enum IngredientCategory: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// The category's name as the user sees it.
+    ///
+    /// Same string as `rawValue`, named separately so views and search read
+    /// as intent rather than as "whatever we happened to persist" - and so
+    /// the stored value could change later without a find-and-replace
+    /// through the UI.
+    var displayName: String { rawValue }
+
     var symbolName: String {
         switch self {
         case .produce: return "leaf.fill"

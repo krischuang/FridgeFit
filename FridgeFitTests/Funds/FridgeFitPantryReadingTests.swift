@@ -1,3 +1,8 @@
+//
+//  FridgeFitPantryReadingTests.swift
+//  FridgeFitTests
+//
+
 import XCTest
 @testable import FridgeFit
 
@@ -44,6 +49,29 @@ final class FridgeFitPantryReadingTests: XCTestCase {
         XCTAssertEqual(snapshot.unitCost, Money(Decimal(string: "0.5")!, .aud))
         XCTAssertEqual(snapshot.lineValue, Money(3, .aud))
         XCTAssertEqual(snapshot.expiryDate, TestDates.day(3))
+    }
+
+    func test_expiry_comesFromThePantry_beforeOurOldCopy() async throws {
+        let yoghurt = PantryItem(ingredient: Ingredient(name: "Yoghurt"), quantity: 1, unit: .pieces,
+                                 expiryDate: TestDates.day(2))
+        let prices = InMemoryItemPriceStore()
+        let reading = FridgeFitPantryReading(repository: InMemoryPantryRepository(seedItems: [yoghurt]),
+                                             priceStore: prices)
+        try await reading.refresh()
+        // an old FridgeFunds-side expiry from before the pantry had the field
+        prices.save(ItemPriceInfo(pantryItemID: FridgeFitPantryReading.id(for: yoghurt), expiryDate: TestDates.day(9)))
+
+        XCTAssertEqual(reading.allItems().first?.expiryDate, TestDates.day(2))
+    }
+
+    func test_oldStoredExpiry_isStillUsed_whenThePantryHasNone() async throws {
+        let prices = InMemoryItemPriceStore()
+        let reading = FridgeFitPantryReading(repository: InMemoryPantryRepository(seedItems: [milk]),
+                                             priceStore: prices)
+        try await reading.refresh()
+        prices.save(ItemPriceInfo(pantryItemID: FridgeFitPantryReading.id(for: milk), expiryDate: TestDates.day(4)))
+
+        XCTAssertEqual(reading.allItems().first?.expiryDate, TestDates.day(4))
     }
 
     func test_refresh_picksUpPantryChanges() async throws {
