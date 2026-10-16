@@ -1,9 +1,9 @@
 # Spoonacular online recipes (Discover)
 
-Online recipe search, integrated but **switched off**. The code is complete
-and tested; it is not connected to a recipe provider, and it does not write
-saved recipes to Firestore. Both of those are deliberate, and each is a
-separate switch with its own prerequisite.
+Online recipe search is **switched on** (it needs a key in the gitignored
+`Secrets.xcconfig`). Saving online recipes to Firestore is still **switched
+off**, pending rules deployment. Each is a separate switch with its own
+prerequisite.
 
 The app builds, launches and is fully usable with no Spoonacular API key.
 
@@ -12,7 +12,7 @@ The app builds, launches and is fully usable with no Spoonacular API key.
 | Capability | State | Gate |
 |---|---|---|
 | Browse the Discover tab | On | — |
-| Online recipe search | **Off** | `OnlineRecipeFeature.provider` |
+| Online recipe search | **On** (needs `SPOONACULAR_API_KEY` in `Secrets.xcconfig`) | `OnlineRecipeFeature.provider` |
 | Save a recipe to the Recipes tab | **Off** | `OnlineRecipeFeature.savedRecipeStorage` |
 | Saved recipes in context-aware recommendations | Wired, inert while saving is off | `CompositeRecipeRepository` |
 | Apple Intelligence Pantry Ideas | On, unchanged | — |
@@ -50,9 +50,9 @@ behaviour.
    returns `nil` and Discover reports itself as not configured rather than
    failing. No extra error handling is needed.
 
-`OnlineRecipeFeatureTests.test_shippedProviderState_isDisabled` will fail
-once step 2 is done. That is intended: update the test deliberately, so the
-change cannot happen by accident.
+`OnlineRecipeFeatureTests.test_shippedProviderState_isEnabled` (formerly
+`..._isDisabled`) pins this value, so it can't change by accident; it was
+updated deliberately when step 2 was done.
 
 ### Before enabling, settle these
 
