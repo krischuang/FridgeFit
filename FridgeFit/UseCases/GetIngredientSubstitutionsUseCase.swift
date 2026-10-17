@@ -12,7 +12,7 @@ import Foundation
 /// call the provider, validate every candidate against the real pantry,
 /// drop anything rejected/structurally invalid, deduplicate, prioritize
 /// pantry-backed options, and cap the result to a short list.
-struct GetIngredientSubstitutionsUseCase {
+nonisolated struct GetIngredientSubstitutionsUseCase {
     private let substitutionService: SubstitutionService
     private let pantryRepository: PantryRepository
     private let cache: SubstitutionCache

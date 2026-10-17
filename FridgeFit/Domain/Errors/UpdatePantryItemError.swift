@@ -7,7 +7,7 @@ import Foundation
 
 /// The one way updating a pantry item can fail, aside from an invalid
 /// quantity (that reuses `AddPantryItemError.invalidQuantity` - same rule).
-enum UpdatePantryItemError: LocalizedError, Equatable {
+nonisolated enum UpdatePantryItemError: LocalizedError, Equatable {
     /// Item was removed elsewhere before the update could apply.
     case itemNotFound
 

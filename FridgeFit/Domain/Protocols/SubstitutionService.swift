@@ -12,6 +12,6 @@ import Foundation
 /// pantry availability, quantities-on-hand, or feasibility ever comes from
 /// here - `GetIngredientSubstitutionsUseCase` validates every suggestion
 /// against the real pantry before it reaches the UI.
-protocol SubstitutionService {
+nonisolated protocol SubstitutionService {
     func suggestSubstitutions(for request: SubstitutionRequest) async throws -> [RawSubstitutionSuggestion]
 }

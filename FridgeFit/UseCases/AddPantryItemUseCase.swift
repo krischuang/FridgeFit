@@ -10,7 +10,7 @@ import Foundation
 ///
 /// All validation happens here, not in the view or view model, so there's
 /// one place that can create a pantry item and it can't be skipped.
-struct AddPantryItemUseCase {
+nonisolated struct AddPantryItemUseCase {
     private let pantryRepository: PantryRepository
 
     init(pantryRepository: PantryRepository) {

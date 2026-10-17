@@ -11,7 +11,7 @@ import Foundation
 /// the same path as every other pantry mutation, and "item not found"
 /// (removed elsewhere between the list rendering and the swipe landing) is
 /// a real error instead of a silent no-op.
-struct RemovePantryItemUseCase {
+nonisolated struct RemovePantryItemUseCase {
     private let pantryRepository: PantryRepository
 
     init(pantryRepository: PantryRepository) {

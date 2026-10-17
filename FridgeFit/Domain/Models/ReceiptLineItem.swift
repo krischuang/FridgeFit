@@ -18,7 +18,7 @@ import Foundation
 /// `originalText` is never thrown away. The interpreter sees it, the review
 /// screen can show it so the user can check a detection against their actual
 /// receipt, and it is the key the interpreter's answers are matched back on.
-struct ReceiptLineItem: Equatable {
+nonisolated struct ReceiptLineItem: Equatable {
     /// The line exactly as OCR read it, including any price.
     let originalText: String
     /// `originalText` with the trailing price and line noise removed, which

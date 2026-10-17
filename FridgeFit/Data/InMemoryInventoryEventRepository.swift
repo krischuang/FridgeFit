@@ -7,7 +7,7 @@ import Foundation
 
 /// In-memory `InventoryEventRepository` for previews and unit tests.
 /// Nothing persists between launches.
-final class InMemoryInventoryEventRepository: InventoryEventRepository {
+nonisolated final class InMemoryInventoryEventRepository: InventoryEventRepository {
     private var events: [InventoryEvent]
 
     init(seedEvents: [InventoryEvent] = []) {

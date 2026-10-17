@@ -259,6 +259,7 @@ struct OnlineRecipeImage: View {
         DiscoverRecipesView(
             viewModel: OnlineRecipeSearchViewModel(useCase: useCase, preferencesStore: InMemoryOnlineRecipePreferencesStore()),
             recipeViewModel: RecipeViewModel(
+                recipeRepository: BundledRecipeRepository(),
                 pantryRepository: pantry,
                 savedRecipeUnavailableExplanation: OnlineRecipeFeature.savedRecipeUnavailableExplanation(
                     state: .disabledPendingRulesDeployment
@@ -277,6 +278,7 @@ struct OnlineRecipeImage: View {
         DiscoverRecipesView(
             viewModel: OnlineRecipeSearchViewModel(useCase: useCase, preferencesStore: InMemoryOnlineRecipePreferencesStore()),
             recipeViewModel: RecipeViewModel(
+                recipeRepository: BundledRecipeRepository(),
                 pantryRepository: pantry,
                 savedRecipeRepository: InMemorySavedRecipeRepository()
             ),

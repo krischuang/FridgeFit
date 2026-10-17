@@ -189,6 +189,8 @@ final class UnavailablePantryRepository: PantryRepository {
     struct Failure: Error {}
 
     func fetchAll() async throws -> [PantryItem] { throw Failure() }
+    func fetch(id: UUID) async throws -> PantryItem? { throw Failure() }
+    func fetchExpiring(before date: Date) async throws -> [PantryItem] { throw Failure() }
     func add(_ item: PantryItem) async throws { throw Failure() }
     func update(_ item: PantryItem) async throws { throw Failure() }
     func remove(id: UUID) async throws { throw Failure() }

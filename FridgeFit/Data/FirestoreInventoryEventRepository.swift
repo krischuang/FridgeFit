@@ -14,7 +14,7 @@ import Foundation
 /// pantry - see `firestore.rules`. Scoping is resolved per call from
 /// `Auth.auth().currentUser?.uid`, exactly as `FirestorePantryRepository`
 /// does, so a signed-out user cannot read or write anything.
-final class FirestoreInventoryEventRepository: InventoryEventRepository {
+nonisolated final class FirestoreInventoryEventRepository: InventoryEventRepository {
     private let firestore: Firestore
     private let userIDProvider: () -> String?
 
@@ -69,7 +69,7 @@ final class FirestoreInventoryEventRepository: InventoryEventRepository {
 // is unit testable without a live project - same approach as
 // `FirestorePantryRepository`.
 
-extension FirestoreInventoryEventRepository {
+nonisolated extension FirestoreInventoryEventRepository {
     static func encode(_ event: InventoryEvent) -> [String: Any] {
         var data: [String: Any] = [
             "pantryItemId": event.pantryItemID.uuidString,

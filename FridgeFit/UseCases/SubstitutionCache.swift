@@ -10,7 +10,7 @@ import Foundation
 ///
 /// `pantrySnapshotHash` changing (because the pantry changed) is what
 /// invalidates a cache entry - there's no explicit expiry or eviction.
-struct SubstitutionCacheKey: Hashable {
+nonisolated struct SubstitutionCacheKey: Hashable {
     let recipeID: UUID
     let ingredientName: String
     let pantrySnapshotHash: Int
@@ -22,7 +22,7 @@ struct SubstitutionCacheKey: Hashable {
 /// Deliberately not persisted across launches, and deliberately not an
 /// LRU or size-bounded cache - Phase 3's usage pattern (one recipe detail
 /// screen at a time) doesn't need that.
-final class SubstitutionCache {
+nonisolated final class SubstitutionCache {
     private var storage: [SubstitutionCacheKey: [SubstitutionSuggestion]] = [:]
 
     func suggestions(for key: SubstitutionCacheKey) -> [SubstitutionSuggestion]? {

@@ -12,7 +12,7 @@ import Foundation
 /// prose inline in `OpenRouterSubstitutionService` or, worse, in a view.
 /// The prompt tells the model what it may and may not claim - pantry
 /// availability is explicitly reserved for the app, never the model.
-enum SubstitutionPromptBuilder {
+nonisolated enum SubstitutionPromptBuilder {
     static func chatCompletionBody(for request: SubstitutionRequest, model: String) -> OpenRouterChatCompletionRequest {
         OpenRouterChatCompletionRequest(
             model: model,
@@ -69,7 +69,7 @@ enum SubstitutionPromptBuilder {
 
 // MARK: - OpenRouter wire format (OpenAI-compatible)
 
-struct OpenRouterChatCompletionRequest: Encodable {
+nonisolated struct OpenRouterChatCompletionRequest: Encodable {
     let model: String
     let messages: [OpenRouterChatMessage]
     let response_format: OpenRouterResponseFormat?
@@ -77,16 +77,16 @@ struct OpenRouterChatCompletionRequest: Encodable {
     let max_tokens: Int
 }
 
-struct OpenRouterChatMessage: Codable {
+nonisolated struct OpenRouterChatMessage: Codable {
     let role: String
     let content: String
 }
 
-struct OpenRouterResponseFormat: Encodable {
+nonisolated struct OpenRouterResponseFormat: Encodable {
     let type: String
 }
 
-struct OpenRouterChatCompletionResponse: Decodable {
+nonisolated struct OpenRouterChatCompletionResponse: Decodable {
     struct Choice: Decodable {
         struct Message: Decodable {
             let role: String?
