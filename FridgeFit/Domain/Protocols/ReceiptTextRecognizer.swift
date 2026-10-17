@@ -17,7 +17,7 @@ import ImageIO
 /// filter or interpret what they read - a recogniser that decided "TOTAL" is
 /// not a product would be making a judgement that belongs to
 /// `ReceiptLineParser`, where it can be tested in isolation.
-protocol ReceiptTextRecognizer {
+nonisolated protocol ReceiptTextRecognizer {
     /// Reads text from a receipt photo, in top-to-bottom reading order.
     ///
     /// - Parameters:

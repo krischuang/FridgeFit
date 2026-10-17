@@ -11,7 +11,7 @@ import Foundation
 /// `pantryQuantity`/`pantryUnit`/`validationStatus` come entirely from
 /// `SubstitutionSuggestionValidator` checking the real pantry, never from
 /// the LLM - see `RawSubstitutionSuggestion`.
-struct SubstitutionSuggestion: Identifiable, Equatable {
+nonisolated struct SubstitutionSuggestion: Identifiable, Equatable {
     let id: UUID
     let ingredientName: String
     let suggestedQuantity: Double?

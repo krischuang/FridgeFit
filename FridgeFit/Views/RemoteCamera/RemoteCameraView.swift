@@ -156,16 +156,21 @@ struct RemoteCameraView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
 
+            // Read on the main actor, before the label closure. `PhotosPicker`
+            // takes its label as a nonisolated closure, so touching the
+            // `@MainActor` view model inside it is a concurrency violation -
+            // these two reads are the same values, taken where they are legal.
+            let isAnalysing = viewModel.isAnalyzingSnapshot
+            let analysisMessage = viewModel.analysisPhase.message ?? "Analysing…"
+
             PhotosPicker(selection: $localPhotoItem, matching: .images, photoLibrary: .shared()) {
                 HStack(spacing: 8) {
-                    if viewModel.isAnalyzingSnapshot {
+                    if isAnalysing {
                         ProgressView().controlSize(.small)
                     } else {
                         Image(systemName: "photo.on.rectangle.angled")
                     }
-                    Text(viewModel.isAnalyzingSnapshot
-                         ? (viewModel.analysisPhase.message ?? "Analysing…")
-                         : "Choose Photo")
+                    Text(isAnalysing ? analysisMessage : "Choose Photo")
                 }
                 .frame(maxWidth: .infinity)
             }

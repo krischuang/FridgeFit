@@ -22,7 +22,7 @@ import Foundation
 ///
 /// The whole body is behind `#if DEBUG`, so in a release build these calls
 /// compile away to nothing and no receipt content is written anywhere.
-enum ReceiptScanDiagnostics {
+nonisolated enum ReceiptScanDiagnostics {
     /// Names the technology actually doing the work, so a build can be
     /// identified at a glance rather than assumed.
     static func engine(_ description: String) {

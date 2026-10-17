@@ -52,7 +52,7 @@ nonisolated final class FirestoreSavedRecipeRepository: SavedRecipeRepository {
 
 // MARK: - Encoding / decoding (pure, unit tested without Firebase)
 
-extension FirestoreSavedRecipeRepository {
+nonisolated extension FirestoreSavedRecipeRepository {
     static func encode(_ recipe: Recipe, sourceRecipeID: Int) throws -> [String: Any] {
         let json = try JSONEncoder().encode(recipe)
         return [

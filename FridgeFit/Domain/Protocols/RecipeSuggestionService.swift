@@ -12,7 +12,7 @@ import Foundation
 /// pantry contains, but nothing it says about availability is believed -
 /// `SuggestRecipesFromPantryUseCase` re-derives which ingredients are
 /// actually on hand before the UI sees a suggestion.
-protocol RecipeSuggestionService {
+nonisolated protocol RecipeSuggestionService {
     /// Whether suggestions can be generated right now.
     var availability: AppleIntelligenceAvailability { get }
 

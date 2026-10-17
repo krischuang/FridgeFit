@@ -17,7 +17,7 @@ import Foundation
 ///
 /// Deliberately additive: bundled recipes keep their deterministic
 /// feasibility verdict, and nothing here touches it.
-struct SuggestRecipesFromPantryUseCase {
+nonisolated struct SuggestRecipesFromPantryUseCase {
     private let suggestionService: RecipeSuggestionService
     private let pantryRepository: PantryRepository
 

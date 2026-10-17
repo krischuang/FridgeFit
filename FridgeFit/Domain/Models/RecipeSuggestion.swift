@@ -13,7 +13,7 @@ import Foundation
 /// contains is not something a generative model is allowed to assert. The
 /// split is recomputed from the real pantry in
 /// `SuggestRecipesFromPantryUseCase`.
-struct RawRecipeSuggestion: Equatable, Codable {
+nonisolated struct RawRecipeSuggestion: Equatable, Codable {
     let name: String
     /// Ingredients the model says the recipe needs, in its own words.
     let requiredIngredients: [String]
@@ -34,7 +34,7 @@ struct RawRecipeSuggestion: Equatable, Codable {
 /// This never replaces `RecipeFeasibilityResult`. Bundled recipes keep their
 /// deterministic makeable / almost makeable / not makeable verdict; these are
 /// extra ideas alongside them.
-struct RecipeSuggestion: Identifiable, Equatable {
+nonisolated struct RecipeSuggestion: Identifiable, Equatable {
     let id: UUID
     let name: String
     /// Required ingredients the pantry actually has.
