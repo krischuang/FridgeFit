@@ -28,6 +28,28 @@ command that was run), **[Proposal]** (design, not current behaviour) and
 
 ---
 
+## Corrections found during implementation
+
+Two figures in this audit set were wrong. They are corrected here rather than
+edited away, because how they were wrong is itself worth knowing. The
+implementation that followed is in
+[`../assessment4-implementation/`](../assessment4-implementation/IMPLEMENTATION_REPORT.md).
+
+| Claim in this audit | Actual | Why the audit was wrong |
+|---|---|---|
+| "Build emits **17 warnings**" | **382** on a clean build of the same code | Measured from an *incremental* build; Xcode does not re-emit diagnostics for files it does not rebuild. Verified by stashing, `xcodebuild clean`, rebuilding untouched code |
+| "**2** `accessibilityLabel` call sites" | **34** labels, **79** accessibility modifiers | A grep whose alternation let `.accessibility` match first and absorb `.accessibilityLabel` |
+
+Both corrections make the project look *better* in one respect (accessibility
+was never that bad) and *worse* in another (the zero-warning gap was 22× larger
+than scoped). Neither was discovered by re-reading the audit — both came out of
+running the commands again properly.
+
+One item this audit marked unverified has since been run: the
+`firestore-tests/` emulator suite passes, 60 tests, 0 failures.
+
+---
+
 ## Executed evidence
 
 | Command | Result |
