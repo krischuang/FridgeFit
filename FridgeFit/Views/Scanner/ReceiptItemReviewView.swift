@@ -5,46 +5,45 @@
 
 import SwiftUI
 
-/// The confirmation step between reading a receipt and the pantry.
-///
-/// Nothing is stored until the user taps Add to Pantry, and every row can
-/// be renamed, recategorised, requantified, unticked or deleted first -
-/// an OCR'd abbreviation interpreted by a model is a starting point, not a
-/// fact.
-///
-/// Two things are deliberately absent. There is no confidence badge: the
-/// old fridge-scan screen showed the model's self-reported "Low / Medium
-/// confidence", which was not a measurement of anything and gave the user
-/// no action to take. And there are no canonical identifiers - the row for
-/// `CAPS RED` reads "Red Capsicum", never `bell_pepper`.
-///
-/// What *is* shown is the receipt line each item came from, so a user can
-/// check a row against the paper in their hand. That is real grounding,
-/// unlike a number.
+/// The confirmation step between reading a receipt and saving the selected
+/// grocery drafts. This is presentation only: every edit and save continues
+/// through `ReceiptScannerViewModel` and its existing use cases.
 struct ReceiptItemReviewView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: ReceiptScannerViewModel
-    /// Called once the pantry has been updated, with what actually went in.
     var onCompleted: (AddDetectedIngredientsSummary) -> Void
 
     var body: some View {
         NavigationStack {
             Group {
                 if viewModel.drafts.isEmpty {
-                    ContentUnavailableView {
-                        Label("Nothing Left to Review", systemImage: "checkmark.circle")
-                    } description: {
-                        Text("Every item from this receipt has been added or removed.")
-                    }
+                    emptyReviewState
                 } else {
-                    reviewList
+                    reviewContent
                 }
             }
-            .navigationTitle("Detected Grocery Items")
+            .background(FridgeFitTheme.ColorToken.canvas)
+            .navigationTitle("Smart Scan Review")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(FridgeFitTheme.ColorToken.canvas, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Back") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel("Return to receipt capture")
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Image(systemName: "person")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                        .frame(width: 36, height: 36)
+                        .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                        .accessibilityHidden(true)
                 }
             }
             .safeAreaInset(edge: .bottom) {
@@ -55,64 +54,151 @@ struct ReceiptItemReviewView: View {
         }
     }
 
-    @ViewBuilder
-    private var reviewList: some View {
-        List {
-            Section {
-                ForEach(viewModel.drafts) { draft in
-                    ReceiptItemRow(draft: draft, viewModel: viewModel)
-                }
-                .onDelete { viewModel.removeDrafts(at: $0) }
-            } header: {
-                Text("Review what we found on your receipt")
-            } footer: {
-                Text("Only ticked items are added. Swipe to remove anything that isn't a pantry ingredient.")
-            }
+    private var reviewContent: some View {
+        ScrollView {
+            LazyVStack(spacing: FridgeFitTheme.Spacing.medium) {
+                receiptSourceCard
+                reviewGuidanceCard
 
-            #if DEBUG
-            excludedDiagnosticsSection
-            #endif
+                ForEach(viewModel.drafts) { draft in
+                    ReceiptReviewCard(draft: draft, viewModel: viewModel)
+                }
+
+                #if DEBUG
+                excludedDiagnosticsCard
+                #endif
+            }
+            .padding(.horizontal, FridgeFitTheme.Spacing.large)
+            .padding(.top, FridgeFitTheme.Spacing.small)
+            .padding(.bottom, FridgeFitTheme.Spacing.large)
         }
-        .listStyle(.insetGrouped)
+        .background(FridgeFitTheme.ColorToken.canvas)
     }
 
-    /// Why items are missing, for development only.
-    ///
-    /// The production list deliberately shows pantry candidates and
-    /// nothing else - a confirmation screen cluttered with dishwashing
-    /// tablets and paper towels is worse than useless. But "the scan
-    /// dropped my mushrooms" is impossible to diagnose without seeing what
-    /// was dropped and why, so the rejected items stay inspectable in
-    /// DEBUG builds.
+    private var receiptSourceCard: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.small) {
+                Image(systemName: "receipt")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+                    .frame(width: 48, height: 48)
+                    .background(FridgeFitTheme.ColorToken.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+
+                VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                    Text("Receipt scanned")
+                        .font(FridgeFitTheme.Typography.cardTitle)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                    Text("\(viewModel.drafts.count) \(viewModel.drafts.count == 1 ? "item" : "items") detected — review before saving")
+                        .font(FridgeFitTheme.Typography.supporting)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+
+            HStack {
+                FridgeFitStatusBadge(title: "Receipt OCR complete", systemImage: "document.viewfinder", tone: .success)
+                Spacer()
+                Text("On-device scan")
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            }
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
+        .accessibilityElement(children: .combine)
+    }
+
+    private var reviewGuidanceCard: some View {
+        HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.small) {
+            Image(systemName: "slider.horizontal.3")
+                .font(.headline)
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 32, height: 32)
+                .background(FridgeFitTheme.ColorToken.successBackground, in: Circle())
+
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                Text("Review your groceries")
+                    .font(FridgeFitTheme.Typography.cardTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                Text("Check each name, category, quantity, and unit before adding it to My Fridge.")
+                    .font(FridgeFitTheme.Typography.supporting)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .background(FridgeFitTheme.ColorToken.successBackground.opacity(0.78), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var emptyReviewState: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.large) {
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: 42, weight: .medium))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 80, height: 80)
+                .background(FridgeFitTheme.ColorToken.successBackground, in: Circle())
+            Text("Nothing Left to Review")
+                .font(FridgeFitTheme.Typography.screenTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+            Text("Every item from this receipt has been added or removed.")
+                .font(FridgeFitTheme.Typography.supporting)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .multilineTextAlignment(.center)
+            Button("Return to Smart Scan") { dismiss() }
+                .buttonStyle(FridgeFitSecondaryButtonStyle())
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(FridgeFitTheme.Spacing.section)
+        .background(FridgeFitTheme.ColorToken.canvas)
+    }
+
     #if DEBUG
     @ViewBuilder
-    private var excludedDiagnosticsSection: some View {
+    private var excludedDiagnosticsCard: some View {
         if !viewModel.excludedItems.isEmpty {
-            Section {
-                DisclosureGroup("Excluded items (\(viewModel.excludedItems.count))") {
-                    ForEach(viewModel.excludedItems) { item in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.displayName)
-                                .font(.callout)
-                            Text("\(item.classification.diagnosticLabel) · \(item.sourceText)")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
+            DisclosureGroup("Excluded items (\(viewModel.excludedItems.count))") {
+                ForEach(viewModel.excludedItems) { item in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.displayName)
+                            .font(FridgeFitTheme.Typography.supporting)
+                        Text("\(item.classification.diagnosticLabel) · \(item.sourceText)")
+                            .font(FridgeFitTheme.Typography.caption)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, FridgeFitTheme.Spacing.xSmall)
                 }
-                .font(.footnote)
-            } footer: {
-                Text("DEBUG only. Not shown in release builds.")
             }
+            .font(FridgeFitTheme.Typography.metadata)
+            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            .padding(FridgeFitTheme.Spacing.medium)
+            .fridgeFitCardSurface()
         }
     }
     #endif
 
-    @ViewBuilder
     private var addToPantryBar: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: FridgeFitTheme.Spacing.small) {
             if let summary = viewModel.addSummary, !summary.isCompleteSuccess {
-                InlineErrorBanner(message: summary.userMessage)
+                Label {
+                    Text(summary.userMessage)
+                        .font(FridgeFitTheme.Typography.metadata)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                }
+                .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+                .padding(FridgeFitTheme.Spacing.small)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(FridgeFitTheme.ColorToken.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+            }
+
+            HStack {
+                Text(selectionSummary)
+                    .font(FridgeFitTheme.Typography.supporting)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                Spacer()
             }
 
             Button {
@@ -120,29 +206,39 @@ struct ReceiptItemReviewView: View {
             } label: {
                 if viewModel.isAddingToPantry {
                     ProgressView()
+                        .tint(FridgeFitTheme.ColorToken.card)
                         .frame(maxWidth: .infinity)
                 } else {
-                    Text(addButtonTitle)
-                        .frame(maxWidth: .infinity)
+                    Label(addButtonTitle, systemImage: "cabinet")
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(FridgeFitPrimaryButtonStyle())
             .disabled(!viewModel.canAddToPantry)
         }
-        .padding()
-        .background(.bar)
+        .padding(.horizontal, FridgeFitTheme.Spacing.large)
+        .padding(.top, FridgeFitTheme.Spacing.small)
+        .padding(.bottom, FridgeFitTheme.Spacing.small)
+        .background(FridgeFitTheme.ColorToken.canvas.opacity(0.97))
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(FridgeFitTheme.ColorToken.border.opacity(0.65))
+                .frame(height: 1)
+        }
+    }
+
+    private var selectionSummary: String {
+        let count = viewModel.selectedDrafts.count
+        return count == 0 ? "No items selected" : "\(count) \(count == 1 ? "item" : "items") selected"
     }
 
     private var addButtonTitle: String {
         let count = viewModel.selectedDrafts.count
-        return count == 0 ? "Add to Pantry" : "Add \(count) to Pantry"
+        return count == 0 ? "Add to My Fridge" : "Add \(count) \(count == 1 ? "Item" : "Items") to My Fridge"
     }
 
     private func addSelected() {
         Task {
             await viewModel.addSelectedToPantry()
-            // Dismiss only once the pantry took everything; if something was
-            // rejected the sheet stays open showing why.
             if let summary = viewModel.addSummary, summary.isCompleteSuccess {
                 onCompleted(summary)
             }
@@ -150,29 +246,31 @@ struct ReceiptItemReviewView: View {
     }
 }
 
-/// One reviewable grocery item: tick, name, the receipt line it came from,
-/// quantity and category.
-private struct ReceiptItemRow: View {
+private struct ReceiptReviewCard: View {
     let draft: ReceiptItemDraft
     @ObservedObject var viewModel: ReceiptScannerViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.small) {
                 Button {
                     viewModel.toggleSelection(for: draft.id)
                 } label: {
-                    Image(systemName: draft.isSelected ? "checkmark.circle.fill" : "circle")
-                        .font(.title3)
-                        .foregroundStyle(draft.isSelected ? Color.accentColor : .secondary)
+                    Image(systemName: draft.isSelected ? "checkmark" : "circle")
+                        .font(.body.weight(.bold))
+                        .foregroundStyle(draft.isSelected ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.textSecondary)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            draft.isSelected ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.disabledSurface,
+                            in: Circle()
+                        )
                 }
-                .buttonStyle(.plain)
                 .accessibilityLabel(draft.isSelected ? "Selected" : "Not selected")
                 .accessibilityHint("Double tap to \(draft.isSelected ? "exclude" : "include") \(draft.name)")
 
-                IconBadge(systemImage: draft.category.symbolName, tint: draft.category.tint)
+                IconBadge(systemImage: draft.category.symbolName, tint: draft.category.tint, size: 44)
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
                     TextField(
                         "Item name",
                         text: Binding(
@@ -180,85 +278,128 @@ private struct ReceiptItemRow: View {
                             set: { viewModel.updateName($0, for: draft.id) }
                         )
                     )
-                    .font(.body)
+                    .font(FridgeFitTheme.Typography.cardTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                    .textFieldStyle(.plain)
                     .accessibilityLabel("Item name")
 
                     Text(draft.sourceText)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .font(FridgeFitTheme.Typography.caption)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                        .lineLimit(2)
                         .accessibilityLabel("From receipt line \(draft.sourceText)")
                 }
-            }
 
-            HStack(spacing: 10) {
-                TextField(
-                    quantityPlaceholder,
-                    text: Binding(
-                        get: { draft.quantityText },
-                        set: { viewModel.updateQuantityText($0, for: draft.id) }
-                    )
-                )
-                .keyboardType(.decimalPad)
-                .textFieldStyle(.roundedBorder)
-                .frame(maxWidth: 110)
-                .accessibilityLabel(quantityAccessibilityLabel)
-
-                Picker(
-                    "Unit",
-                    selection: Binding(
-                        get: { draft.unit },
-                        set: { viewModel.updateUnit($0, for: draft.id) }
-                    )
-                ) {
-                    ForEach(MeasurementUnit.allCases) { unit in
-                        Text(unit.symbol).tag(unit)
-                    }
+                Button {
+                    viewModel.removeDraft(id: draft.id)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+                        .frame(width: 44, height: 44)
                 }
-                .labelsHidden()
-
-                Picker(
-                    "Category",
-                    selection: Binding(
-                        get: { draft.category },
-                        set: { viewModel.updateCategory($0, for: draft.id) }
-                    )
-                ) {
-                    ForEach(IngredientCategory.allCases) { category in
-                        Text(category.rawValue).tag(category)
-                    }
-                }
-                .labelsHidden()
-            }
-            .font(.callout)
-
-            // The receipt didn't say how much, so the user has to. Said
-            // plainly rather than filled in with a made-up "1 pcs".
-            if !draft.hasDetectedQuantity && draft.quantity == nil {
-                Text("Quantity not detected — enter one to add this item.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                .accessibilityLabel("Remove \(draft.name)")
             }
 
             if draft.isAlreadyInPantry {
-                InlineInfoBanner(
-                    message: "Already in your pantry. Adding it again will be rejected - update its quantity in Pantry instead.",
-                    systemImage: "exclamationmark.triangle.fill",
-                    tint: .orange
-                )
+                Label("Already in your pantry — this item starts unselected to prevent a duplicate.", systemImage: "shippingbox")
+                    .font(FridgeFitTheme.Typography.metadata)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+                    .padding(.horizontal, FridgeFitTheme.Spacing.small)
+                    .padding(.vertical, FridgeFitTheme.Spacing.xSmall)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(FridgeFitTheme.ColorToken.warningBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+            }
+
+            HStack(spacing: FridgeFitTheme.Spacing.small) {
+                quantityField
+                unitPicker
+                categoryPicker
+            }
+
+            if !draft.hasDetectedQuantity && draft.quantity == nil {
+                Label("Quantity wasn’t detected. Enter a quantity before saving this selected item.", systemImage: "exclamationmark.circle")
+                    .font(FridgeFitTheme.Typography.metadata)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.vertical, 4)
+        .padding(FridgeFitTheme.Spacing.medium)
+        .opacity(draft.isSelected ? 1 : 0.68)
+        .fridgeFitCardSurface()
+        .accessibilityElement(children: .contain)
     }
 
-    private var quantityPlaceholder: String {
-        draft.hasDetectedQuantity ? "Quantity" : "Not detected"
+    private var quantityField: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("QUANTITY")
+                .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            TextField(
+                draft.hasDetectedQuantity ? "Quantity" : "Required",
+                text: Binding(
+                    get: { draft.quantityText },
+                    set: { viewModel.updateQuantityText($0, for: draft.id) }
+                )
+            )
+            .keyboardType(.decimalPad)
+            .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
+            .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+            .padding(.horizontal, FridgeFitTheme.Spacing.small)
+            .frame(minHeight: 44)
+            .background(FridgeFitTheme.ColorToken.disabledSurface.opacity(0.65), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+            .accessibilityLabel(draft.hasDetectedQuantity ? "Quantity for \(draft.name)" : "Quantity for \(draft.name), not detected on the receipt")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var quantityAccessibilityLabel: String {
-        draft.hasDetectedQuantity
-            ? "Quantity for \(draft.name)"
-            : "Quantity for \(draft.name), not detected on the receipt"
+    private var unitPicker: some View {
+        compactPicker(
+            title: "UNIT",
+            selection: Binding(
+                get: { draft.unit },
+                set: { viewModel.updateUnit($0, for: draft.id) }
+            ),
+            values: MeasurementUnit.allCases,
+            label: { $0.symbol }
+        )
+    }
+
+    private var categoryPicker: some View {
+        compactPicker(
+            title: "CATEGORY",
+            selection: Binding(
+                get: { draft.category },
+                set: { viewModel.updateCategory($0, for: draft.id) }
+            ),
+            values: IngredientCategory.allCases,
+            label: { $0.rawValue }
+        )
+    }
+
+    private func compactPicker<Value: Hashable>(
+        title: String,
+        selection: Binding<Value>,
+        values: [Value],
+        label: @escaping (Value) -> String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            Picker(title, selection: selection) {
+                ForEach(values, id: \.self) { value in
+                    Text(label(value)).tag(value)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .tint(FridgeFitTheme.ColorToken.textPrimary)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .padding(.horizontal, FridgeFitTheme.Spacing.xSmall)
+            .background(FridgeFitTheme.ColorToken.disabledSurface.opacity(0.65), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
