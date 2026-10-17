@@ -8,7 +8,7 @@ import Foundation
 /// One recipe ingredient after being checked against the pantry: what's
 /// needed, what's on hand (in the pantry's own unit), and the resulting
 /// availability.
-struct RecipeIngredientEvaluation: Identifiable, Hashable {
+nonisolated struct RecipeIngredientEvaluation: Identifiable, Hashable {
     var id: UUID { recipeIngredient.id }
     let recipeIngredient: RecipeIngredient
     /// Quantity on hand, in the pantry's own unit. `nil` if the ingredient
@@ -62,7 +62,7 @@ struct RecipeIngredientEvaluation: Identifiable, Hashable {
 /// `Equatable` so types that carry a verdict forward - `RecipeSuitability`
 /// - can be compared in tests. Every stored property was already
 /// `Equatable`, so the conformance is synthesized and adds no behaviour.
-struct RecipeFeasibilityResult: Equatable {
+nonisolated struct RecipeFeasibilityResult: Equatable {
     let recipe: Recipe
     /// Every ingredient the recipe calls for, already compared against the
     /// pantry, in the recipe's own order.

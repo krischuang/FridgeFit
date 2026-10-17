@@ -13,7 +13,7 @@ import Foundation
 /// units, no roles, sometimes no instructions). Keeping them apart means
 /// nothing fetched from the network can leak into - or weaken - the
 /// existing Recipes feature.
-struct OnlineRecipe: Identifiable, Hashable, Codable {
+nonisolated struct OnlineRecipe: Identifiable, Hashable, Codable {
     /// The provider's own recipe id, stable across searches.
     let id: Int
     var title: String
@@ -41,7 +41,7 @@ struct OnlineRecipe: Identifiable, Hashable, Codable {
 }
 
 /// One ingredient line of an `OnlineRecipe`, as the provider reported it.
-struct OnlineRecipeIngredient: Identifiable, Hashable, Codable {
+nonisolated struct OnlineRecipeIngredient: Identifiable, Hashable, Codable {
     let id: UUID
     /// The provider's ingredient id - more reliable than the name for
     /// matching "garlic" and "garlic clove" as the same thing.
@@ -102,7 +102,7 @@ struct OnlineRecipeIngredient: Identifiable, Hashable, Codable {
 ///
 /// The provider decides which pantry ingredients a recipe uses and which
 /// further ones it needs; this app doesn't re-derive that match.
-struct OnlineRecipeMatch: Identifiable, Hashable, Codable {
+nonisolated struct OnlineRecipeMatch: Identifiable, Hashable, Codable {
     var recipe: OnlineRecipe
     /// Pantry ingredient names this recipe uses.
     var usedIngredientNames: [String]

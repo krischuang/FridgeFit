@@ -8,7 +8,7 @@ import Foundation
 /// Every way asking a `SubstitutionService` for suggestions can fail.
 /// Messages are written for the user - raw networking/provider errors
 /// never reach the UI directly.
-enum SubstitutionServiceError: LocalizedError, Equatable {
+nonisolated enum SubstitutionServiceError: LocalizedError, Equatable {
     /// No OpenRouter API key configured locally - see Secrets.xcconfig.example.
     case notConfigured
     /// Reached the provider, but it returned an error (bad request,

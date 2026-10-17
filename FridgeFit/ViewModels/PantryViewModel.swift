@@ -29,7 +29,15 @@ final class PantryViewModel: ObservableObject {
     private let updatePantryItemUseCase: UpdatePantryItemUseCase
     private let removePantryItemUseCase: RemovePantryItemUseCase
 
-    init(pantryRepository: PantryRepository = InMemoryPantryRepository()) {
+    /// The repository is required rather than defaulted.
+    ///
+    /// The only sensible default would be an in-memory store, and silently
+    /// writing a user's food into a dictionary that disappears is a worse
+    /// failure than a compile error - the same reasoning `InventoryStore`
+    /// already records. It also avoids constructing a main-actor type in a
+    /// default-argument expression, which this project's
+    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` setting warns about.
+    init(pantryRepository: PantryRepository) {
         self.pantryRepository = pantryRepository
         self.addPantryItemUseCase = AddPantryItemUseCase(pantryRepository: pantryRepository)
         self.updatePantryItemUseCase = UpdatePantryItemUseCase(pantryRepository: pantryRepository)

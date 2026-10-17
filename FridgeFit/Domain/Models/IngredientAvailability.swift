@@ -13,7 +13,7 @@ import Foundation
 /// state too, since claiming "available" when the units can't be safely
 /// compared (e.g. grams vs. cups) would be guessing, not measuring - see
 /// `MeasurementUnit.convert(quantity:from:to:)`.
-enum IngredientAvailability: Equatable, Hashable {
+nonisolated enum IngredientAvailability: Equatable, Hashable {
     /// Pantry has at least the required quantity, once safely converted to
     /// the recipe's unit.
     case available

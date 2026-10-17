@@ -11,7 +11,7 @@ import Foundation
 ///   the recipe.
 /// - `optional`: extra/garnish. Never blocks the recipe, whatever its
 ///   state - see `RecipeFeasibilityResult`.
-enum IngredientRole: String, Codable, CaseIterable {
+nonisolated enum IngredientRole: String, Codable, CaseIterable {
     case essential
     case optional
 
@@ -29,7 +29,7 @@ enum IngredientRole: String, Codable, CaseIterable {
 /// Role and quantity live here instead of on `Ingredient` because the same
 /// ingredient (e.g. cream) can be essential in one recipe and optional in
 /// another.
-struct RecipeIngredient: Identifiable, Hashable, Codable {
+nonisolated struct RecipeIngredient: Identifiable, Hashable, Codable {
     let id: UUID
     var ingredient: Ingredient
     var quantity: Double

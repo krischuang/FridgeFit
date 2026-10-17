@@ -13,7 +13,7 @@ import ImageIO
 /// driven from a unit test with no Vision, no camera and no device. The
 /// convenience initialiser takes plain lines of text, which is how a
 /// receipt fixture is actually written.
-final class MockReceiptTextRecognizer: ReceiptTextRecognizer {
+nonisolated final class MockReceiptTextRecognizer: ReceiptTextRecognizer {
     var result: Result<RecognizedReceiptText, Error>
     /// Holds the call open long enough for a test to cancel it, and
     /// respects cancellation while waiting.
@@ -52,7 +52,7 @@ final class MockReceiptTextRecognizer: ReceiptTextRecognizer {
 /// `availability` is settable so the unavailable states - Apple
 /// Intelligence off, device not supported, model still downloading - can
 /// each be exercised without the hardware that produces them.
-final class MockReceiptIngredientInterpreter: ReceiptIngredientInterpreter {
+nonisolated final class MockReceiptIngredientInterpreter: ReceiptIngredientInterpreter {
     var result: Result<ReceiptInterpretationResult, Error>
     var availability: AppleIntelligenceAvailability
     var delay: Duration?
@@ -86,7 +86,7 @@ final class MockReceiptIngredientInterpreter: ReceiptIngredientInterpreter {
     }
 }
 
-extension RecognizedReceiptText {
+nonisolated extension RecognizedReceiptText {
     /// Builds recognised text from plain lines, numbering them in order.
     init(lines: [String], confidence: Float = 0.9) {
         self.init(
@@ -102,7 +102,7 @@ extension RecognizedReceiptText {
 /// Previews only - the equivalent fixture for tests lives in the test
 /// target, so production code carries no expectations about any
 /// particular receipt.
-enum SampleReceiptPreviewData {
+nonisolated enum SampleReceiptPreviewData {
     static let lines = [
         "WOOLWORTHS",
         "BANANA CAVENDISH       3.42",

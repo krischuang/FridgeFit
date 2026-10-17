@@ -80,6 +80,7 @@ struct IngredientEditorView: View {
                         TextField("Ingredient", text: $name)
                             .multilineTextAlignment(.trailing)
                             .kitchenIngredientTextInput()
+                            .accessibilityLabel("Ingredient name")
                     }
 
                     editorRow("Category") {
@@ -138,12 +139,14 @@ struct IngredientEditorView: View {
                     editorRow("Expiry") {
                         Toggle("Track", isOn: $hasExpiry.animation(.snappy))
                             .labelsHidden()
+                            .accessibilityLabel("Track an expiry date")
                     }
 
                     if hasExpiry {
                         editorRow("Date") {
                             DatePicker("Date", selection: $expiryDate, displayedComponents: .date)
                                 .labelsHidden()
+                                .accessibilityLabel("Expiry date")
                         }
                     }
                 }
@@ -177,6 +180,14 @@ struct IngredientEditorView: View {
                 }
                 .disabled(isSaveDisabled)
                 .opacity(isSaveDisabled ? 0.45 : 1)
+                // While saving, the label is a bare ProgressView, so the
+                // button would be announced with no name at all at exactly
+                // the moment the user wants to know whether it took.
+                .accessibilityLabel(
+                    isSaving
+                        ? "Saving"
+                        : (isAdding ? "Add to Kitchen" : "Save Changes")
+                )
             }
             .padding(20)
         }

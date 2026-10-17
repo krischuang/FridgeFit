@@ -12,7 +12,7 @@ import Foundation
 /// Nothing here decides pantry availability; that's
 /// `SubstitutionSuggestionValidator`'s job, downstream in
 /// `GetIngredientSubstitutionsUseCase`.
-final class OpenRouterSubstitutionService: SubstitutionService {
+nonisolated final class OpenRouterSubstitutionService: SubstitutionService {
     private static let endpoint = URL(string: "https://openrouter.ai/api/v1/chat/completions")!
     private static let timeoutInterval: TimeInterval = 20
 
@@ -74,7 +74,7 @@ final class OpenRouterSubstitutionService: SubstitutionService {
 /// Used when no OpenRouter API key is configured locally, so the app fails
 /// with a clear, actionable error instead of crashing or silently sending
 /// an empty credential.
-struct UnconfiguredSubstitutionService: SubstitutionService {
+nonisolated struct UnconfiguredSubstitutionService: SubstitutionService {
     func suggestSubstitutions(for request: SubstitutionRequest) async throws -> [RawSubstitutionSuggestion] {
         throw SubstitutionServiceError.notConfigured
     }
