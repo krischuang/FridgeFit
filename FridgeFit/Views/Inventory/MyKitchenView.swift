@@ -5,41 +5,58 @@
 
 import SwiftUI
 
-/// The Kitchen tab: everything the user has, grouped by where it is kept,
-/// with whatever is about to go off pulled to the top.
-///
-/// ## Relationship to the Pantry tab
-///
-/// Both read the same `PantryRepository`. The Pantry tab is a flat list for
-/// adding and correcting amounts; this is the spatial view - fridge, freezer,
-/// pantry - plus expiry. Adding here goes through `AddPantryItemUseCase`
-/// exactly as it does there, so an item added in one appears in the other
-/// with no sync step.
-///
-/// ## No `NavigationStack` here
-///
-/// The ported original opened its own, which would have nested a second one
-/// inside the stack `ContentView` already gives each tab - two navigation
-/// bars and a back button that goes nowhere. The stack belongs to the tab.
+/// The spatial inventory view: one repository-backed pantry, presented as
+/// fridge, freezer and pantry locations. All mutations continue through
+/// `InventoryStore`; this view owns only screen presentation state.
 struct MyKitchenView: View {
     @ObservedObject var inventory: InventoryStore
+    @ObservedObject var scannerViewModel: ReceiptScannerViewModel
     @StateObject private var viewModel: MyKitchenViewModel
     @FocusState private var isSearchFocused: Bool
+    @State private var itemPendingDeletion: PantryItem?
+    @State private var isPresentingSmartScan = false
+    @State private var opensManualAddAfterSmartScan = false
+    @State private var quickAddTemplate: IngredientTemplate?
 
-    init(inventory: InventoryStore) {
+    init(inventory: InventoryStore, scannerViewModel: ReceiptScannerViewModel) {
         self.inventory = inventory
+        self.scannerViewModel = scannerViewModel
         _viewModel = StateObject(wrappedValue: MyKitchenViewModel(inventory: inventory))
     }
 
     var body: some View {
         kitchenContent
-            .background(KitchenTheme.background.ignoresSafeArea())
+            .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
             .navigationTitle("")
+            .toolbar(.hidden, for: .navigationBar)
             .task { await inventory.load() }
             .refreshable { await inventory.load() }
             .sheet(isPresented: $viewModel.showsAddIngredient) {
                 AddInventoryIngredientView(inventory: inventory)
                     .presentationDetents([.large])
+            }
+            .sheet(item: $quickAddTemplate) { template in
+                NavigationStack {
+                    IngredientEditorView(
+                        mode: .add(template),
+                        inventory: inventory,
+                        onDone: { quickAddTemplate = nil }
+                    )
+                }
+                .presentationDetents([.large])
+            }
+            .sheet(isPresented: $isPresentingSmartScan, onDismiss: {
+                if opensManualAddAfterSmartScan {
+                    opensManualAddAfterSmartScan = false
+                    viewModel.showsAddIngredient = true
+                }
+            }) {
+                SmartScanPreviewView(
+                    receiptScannerViewModel: scannerViewModel,
+                    onReceiptFinished: { Task { await inventory.load() } },
+                    onIngredientsFinished: { Task { await inventory.load() } },
+                    onAddManually: { opensManualAddAfterSmartScan = true }
+                )
             }
             .sheet(item: $viewModel.selectedItem) { selection in
                 IngredientDrawerView(
@@ -64,6 +81,23 @@ struct MyKitchenView: View {
             } message: {
                 Text(viewModel.errorMessage ?? "")
             }
+            .confirmationDialog(
+                "Remove \(itemPendingDeletion?.name ?? "ingredient")?",
+                isPresented: Binding(
+                    get: { itemPendingDeletion != nil },
+                    set: { if !$0 { itemPendingDeletion = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Remove", role: .destructive) {
+                    guard let item = itemPendingDeletion else { return }
+                    itemPendingDeletion = nil
+                    Task { await remove(item) }
+                }
+                Button("Cancel", role: .cancel) { itemPendingDeletion = nil }
+            } message: {
+                Text("This removes the ingredient from your pantry. You can undo it after removal.")
+            }
             .safeAreaInset(edge: .bottom) {
                 if let message = viewModel.lastMessage {
                     undoBar(message: message)
@@ -73,126 +107,133 @@ struct MyKitchenView: View {
 
     private var kitchenContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                let useSoon = viewModel.useFirstItems
-                let remaining = viewModel.remainingItems
-                let allVisible = useSoon + remaining
+            VStack(alignment: .leading, spacing: inventory.items.isEmpty ? FridgeFitTheme.Spacing.small : FridgeFitTheme.Spacing.medium) {
+                appHeader
+                screenHeader
 
-                kitchenHeader()
-
-                if viewModel.isSearchPresented || !viewModel.searchText.isEmpty {
-                    inlineSearchField
+                if inventory.items.isEmpty {
+                    searchField
+                    storageFilter
+                } else {
+                    storageFilter
+                    searchField
                 }
 
                 if viewModel.hasResults {
-                    useFirstStrip(useSoon)
-
-                    storageZone(
-                        .pantry,
-                        items: items(in: .pantry, from: allVisible),
-                        accent: zoneAccent(.pantry),
-                        note: "Dry goods and staples"
-                    )
-                    storageZone(
-                        .fridge,
-                        items: items(in: .fridge, from: allVisible),
-                        accent: zoneAccent(.fridge),
-                        note: "Fresh items to keep close"
-                    )
-                    storageZone(
-                        .freezer,
-                        items: items(in: .freezer, from: allVisible),
-                        accent: zoneAccent(.freezer),
-                        note: "Frozen stock"
-                    )
+                    inventoryDashboard
+                    ingredientList
+                        .padding(.top, -FridgeFitTheme.Spacing.xSmall)
                 } else if inventory.isLoading {
                     ProgressView()
                         .frame(maxWidth: .infinity, minHeight: 260)
-                } else if viewModel.isShowingDefaultEmptyState {
-                    EmptyKitchenView(
-                        title: "Your kitchen is empty",
-                        message: "Add the ingredients you already have at home.",
-                        actionTitle: "Add Ingredient",
-                        action: { viewModel.showsAddIngredient = true }
-                    )
+                } else if inventory.items.isEmpty {
+                    emptyKitchenOnboarding
                 } else {
-                    EmptyKitchenView(
-                        title: "No ingredients found",
-                        message: "Try a different search or storage filter.",
-                        actionTitle: nil,
-                        action: nil
-                    )
+                    filteredEmptyState
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 80)
+            .padding(.horizontal, FridgeFitTheme.Spacing.large)
+            .padding(.top, inventory.items.isEmpty ? 2 : FridgeFitTheme.Spacing.xSmall)
+            .padding(.bottom, FridgeFitTheme.Spacing.section)
         }
         .scrollDismissesKeyboard(.interactively)
     }
 
-    private func kitchenHeader() -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("My Kitchen")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.82)
+    private var appHeader: some View {
+        HStack(spacing: FridgeFitTheme.Spacing.small) {
+            Image(systemName: "refrigerator")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 28, height: 28)
+                .background(FridgeFitTheme.ColorToken.successBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
 
-                Text(greeting)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            Text("FridgeFit")
+                .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
 
             Spacer()
+        }
+        .frame(minHeight: inventory.items.isEmpty ? 32 : 36)
+    }
 
-            Button {
+    private var screenHeader: some View {
+        HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.small) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("My Fridge")
+                    .font(inventory.items.isEmpty ? .title2.weight(.bold) : .title.weight(.bold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                    .minimumScaleFactor(0.8)
+
+                Text("Make the most out of your pantry")
+                    .font(inventory.items.isEmpty ? FridgeFitTheme.Typography.caption : FridgeFitTheme.Typography.metadata)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            }
+
+            Spacer(minLength: FridgeFitTheme.Spacing.small)
+
+            titleAction("arrow.clockwise", label: "Refresh inventory") {
+                Task { await inventory.load() }
+            }
+
+            titleAction("clock", label: "Kitchen activity", highlighted: true) {
                 viewModel.showsActivity = true
-            } label: {
-                headerGlyph("clock", foreground: KitchenTheme.forest, background: KitchenTheme.surface)
             }
-            .accessibilityLabel("Kitchen activity")
-
-            Button {
-                withAnimation(.snappy) {
-                    viewModel.isSearchPresented = true
-                }
-                isSearchFocused = true
-            } label: {
-                headerGlyph("magnifyingglass", foreground: KitchenTheme.forest, background: KitchenTheme.surface)
-            }
-            .accessibilityLabel("Search ingredients")
 
             Button {
                 viewModel.showsAddIngredient = true
             } label: {
-                headerGlyph("plus", foreground: .white, background: KitchenTheme.warmAccent)
+                Image(systemName: "plus")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                    .frame(width: 36, height: 36)
+                    .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .accessibilityLabel("Add ingredient")
         }
     }
 
-    /// The three header buttons differ only by symbol and colour. Drawn once
-    /// so the 44pt hit target can't drift between them.
-    private func headerGlyph(_ symbol: String, foreground: Color, background: Color) -> some View {
-        Image(systemName: symbol)
-            .font(.system(size: 16, weight: .medium))
-            .foregroundStyle(foreground)
-            .frame(width: 34, height: 34)
-            .background(Circle().fill(background))
-            .frame(width: 44, height: 44)
-            .contentShape(Rectangle())
+    private var storageFilter: some View {
+        let compactAppearance = inventory.items.isEmpty
+        return HStack(spacing: FridgeFitTheme.Spacing.xSmall) {
+            ForEach(InventoryFilter.allCases) { filter in
+                Button {
+                    withAnimation(.snappy) {
+                        viewModel.selectFilter(filter)
+                    }
+                } label: {
+                    Text(filter.title)
+                        .font(FridgeFitTheme.Typography.supporting.weight(filter == viewModel.selectedFilter ? .semibold : .regular))
+                        .foregroundStyle(filter == viewModel.selectedFilter ? FridgeFitTheme.ColorToken.textPrimary : FridgeFitTheme.ColorToken.textSecondary)
+                        .frame(maxWidth: .infinity, minHeight: compactAppearance ? 38 : 44)
+                        .background(
+                            filter == viewModel.selectedFilter ? FridgeFitTheme.ColorToken.card : .clear,
+                            in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                        )
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .accessibilityAddTraits(filter == viewModel.selectedFilter ? .isSelected : [])
+            }
+        }
+        .padding(.horizontal, 3)
+        .padding(.vertical, compactAppearance ? 2 : 3)
+        .background(FridgeFitTheme.ColorToken.disabledSurface.opacity(0.65), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Storage filter")
     }
 
-    private var inlineSearchField: some View {
-        HStack(spacing: 10) {
+    private var searchField: some View {
+        HStack(spacing: FridgeFitTheme.Spacing.small) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(.secondary)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .accessibilityHidden(true)
 
-            TextField("Search ingredients", text: $viewModel.searchText)
-                .font(.body)
+            TextField("Search your pantry", text: $viewModel.searchText)
+                .font(FridgeFitTheme.Typography.body)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
                 .focused($isSearchFocused)
                 .textInputAutocapitalization(.never)
                 .submitLabel(.search)
@@ -202,214 +243,355 @@ struct MyKitchenView: View {
                     viewModel.searchText = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .font(.body)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Clear search")
             }
+        }
+        .padding(.leading, 6)
+        .padding(.trailing, viewModel.searchText.isEmpty ? 6 : 0)
+        .frame(minHeight: 44)
+        .fridgeFitCardSurface()
+    }
 
-            Button("Cancel") {
-                withAnimation(.snappy) {
-                    viewModel.searchText = ""
-                    viewModel.isSearchPresented = false
-                }
-                isSearchFocused = false
+    private var emptyKitchenOnboarding: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.medium) {
+            emptyFridgeHeroCard
+
+            EmptyFridgeQuickAdds(
+                templates: Array(InventoryTemplateCatalog.templates.prefix(8)),
+                onSelect: { quickAddTemplate = $0 }
+            )
+
+            Label("Your ingredients are saved to your account and available across your signed-in devices.", systemImage: "lock")
+                .font(FridgeFitTheme.Typography.caption)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+        }
+        .padding(.top, 2)
+    }
+
+    private var emptyFridgeHeroCard: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.medium) {
+            EmptyFridgeHero()
+
+            VStack(spacing: FridgeFitTheme.Spacing.xSmall) {
+                Text("Your fridge is ready for its first ingredient")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("Add a few fresh items or pantry staples so FridgeFit can track expiry dates and suggest low-waste meals.")
+                    .font(FridgeFitTheme.Typography.metadata)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(KitchenTheme.warmAccent)
-            .frame(minHeight: 44)
-        }
-        .padding(.leading, 14)
-        .padding(.trailing, 6)
-        .frame(minHeight: 48)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(KitchenTheme.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(KitchenTheme.separator, lineWidth: 1)
-        )
-    }
 
-    private var greeting: String {
-        let hour = Calendar.current.component(.hour, from: .now)
-        switch hour {
-        case 5..<12: return "Good morning"
-        case 12..<18: return "Good afternoon"
-        default: return "Good evening"
-        }
-    }
-
-    private func useFirstStrip(_ items: [PantryItem]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionHeader("Use First", subtitle: items.isEmpty ? "All clear" : "\(items.count) to check")
-
-            if items.isEmpty {
-                Text("Nothing needs attention right now.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 12)
-                    .frame(minHeight: 44, alignment: .leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(KitchenTheme.surface)
-                    )
-            } else {
-                ScrollView(.horizontal) {
-                    HStack(spacing: 8) {
-                        ForEach(items) { item in
-                            Button {
-                                viewModel.select(item)
-                            } label: {
-                                IngredientTile(item: item, compact: true, accent: zoneAccent(item.storage))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.vertical, 1)
-                }
-                .scrollIndicators(.hidden)
+            Button {
+                isPresentingSmartScan = true
+            } label: {
+                Label("Smart Scan Pantry", systemImage: "camera")
             }
-        }
-    }
+            .buttonStyle(FridgeFitPrimaryButtonStyle())
 
-    private func storageZone(_ location: StorageLocation, items: [PantryItem], accent: Color, note: String) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(location.title)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(.primary)
-
-                    Text(note)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            HStack(spacing: FridgeFitTheme.Spacing.small) {
+                Button {
+                    viewModel.showsAddIngredient = true
+                } label: {
+                    Label("Add Manually", systemImage: "plus")
                         .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
+                .buttonStyle(FridgeFitSecondaryButtonStyle())
 
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 5) {
-                    Text(zoneLabel(location))
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(accent)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(accent.opacity(0.12)))
-
-                    Text(items.count == 1 ? "1 item" : "\(items.count) items")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                Button {} label: {
+                    Label("Grocery List", systemImage: "book.closed")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
+                .buttonStyle(FridgeFitSecondaryButtonStyle())
+                .disabled(true)
+                .accessibilityHint("Grocery List is not available in this build")
             }
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .background {
+            ZStack(alignment: .topTrailing) {
+                FridgeFitTheme.ColorToken.card
+                Circle()
+                    .fill(FridgeFitTheme.ColorToken.successBackground.opacity(0.7))
+                    .frame(width: 112, height: 112)
+                    .blur(radius: 22)
+                    .offset(x: 32, y: -32)
+            }
+        }
+        .fridgeFitCardSurface()
+        .clipped()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Your fridge is ready for its first ingredient")
+        .accessibilityHint("Add an ingredient manually or scan a receipt to get started")
+    }
 
-            Capsule()
-                .fill(accent.opacity(0.28))
-                .frame(height: 3)
-                .padding(.trailing, 210)
+    private var filteredEmptyState: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.small) {
+            Image(systemName: viewModel.searchText.isEmpty ? "cabinet" : "magnifyingglass")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 52, height: 52)
+                .background(FridgeFitTheme.ColorToken.successBackground, in: Circle())
                 .accessibilityHidden(true)
 
-            if items.isEmpty {
-                emptyZone(location)
-            } else {
-                ScrollView(.horizontal) {
-                    HStack(spacing: 10) {
-                        ForEach(items) { item in
-                            Button {
-                                viewModel.select(item)
-                            } label: {
-                                IngredientTile(item: item, accent: accent)
-                            }
-                            .buttonStyle(.plain)
-                        }
+            Text(filteredEmptyTitle)
+                .font(FridgeFitTheme.Typography.sectionTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+
+            Text(filteredEmptyMessage)
+                .font(FridgeFitTheme.Typography.supporting)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, minHeight: 180)
+        .padding(FridgeFitTheme.Spacing.large)
+        .fridgeFitCardSurface()
+    }
+
+    private var filteredEmptyTitle: String {
+        if !viewModel.searchText.isEmpty {
+            return "No results for \"\(viewModel.searchText)\""
+        }
+        return "No items in \(viewModel.selectedFilter.title)"
+    }
+
+    private var filteredEmptyMessage: String {
+        if !viewModel.searchText.isEmpty {
+            return "Try a different ingredient name or clear your search."
+        }
+        return "Add an ingredient to this storage location, or choose another filter."
+    }
+
+    private var inventoryDashboard: some View {
+        GeometryReader { proxy in
+            let gap = FridgeFitTheme.Spacing.small
+            let heroWidth = (proxy.size.width - gap) * 0.54
+            let gridWidth = proxy.size.width - gap - heroWidth
+
+            HStack(spacing: gap) {
+                priorityCard
+                    .frame(width: heroWidth, height: proxy.size.height)
+
+                VStack(spacing: gap) {
+                    HStack(spacing: gap) {
+                        summaryTile(.all)
+                        summaryTile(.produce)
                     }
-                    .padding(.vertical, 1)
+                    .frame(maxHeight: .infinity)
+
+                    HStack(spacing: gap) {
+                        summaryTile(.proteins)
+                        summaryTile(.dairyAndPantry)
+                    }
+                    .frame(maxHeight: .infinity)
                 }
-                .scrollIndicators(.hidden)
+                .frame(width: gridWidth, height: proxy.size.height)
             }
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(accent.opacity(0.08))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(accent.opacity(0.16), lineWidth: 1)
-        )
+        .frame(height: 220)
     }
 
-    private func zoneLabel(_ location: StorageLocation) -> String {
-        switch location {
-        case .pantry: return "DRY"
-        case .fridge: return "FRESH"
-        case .freezer: return "COLD"
+    private var priorityCard: some View {
+        Group {
+            if let priorityItem {
+                Button {
+                    viewModel.select(priorityItem)
+                } label: {
+                    urgentPriorityContent(priorityItem)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Use soon: \(priorityItem.name), \(expiryText(for: priorityItem))")
+            } else {
+                allClearPriorityContent
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("No ingredients need attention")
+            }
         }
     }
 
-    private func emptyZone(_ location: StorageLocation) -> some View {
-        Text("No \(location.title.lowercased()) items")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .frame(minHeight: 54)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(KitchenTheme.tile.opacity(0.72))
+    private func urgentPriorityContent(_ item: PantryItem) -> some View {
+        ZStack(alignment: .topLeading) {
+            InventoryArtworkBackdrop(category: item.ingredient.category)
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.16), .black.opacity(0.76)],
+                startPoint: .top,
+                endPoint: .bottom
             )
-    }
 
-    /// Items in one zone, most in need of attention first.
-    ///
-    /// Note this reads `item.storage`, not `item.storageLocation`: items
-    /// added by the receipt scanner or the camera have no recorded location,
-    /// and `storage` places them in the pantry rather than dropping them out
-    /// of all three zones and off the screen.
-    private func items(in location: StorageLocation, from items: [PantryItem]) -> [PantryItem] {
-        items
-            .filter { $0.storage == location }
-            .sorted { priorityRank($0) > priorityRank($1) }
-    }
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                Label("USE SOON", systemImage: "clock.fill")
+                    .font(FridgeFitTheme.Typography.caption.weight(.bold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                    .padding(.horizontal, FridgeFitTheme.Spacing.small)
+                    .padding(.vertical, 5)
+                    .background(FridgeFitTheme.ColorToken.warningText, in: Capsule())
 
-    private func priorityRank(_ item: PantryItem) -> Int {
-        if let urgency = item.expiryState?.urgency {
-            return urgency.rawValue
+                Spacer(minLength: 0)
+
+                Text(item.name)
+                    .font(FridgeFitTheme.Typography.sectionTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                    .lineLimit(2)
+
+                Label(expiryText(for: item), systemImage: "exclamationmark.triangle")
+                    .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.card.opacity(0.92))
+                    .lineLimit(2)
+            }
+            .padding(FridgeFitTheme.Spacing.medium)
         }
-        return item.isLowStock ? 1 : 0
+        .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
     }
 
-    private func zoneAccent(_ location: StorageLocation) -> Color {
-        switch location {
-        case .pantry: return Color(red: 0.66, green: 0.52, blue: 0.34)
-        case .fridge: return KitchenTheme.warmAccent
-        case .freezer: return Color(red: 0.42, green: 0.61, blue: 0.72)
+    private var allClearPriorityContent: some View {
+        ZStack(alignment: .topLeading) {
+            InventoryArtworkBackdrop(category: nil)
+            LinearGradient(
+                colors: [.clear, FridgeFitTheme.ColorToken.primary.opacity(0.72)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                FridgeFitStatusBadge(title: "ALL CLEAR", systemImage: "checkmark.circle", tone: .success)
+                Spacer(minLength: 0)
+                Text("Nothing needs attention")
+                    .font(FridgeFitTheme.Typography.cardTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                Text("Your tracked items are not use-soon.")
+                    .font(FridgeFitTheme.Typography.metadata)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.card.opacity(0.9))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(FridgeFitTheme.Spacing.medium)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
+    }
+
+    private func summaryTile(_ summary: InventoryCategorySummary) -> some View {
+        let isAll = summary == .all
+        return ZStack(alignment: .bottomLeading) {
+            InventoryArtworkBackdrop(category: summary.representativeCategory, allItems: isAll)
+            LinearGradient(
+                colors: [.clear, .black.opacity(isAll ? 0.66 : 0.72)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(summary.title)
+                    .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(categoryItemCount(for: summary))
+                    .font(.caption2)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.card.opacity(0.84))
+                    .lineLimit(1)
+            }
+            .padding(FridgeFitTheme.Spacing.small)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+        .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                .stroke(isAll ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.border, lineWidth: isAll ? 2 : 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(summary.title), \(categoryItemCount(for: summary))")
+    }
+
+    private var ingredientList: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Pantry Ingredients")
+                    .font(FridgeFitTheme.Typography.sectionTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+
+                Text("\(visibleItems.count)")
+                    .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .padding(.horizontal, FridgeFitTheme.Spacing.small)
+                    .padding(.vertical, FridgeFitTheme.Spacing.xSmall)
+                    .background(FridgeFitTheme.ColorToken.card, in: Capsule())
+                    .overlay { Capsule().stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1) }
+
+                Spacer()
+            }
+
+            LazyVStack(spacing: 6) {
+                ForEach(visibleItems) { item in
+                    MyFridgeIngredientRow(
+                        item: item,
+                        onOpen: { viewModel.select(item) },
+                        onDelete: { itemPendingDeletion = item }
+                    )
+                }
+            }
         }
     }
 
-    private func sectionHeader(_ title: String, subtitle: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.primary)
+    private var visibleItems: [PantryItem] {
+        viewModel.useFirstItems + viewModel.remainingItems
+    }
 
-            Spacer()
+    private var priorityItem: PantryItem? {
+        viewModel.useFirstItems.first
+    }
 
-            Text(subtitle)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.trailing)
+    private func categoryItemCount(for summary: InventoryCategorySummary) -> String {
+        let count = inventory.items.filter { summary.includes($0.ingredient.category) }.count
+        return count == 1 ? "1 item" : "\(count) items"
+    }
+
+    private func expiryText(for item: PantryItem) -> String {
+        guard let state = item.expiryState else { return "No expiry date" }
+        return state.urgency == .expired ? "Expired" : "Expires \(state.title.lowercased())"
+    }
+
+    private func titleAction(_ systemImage: String, label: String, highlighted: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 32, height: 32)
+                .background(
+                    highlighted ? FridgeFitTheme.ColorToken.successBackground : .clear,
+                    in: Circle()
+                )
+                .frame(width: 40, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(label)
+    }
+
+    private func remove(_ item: PantryItem) async {
+        do {
+            try await inventory.deleteRecord(for: item.id)
+        } catch {
+            inventory.errorMessage = error.localizedDescription
         }
     }
 
     private func undoBar(message: String) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: FridgeFitTheme.Spacing.medium) {
             Text(message)
-                .font(.subheadline)
+                .font(FridgeFitTheme.Typography.supporting)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
 
@@ -419,7 +601,7 @@ struct MyKitchenView: View {
                 Button("Undo") {
                     Task { await inventory.undoLastAction() }
                 }
-                .font(.subheadline.weight(.semibold))
+                .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
                 .frame(minHeight: 44)
             }
 
@@ -433,16 +615,300 @@ struct MyKitchenView: View {
             }
             .accessibilityLabel("Dismiss")
         }
-        .padding(.leading, 16)
-        .padding(.vertical, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(KitchenTheme.warmAccent)
-                .shadow(color: .black.opacity(0.16), radius: 10, x: 0, y: 5)
-        )
-        .foregroundStyle(.white)
-        .padding(.horizontal, 20)
-        .padding(.bottom, 8)
+        .padding(.leading, FridgeFitTheme.Spacing.large)
+        .padding(.vertical, FridgeFitTheme.Spacing.xSmall)
+        .foregroundStyle(FridgeFitTheme.ColorToken.card)
+        .background(FridgeFitTheme.ColorToken.primary, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+        .padding(.horizontal, FridgeFitTheme.Spacing.large)
+        .padding(.bottom, FridgeFitTheme.Spacing.small)
+    }
+}
+
+/// Empty-inventory visual derived from the Stitch empty-state reference.
+/// It is decorative only; the surrounding card owns every real action.
+private struct EmptyFridgeHero: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(FridgeFitTheme.ColorToken.successBackground.opacity(0.76))
+                .frame(width: 92, height: 92)
+
+            Circle()
+                .stroke(FridgeFitTheme.ColorToken.primaryMuted.opacity(0.48), style: StrokeStyle(lineWidth: 2, dash: [5, 5]))
+                .frame(width: 68, height: 68)
+
+            Image(systemName: "basket.fill")
+                .font(.system(size: 29, weight: .semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 54, height: 54)
+                .background(FridgeFitTheme.ColorToken.card, in: Circle())
+
+            Image(systemName: "leaf.fill")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 24, height: 24)
+                .background(FridgeFitTheme.ColorToken.successBackground, in: Circle())
+                .offset(x: 34, y: -32)
+
+            Image(systemName: "camera.macro")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+                .frame(width: 22, height: 22)
+                .background(FridgeFitTheme.ColorToken.warningBackground, in: Circle())
+                .offset(x: -36, y: 32)
+        }
+        .frame(height: 96)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Existing inventory templates rendered as suggestions. Selecting a tile
+/// opens the existing editor; nothing is persisted until the user saves.
+private struct EmptyFridgeQuickAdds: View {
+    let templates: [IngredientTemplate]
+    let onSelect: (IngredientTemplate) -> Void
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 6),
+        GridItem(.flexible(), spacing: 6)
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Label("Popular items to get started", systemImage: "sparkles")
+                    .font(FridgeFitTheme.Typography.sectionTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+
+                Spacer()
+
+                Text("Tap to add")
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            }
+
+            LazyVGrid(columns: columns, spacing: 6) {
+                ForEach(templates) { template in
+                    Button {
+                        onSelect(template)
+                    } label: {
+                        HStack(spacing: 6) {
+                            IngredientArtwork(category: template.category, size: 24)
+
+                            Text(template.name)
+                                .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
+                                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.78)
+
+                            Spacer(minLength: 0)
+
+                            Image(systemName: "plus")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                                .frame(width: 28, height: 44)
+                        }
+                        .padding(.leading, FridgeFitTheme.Spacing.small)
+                        .padding(.trailing, 2)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .fridgeFitCardSurface()
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add \(template.name)")
+                    .accessibilityHint("Opens ingredient details before saving")
+                }
+            }
+        }
+    }
+}
+
+/// Stitch's four summary cards mapped onto FridgeFit's real ingredient
+/// categories. They are informational: storage selection remains the only
+/// inventory filter on this screen.
+private enum InventoryCategorySummary: CaseIterable, Identifiable {
+    case all
+    case produce
+    case proteins
+    case dairyAndPantry
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .all: return "All"
+        case .produce: return "Produce"
+        case .proteins: return "Proteins"
+        case .dairyAndPantry: return "Dairy & Pantry"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .all: return "square.grid.2x2"
+        case .produce: return IngredientCategory.produce.symbolName
+        case .proteins: return IngredientCategory.meat.symbolName
+        case .dairyAndPantry: return "cabinet"
+        }
+    }
+
+    var representativeCategory: IngredientCategory? {
+        switch self {
+        case .all:
+            return nil
+        case .produce:
+            return .produce
+        case .proteins:
+            return .meat
+        case .dairyAndPantry:
+            return .dairy
+        }
+    }
+
+    func includes(_ category: IngredientCategory) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .produce:
+            return category == .produce
+        case .proteins:
+            return category == .meat
+        case .dairyAndPantry:
+            return [.dairy, .grain, .spice].contains(category)
+        }
+    }
+}
+
+/// The project has no food-photo assets. This retains the reference's
+/// full-bleed, image-led card proportions using the existing category artwork
+/// instead of introducing generated or misleading food imagery.
+private struct InventoryArtworkBackdrop: View {
+    let category: IngredientCategory?
+    var allItems = false
+
+    var body: some View {
+        GeometryReader { proxy in
+            let shortestSide = min(proxy.size.width, proxy.size.height)
+            let artworkSize = max(28, shortestSide * 0.52)
+            let circleSize = max(48, shortestSide * 1.08)
+
+            ZStack {
+                LinearGradient(
+                    colors: [baseColor.opacity(0.74), baseColor.opacity(0.34)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+
+                Circle()
+                    .fill(FridgeFitTheme.ColorToken.card.opacity(0.18))
+                    .frame(width: circleSize, height: circleSize)
+                    .offset(x: proxy.size.width * 0.24, y: -proxy.size.height * 0.15)
+
+                if let category {
+                    IngredientArtwork(category: category, size: artworkSize)
+                        .scaleEffect(1.45)
+                        .opacity(0.92)
+                        .offset(x: proxy.size.width * 0.12, y: -proxy.size.height * 0.05)
+                } else {
+                    Image(systemName: allItems ? "square.grid.2x2.fill" : "checkmark.seal.fill")
+                        .font(.system(size: artworkSize, weight: .semibold))
+                        .foregroundStyle(FridgeFitTheme.ColorToken.card.opacity(0.42))
+                        .offset(x: proxy.size.width * 0.1, y: -proxy.size.height * 0.05)
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var baseColor: Color {
+        category?.tint ?? FridgeFitTheme.ColorToken.primary
+    }
+}
+
+/// Presentation-only list row shared by populated inventory surfaces. It
+/// renders model-derived storage, quantity and expiry values; all actions are
+/// supplied by the owning screen so it cannot create competing state.
+private struct MyFridgeIngredientRow: View {
+    let item: PantryItem
+    let onOpen: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(spacing: FridgeFitTheme.Spacing.xSmall) {
+            Button(action: onOpen) {
+                HStack(spacing: FridgeFitTheme.Spacing.small) {
+                    IngredientArtwork(category: item.ingredient.category, size: 46)
+
+                    VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                        Text(item.name)
+                            .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                            .lineLimit(2)
+
+                        Text("\(item.ingredient.category.displayName) · \(item.storage.title) (\(item.inventoryQuantity.displayText))")
+                            .font(FridgeFitTheme.Typography.caption)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                            .lineLimit(2)
+
+                        Label(expiryText, systemImage: expirySymbol)
+                            .font(FridgeFitTheme.Typography.caption.weight(expiryIsUrgent ? .semibold : .regular))
+                            .foregroundStyle(expiryTint)
+                            .lineLimit(1)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityHint("Opens ingredient details")
+
+            Button(action: onOpen) {
+                Image(systemName: "pencil")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Edit \(item.name)")
+
+            Button(action: onDelete) {
+                Image(systemName: "trash")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Remove \(item.name)")
+        }
+        .padding(.horizontal, FridgeFitTheme.Spacing.medium)
+        .padding(.vertical, FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
+    }
+
+    private var expiryText: String {
+        guard let state = item.expiryState else { return "No expiry date" }
+        return state.urgency == .expired ? "Expired" : "Expires \(state.title.lowercased())"
+    }
+
+    private var expirySymbol: String {
+        guard let state = item.expiryState else { return "calendar" }
+        return state.shouldPrioritise ? "exclamationmark.triangle" : "calendar"
+    }
+
+    private var expiryIsUrgent: Bool {
+        item.expiryState?.shouldPrioritise == true
+    }
+
+    private var expiryTint: Color {
+        item.expiryState?.urgency.tint ?? FridgeFitTheme.ColorToken.textSecondary
+    }
+
+    private var accessibilityLabel: String {
+        "\(item.name), \(item.ingredient.category.displayName), \(item.storage.title), \(item.inventoryQuantity.displayText), \(expiryText)"
     }
 }
 
@@ -463,9 +929,13 @@ struct MyKitchenView: View {
                     quantity: 1,
                     unit: .kilograms,
                     storageLocation: .pantry
-                ),
+                )
             ]),
             eventRepository: InMemoryInventoryEventRepository()
+        ), scannerViewModel: ReceiptScannerViewModel(
+            textRecognizer: MockReceiptTextRecognizer(lines: SampleReceiptPreviewData.lines),
+            interpreter: MockReceiptIngredientInterpreter(),
+            pantryRepository: InMemoryPantryRepository()
         ))
     }
 }

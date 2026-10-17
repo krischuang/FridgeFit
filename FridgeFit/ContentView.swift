@@ -147,7 +147,10 @@ struct ContentView: View {
             // The stack belongs to the tab. `MyKitchenView` does not open
             // one of its own, so there is exactly one navigation bar.
             NavigationStack {
-                MyKitchenView(inventory: inventoryStore)
+                MyKitchenView(
+                    inventory: inventoryStore,
+                    scannerViewModel: scannerViewModel
+                )
             }
             .tabItem { Label("Kitchen", systemImage: "refrigerator") }
 
