@@ -20,10 +20,19 @@ nonisolated enum PantryRepositoryError: LocalizedError, Equatable {
     /// their pantry, and a `CoreData` error code is not.
     case storageUnavailable
 
+    /// No repository was injected into this part of the view tree.
+    ///
+    /// A programmer error, surfaced as an error rather than a crash or - far
+    /// worse - a silent write to whichever backend a default happened to
+    /// construct. See `UnconfiguredPantryRepository`.
+    case notConfigured
+
     var errorDescription: String? {
         switch self {
         case .notAuthenticated:
             return "You need to be signed in to access your pantry."
+        case .notConfigured:
+            return "FridgeFit couldn't reach your pantry from this screen. Close it and try again."
         case .storageUnavailable:
             return "FridgeFit couldn't open your pantry on this device. Try again, and if it keeps happening, restart the app."
         }
