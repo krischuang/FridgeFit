@@ -27,6 +27,8 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
     @Published private(set) var expiryUseByRecipeID: [Int: OnlineRecipeExpiryUse] = [:]
     /// Pantry items the last search prioritised, most urgent first.
     @Published private(set) var urgentPantryIngredients: [UrgentIngredientUse] = []
+    /// Pantry as of the last successful search (see `OnlineRecipeSearchResult`).
+    @Published private(set) var pantrySnapshot: [PantryItem] = []
 
     /// Recipes the user hid on this device.
     @Published private(set) var hiddenRecipeIDs: Set<Int>
@@ -94,6 +96,7 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
             isShowingCachedResults = result.isFromCache
             expiryUseByRecipeID = result.expiryUse
             urgentPantryIngredients = result.urgentPantryIngredients
+            pantrySnapshot = result.pantrySnapshot
             hasSearched = true
         } catch is CancellationError {
             return

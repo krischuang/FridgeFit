@@ -96,7 +96,8 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
             excludedForSafetyCount: visible.count - safe.count,
             excludedAsHiddenCount: matches.count - visible.count,
             expiryUse: expiryUse,
-            urgentPantryIngredients: urgentItems
+            urgentPantryIngredients: urgentItems,
+            pantrySnapshot: pantry
         )
     }
 

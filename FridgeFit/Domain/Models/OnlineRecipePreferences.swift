@@ -72,6 +72,9 @@ struct OnlineRecipeSearchResult: Hashable {
     var expiryUse: [Int: OnlineRecipeExpiryUse] = [:]
     /// Pantry items the ranking prioritised, most urgent first.
     var urgentPantryIngredients: [UrgentIngredientUse] = []
+    /// The pantry the search ran against, so the detail screen can show
+    /// where each ingredient is and when it expires without re-reading.
+    var pantrySnapshot: [PantryItem] = []
 
     var isFromCache: Bool { matches.contains { $0.isFromCache } }
 }
