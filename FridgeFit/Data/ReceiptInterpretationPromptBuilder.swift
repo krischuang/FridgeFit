@@ -19,7 +19,7 @@ import Foundation
 /// one entry per input line, the line echoed back verbatim, and `unknown`
 /// available as a first-class answer so an unreadable abbreviation has
 /// somewhere to go other than a guess.
-struct ReceiptInterpretationPromptBuilder {
+nonisolated struct ReceiptInterpretationPromptBuilder {
     /// Session instructions: the model's standing role, sent once.
     static let instructions = """
         You are a careful grocery receipt reader inside a kitchen app called FridgeFit, \

@@ -45,7 +45,7 @@ struct GeneratedRecipeIdea {
 /// replacing any of it: `EvaluateRecipeFeasibilityUseCase` remains the only
 /// thing that decides whether a *bundled* recipe is makeable, and these
 /// suggestions are shown separately as ideas.
-struct AppleRecipeSuggestionService: RecipeSuggestionService {
+nonisolated struct AppleRecipeSuggestionService: RecipeSuggestionService {
     private let model: SystemLanguageModel
     private let logger = Logger(subsystem: "com.fridgefit.app", category: "AppleRecipeSuggestionService")
 

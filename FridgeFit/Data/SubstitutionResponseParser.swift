@@ -13,7 +13,7 @@ import Foundation
 /// actually-malformed JSON. Any decoding failure becomes
 /// `SubstitutionServiceError.malformedResponse`, never a crash or a
 /// partially-trusted result.
-enum SubstitutionResponseParser {
+nonisolated enum SubstitutionResponseParser {
     private struct SuggestionsPayload: Decodable {
         let suggestions: [RawSubstitutionSuggestion]
     }

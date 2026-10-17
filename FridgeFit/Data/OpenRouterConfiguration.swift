@@ -10,7 +10,7 @@ import Foundation
 /// Values are read from Info.plist, which pulls `OPENROUTER_API_KEY` /
 /// `OPENROUTER_MODEL` in from build settings - see Config.xcconfig and
 /// Secrets.xcconfig.example. No key ever lives in source control.
-struct OpenRouterConfiguration {
+nonisolated struct OpenRouterConfiguration {
     let apiKey: String
     let model: String
     /// Optional attribution headers OpenRouter uses for its public

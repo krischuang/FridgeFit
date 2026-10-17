@@ -20,7 +20,7 @@ import Foundation
 /// made-up quantity into the pantry whenever the user didn't notice. An
 /// empty quantity is rejected by `AddDetectedIngredientsUseCase` with a
 /// clear message, which is the correct outcome for a number nobody knows.
-struct ReceiptItemDraft: Identifiable, Equatable {
+nonisolated struct ReceiptItemDraft: Identifiable, Equatable {
     let candidate: ReceiptIngredientCandidate
     /// Only ticked items are sent to the pantry.
     var isSelected: Bool

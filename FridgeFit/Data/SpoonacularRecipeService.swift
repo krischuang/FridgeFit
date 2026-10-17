@@ -136,11 +136,11 @@ nonisolated final class UnconfiguredOnlineRecipeService: OnlineRecipeService {
 
 // MARK: - Wire types
 
-private struct SpoonacularSearchResponse: Decodable {
+private nonisolated struct SpoonacularSearchResponse: Decodable {
     let results: [SpoonacularRecipe]
 }
 
-private struct SpoonacularIngredient: Decodable {
+private nonisolated struct SpoonacularIngredient: Decodable {
     let id: Int?
     let name: String?
     let nameClean: String?
@@ -169,7 +169,7 @@ private struct SpoonacularIngredient: Decodable {
     }
 }
 
-private struct SpoonacularRecipe: Decodable {
+private nonisolated struct SpoonacularRecipe: Decodable {
     let id: Int
     let title: String
     let image: String?

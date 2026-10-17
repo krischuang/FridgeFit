@@ -7,7 +7,7 @@ import Foundation
 
 /// Every way adding a pantry item can fail. Messages are written for the
 /// user, not a developer reading a log.
-enum AddPantryItemError: LocalizedError, Equatable {
+nonisolated enum AddPantryItemError: LocalizedError, Equatable {
     case emptyIngredientName
     case invalidQuantity
     /// Already in the pantry under this name - see `AddPantryItemUseCase`

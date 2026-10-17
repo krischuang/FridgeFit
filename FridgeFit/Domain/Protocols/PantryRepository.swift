@@ -9,7 +9,7 @@ import Foundation
 /// protocol, not a concrete storage type, so swapping the in-memory test
 /// double for `FirestorePantryRepository` doesn't require touching any use
 /// case.
-protocol PantryRepository: AnyObject {
+nonisolated protocol PantryRepository: AnyObject {
     /// Every item currently in the caller's pantry.
     func fetchAll() async throws -> [PantryItem]
 

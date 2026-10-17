@@ -15,7 +15,7 @@ import Foundation
 /// be pointed at a fake UID in tests without needing a live Firebase
 /// project - the encode/decode logic is what's actually unit tested,
 /// though (see `FirestorePantryRepositoryMappingTests`).
-final class FirestorePantryRepository: PantryRepository {
+nonisolated final class FirestorePantryRepository: PantryRepository {
     private let firestore: Firestore
     private let userIDProvider: () -> String?
 
@@ -70,7 +70,7 @@ final class FirestorePantryRepository: PantryRepository {
 // Pulled out as pure static functions (no Firestore instance needed) so
 // the field mapping can be unit tested without a live Firebase project.
 
-extension FirestorePantryRepository {
+nonisolated extension FirestorePantryRepository {
     static func encodeForCreate(_ item: PantryItem) -> [String: Any] {
         var data: [String: Any] = [
             "ingredientName": item.ingredient.name,

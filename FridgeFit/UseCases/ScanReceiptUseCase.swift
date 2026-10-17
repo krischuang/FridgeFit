@@ -24,7 +24,7 @@ import ImageIO
 /// `Ingredient.matches(name:)` rule `AddPantryItemUseCase` uses, so the
 /// confirmation screen agrees with what the pantry will accept. The model
 /// is never asked, and never told, what's already in the pantry.
-struct ScanReceiptUseCase {
+nonisolated struct ScanReceiptUseCase {
     private let textRecognizer: ReceiptTextRecognizer
     private let interpreter: ReceiptIngredientInterpreter
     private let pantryRepository: PantryRepository

@@ -145,6 +145,7 @@ final class OnlineRecipeFeatureTests: XCTestCase {
         // The requirement is specifically that no save action exists that
         // would fail with permission-denied against undeployed rules.
         let viewModel = RecipeViewModel(
+            recipeRepository: InMemoryRecipeRepository(),
             pantryRepository: InMemoryPantryRepository(),
             savedRecipeRepository: OnlineRecipeFeature.makeSavedRecipeRepository(
                 state: .disabledPendingRulesDeployment,
@@ -162,7 +163,10 @@ final class OnlineRecipeFeatureTests: XCTestCase {
     }
 
     func test_savingIsANoOpWhenNoRepositoryIsWired() async {
-        let viewModel = RecipeViewModel(pantryRepository: InMemoryPantryRepository())
+        let viewModel = RecipeViewModel(
+            recipeRepository: InMemoryRecipeRepository(),
+            pantryRepository: InMemoryPantryRepository()
+        )
         await viewModel.saveOnlineRecipe(OnlineRecipeFixtures.recipe())
 
         XCTAssertTrue(viewModel.savedRecipes.isEmpty)

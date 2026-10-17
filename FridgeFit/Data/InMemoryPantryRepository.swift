@@ -8,7 +8,7 @@ import Foundation
 /// In-memory implementation of `PantryRepository`, used for SwiftUI
 /// previews and as the test double for use case / view model unit tests.
 /// Nothing persists between launches.
-final class InMemoryPantryRepository: PantryRepository {
+nonisolated final class InMemoryPantryRepository: PantryRepository {
     private var items: [PantryItem]
 
     init(seedItems: [PantryItem] = []) {
