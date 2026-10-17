@@ -12,7 +12,7 @@ import Foundation
 /// different lifetimes (an event outlives the item it describes), and every
 /// existing caller of `PantryRepository` would otherwise have to care about
 /// a collection it never reads.
-nonisolated protocol InventoryEventRepository: AnyObject {
+protocol InventoryEventRepository: AnyObject {
     /// Most recent first.
     func fetchAll(limit: Int) async throws -> [InventoryEvent]
 

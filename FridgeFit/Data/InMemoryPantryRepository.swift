@@ -19,6 +19,25 @@ nonisolated final class InMemoryPantryRepository: PantryRepository {
         items
     }
 
+    func fetch(id: UUID) async throws -> PantryItem? {
+        items.first { $0.id == id }
+    }
+
+    /// Matches the rule the other two backends implement: undated items are
+    /// excluded, and the result is soonest-first then alphabetical.
+    func fetchExpiring(before date: Date) async throws -> [PantryItem] {
+        items
+            .filter { item in
+                guard let expiryDate = item.expiryDate else { return false }
+                return expiryDate <= date
+            }
+            .sorted { lhs, rhs in
+                guard let left = lhs.expiryDate, let right = rhs.expiryDate else { return false }
+                if left != right { return left < right }
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+    }
+
     func add(_ item: PantryItem) async throws {
         items.append(item)
     }

@@ -43,6 +43,38 @@ nonisolated final class FirestorePantryRepository: PantryRepository {
         return snapshot.documents.compactMap { Self.decode(id: $0.documentID, data: $0.data()) }
     }
 
+    /// One document, read directly rather than by filtering `fetchAll()`.
+    ///
+    /// Cheaper than it looks: the pantry item id *is* the document id, so
+    /// this is a point read, where the previous approach - fetch everything,
+    /// then `first(where:)` in Swift - billed and transferred the whole
+    /// collection to find one row.
+    func fetch(id: UUID) async throws -> PantryItem? {
+        let snapshot = try await pantryCollection().document(id.uuidString).getDocument()
+        guard let data = snapshot.data() else { return nil }
+        return Self.decode(id: snapshot.documentID, data: data)
+    }
+
+    /// Items expiring on or before `date`, soonest first.
+    ///
+    /// Filtered and ordered by Firestore rather than in the client. Items
+    /// with no `expiryDate` field are absent from the result because
+    /// Firestore range filters skip documents missing the field - which is
+    /// exactly the intended rule ("undated means untracked, not urgent"),
+    /// though it is worth saying out loud that it falls out of the query
+    /// engine's behaviour here rather than from an explicit clause.
+    ///
+    /// Needs a composite index on `expiryDate` if combined with further
+    /// filters later; as a single-field range query it uses the automatic
+    /// index.
+    func fetchExpiring(before date: Date) async throws -> [PantryItem] {
+        let snapshot = try await pantryCollection()
+            .whereField("expiryDate", isLessThanOrEqualTo: Timestamp(date: date))
+            .order(by: "expiryDate")
+            .getDocuments()
+        return snapshot.documents.compactMap { Self.decode(id: $0.documentID, data: $0.data()) }
+    }
+
     func add(_ item: PantryItem) async throws {
         let document = try pantryCollection().document(item.id.uuidString)
         try await document.setData(Self.encodeForCreate(item))
