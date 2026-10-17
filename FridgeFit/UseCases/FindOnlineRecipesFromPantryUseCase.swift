@@ -23,6 +23,9 @@ import Foundation
 ///   item sink - see `OnlineRecipeExpiryRanking`. Near-expiry names are also
 ///   sent first in the request. Otherwise results are sorted by fewest
 ///   missing ingredients, then most pantry ingredients used.
+/// - **Hidden recipes never come back**: ids on the team blocklist
+///   (`OnlineRecipeBlocklist`) or hidden by the user are removed before
+///   anything else is considered, cached results included.
 /// - Nothing left after filtering is `.noResults`, so the UI can explain it.
 ///
 /// This use case is independent of the bundled-recipe feasibility engine
@@ -37,7 +40,12 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
     var now: () -> Date = { Date() }
     var calendar: Calendar = .current
 
-    func execute(preferences: OnlineRecipePreferences) async throws -> OnlineRecipeSearchResult {
+    /// - Parameter excludedRecipeIDs: provider recipe ids that must never
+    ///   be shown (team blocklist plus the user's hidden recipes).
+    func execute(
+        preferences: OnlineRecipePreferences,
+        excluding excludedRecipeIDs: Set<Int> = []
+    ) async throws -> OnlineRecipeSearchResult {
         // Sanitise before anything else: the filter that gets sent and the
         // filter that gets enforced must be the same one, and neither may
         // name an intolerance the app cannot assess.
@@ -72,7 +80,8 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
             throw OnlineRecipeSearchError.providerUnavailable
         }
 
-        let safe = matches.filter { Self.isSafe($0.recipe, for: effectivePreferences.intolerances) }
+        let visible = matches.filter { !excludedRecipeIDs.contains($0.id) }
+        let safe = visible.filter { Self.isSafe($0.recipe, for: effectivePreferences.intolerances) }
         guard !safe.isEmpty else { throw OnlineRecipeSearchError.noResults }
 
         var expiryUse: [Int: OnlineRecipeExpiryUse] = [:]
@@ -84,7 +93,8 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
 
         return OnlineRecipeSearchResult(
             matches: sorted,
-            excludedForSafetyCount: matches.count - safe.count,
+            excludedForSafetyCount: visible.count - safe.count,
+            excludedAsHiddenCount: matches.count - visible.count,
             expiryUse: expiryUse,
             urgentPantryIngredients: urgentItems
         )

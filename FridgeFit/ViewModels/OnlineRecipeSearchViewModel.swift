@@ -28,14 +28,47 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
     /// Pantry items the last search prioritised, most urgent first.
     @Published private(set) var urgentPantryIngredients: [UrgentIngredientUse] = []
 
+    /// Recipes the user hid on this device.
+    @Published private(set) var hiddenRecipeIDs: Set<Int>
+    /// How many results the last search dropped as blocked or hidden.
+    @Published private(set) var excludedAsHiddenCount = 0
+
     private let useCase: FindOnlineRecipesFromPantryUseCase
     private let preferencesStore: OnlineRecipePreferencesStoring
+    private let hiddenRecipeStore: HiddenOnlineRecipeStoring
+    /// Team blocklist shipped in the bundle (`OnlineRecipeBlocklist`).
+    private let blockedRecipeIDs: Set<Int>
     private var currentToken = 0
 
-    init(useCase: FindOnlineRecipesFromPantryUseCase, preferencesStore: OnlineRecipePreferencesStoring) {
+    init(
+        useCase: FindOnlineRecipesFromPantryUseCase,
+        preferencesStore: OnlineRecipePreferencesStoring,
+        hiddenRecipeStore: HiddenOnlineRecipeStoring = InMemoryHiddenOnlineRecipeStore(),
+        blockedRecipeIDs: Set<Int> = []
+    ) {
         self.useCase = useCase
         self.preferencesStore = preferencesStore
         self.preferences = preferencesStore.load()
+        self.hiddenRecipeStore = hiddenRecipeStore
+        self.hiddenRecipeIDs = hiddenRecipeStore.load()
+        self.blockedRecipeIDs = blockedRecipeIDs
+    }
+
+    /// Hides a recipe on this device: removed from the current results now,
+    /// and excluded from every future search.
+    func hide(_ match: OnlineRecipeMatch) {
+        hiddenRecipeIDs.insert(match.id)
+        hiddenRecipeStore.save(hiddenRecipeIDs)
+        matches.removeAll { $0.id == match.id }
+        expiryUseByRecipeID[match.id] = nil
+        excludedAsHiddenCount += 1
+    }
+
+    /// Brings back every recipe the user hid. Takes effect on the next
+    /// search. The team blocklist is not affected.
+    func unhideAll() {
+        hiddenRecipeIDs = []
+        hiddenRecipeStore.save([])
     }
 
     /// Searches using the current pantry and preferences. Ignored while a
@@ -50,10 +83,14 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
         defer { if token == currentToken { isLoading = false } }
 
         do {
-            let result = try await useCase.execute(preferences: preferences)
+            let result = try await useCase.execute(
+                preferences: preferences,
+                excluding: blockedRecipeIDs.union(hiddenRecipeIDs)
+            )
             guard token == currentToken else { return }
             matches = result.matches
             excludedForSafetyCount = result.excludedForSafetyCount
+            excludedAsHiddenCount = result.excludedAsHiddenCount
             isShowingCachedResults = result.isFromCache
             expiryUseByRecipeID = result.expiryUse
             urgentPantryIngredients = result.urgentPantryIngredients
@@ -64,6 +101,7 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
             guard token == currentToken else { return }
             matches = []
             excludedForSafetyCount = 0
+            excludedAsHiddenCount = 0
             isShowingCachedResults = false
             expiryUseByRecipeID = [:]
             urgentPantryIngredients = []
@@ -84,6 +122,7 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
         isLoading = false
         matches = []
         excludedForSafetyCount = 0
+        excludedAsHiddenCount = 0
         isShowingCachedResults = false
         expiryUseByRecipeID = [:]
         urgentPantryIngredients = []
