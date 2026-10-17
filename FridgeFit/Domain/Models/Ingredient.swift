@@ -8,7 +8,7 @@ import Foundation
 /// A food ingredient, like "Chicken Breast" or "Greek Yogurt". Just a name
 /// and a category - quantity only makes sense once it's placed in the
 /// pantry (`PantryItem`).
-struct Ingredient: Identifiable, Hashable, Codable {
+nonisolated struct Ingredient: Identifiable, Hashable, Codable {
     let id: UUID
     var name: String
     var category: IngredientCategory
@@ -31,7 +31,7 @@ struct Ingredient: Identifiable, Hashable, Codable {
 }
 
 /// A rough grouping for organizing the pantry and picking an icon.
-enum IngredientCategory: String, Codable, CaseIterable, Identifiable {
+nonisolated enum IngredientCategory: String, Codable, CaseIterable, Identifiable {
     case produce = "Produce"
     case dairy = "Dairy"
     case meat = "Meat"

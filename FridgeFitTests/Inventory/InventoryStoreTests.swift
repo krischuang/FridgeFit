@@ -281,6 +281,8 @@ final class InventoryStoreTests: XCTestCase {
 
 private final class FailingPantryRepository: PantryRepository {
     func fetchAll() async throws -> [PantryItem] { throw PantryRepositoryError.notAuthenticated }
+    func fetch(id: UUID) async throws -> PantryItem? { throw PantryRepositoryError.notAuthenticated }
+    func fetchExpiring(before date: Date) async throws -> [PantryItem] { throw PantryRepositoryError.notAuthenticated }
     func add(_ item: PantryItem) async throws { throw PantryRepositoryError.notAuthenticated }
     func update(_ item: PantryItem) async throws { throw PantryRepositoryError.notAuthenticated }
     func remove(id: UUID) async throws { throw PantryRepositoryError.notAuthenticated }

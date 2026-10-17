@@ -7,7 +7,7 @@ import Foundation
 
 /// One pantry item, reduced to just what a substitution provider needs to
 /// know - no ids, no Firebase user info.
-struct PantryIngredientSummary: Equatable, Codable {
+nonisolated struct PantryIngredientSummary: Equatable, Codable {
     let name: String
     let quantity: Double
     let unit: MeasurementUnit
@@ -16,7 +16,7 @@ struct PantryIngredientSummary: Equatable, Codable {
 /// Everything needed to ask "what can I use instead of this ingredient?" -
 /// deliberately scoped to recipe/ingredient/pantry facts, nothing about
 /// the signed-in user beyond what's already anonymous domain data.
-struct SubstitutionRequest: Equatable {
+nonisolated struct SubstitutionRequest: Equatable {
     let recipeID: UUID
     let recipeTitle: String
     let targetIngredientName: String

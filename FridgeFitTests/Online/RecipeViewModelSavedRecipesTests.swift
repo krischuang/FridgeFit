@@ -100,7 +100,10 @@ final class RecipeViewModelSavedRecipesTests: XCTestCase {
     }
 
     func test_withoutSavedRepository_savingIsDisabled() async {
-        let viewModel = RecipeViewModel(recipeRepository: InMemoryRecipeRepository(recipes: [bundled]))
+        let viewModel = RecipeViewModel(
+            recipeRepository: InMemoryRecipeRepository(recipes: [bundled]),
+            pantryRepository: InMemoryPantryRepository()
+        )
 
         await viewModel.saveOnlineRecipe(onlineRecipe())
 

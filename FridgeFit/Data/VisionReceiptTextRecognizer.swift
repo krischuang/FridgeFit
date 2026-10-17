@@ -48,7 +48,7 @@ import Vision
 /// sees them.
 ///
 /// Nothing leaves the device.
-struct VisionReceiptTextRecognizer: ReceiptTextRecognizer {
+nonisolated struct VisionReceiptTextRecognizer: ReceiptTextRecognizer {
     /// Lines Vision was less sure about than this are dropped. Deliberately
     /// permissive: a misread product line can still be corrected by the
     /// user, but a dropped one is invisible to them.

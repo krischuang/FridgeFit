@@ -7,7 +7,7 @@ import Foundation
 
 /// The unit a pantry quantity is measured in. A fixed set (not free text)
 /// so comparisons stay exact - no unit conversion.
-enum MeasurementUnit: String, Codable, CaseIterable, Identifiable {
+nonisolated enum MeasurementUnit: String, Codable, CaseIterable, Identifiable {
     case grams = "g"
     case kilograms = "kg"
     case milliliters = "ml"

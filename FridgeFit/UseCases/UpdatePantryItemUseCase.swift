@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Same quantity rule as `AddPantryItemUseCase` (can't go negative), but no
 /// duplicate check here - updating in place is the whole point.
-struct UpdatePantryItemUseCase {
+nonisolated struct UpdatePantryItemUseCase {
     private let pantryRepository: PantryRepository
 
     init(pantryRepository: PantryRepository) {

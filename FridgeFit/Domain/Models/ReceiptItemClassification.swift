@@ -16,7 +16,7 @@ import Foundation
 /// asked of the model. The model's job is to classify; the product decision
 /// about which classifications reach the pantry is ours, and changing it
 /// later means editing this one property.
-enum ReceiptItemClassification: String, Codable, CaseIterable, Equatable {
+nonisolated enum ReceiptItemClassification: String, Codable, CaseIterable, Equatable {
     /// Something a recipe could call for: produce, meat, dairy, staples.
     case ingredient
     /// Edible, but not something you cook with - a chocolate bar, a packet

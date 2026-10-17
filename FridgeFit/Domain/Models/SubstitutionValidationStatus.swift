@@ -7,7 +7,7 @@ import Foundation
 
 /// The app's own verdict on a substitution suggestion, after checking it
 /// against the pantry - never taken from the LLM.
-enum SubstitutionValidationStatus: String, Equatable, Codable {
+nonisolated enum SubstitutionValidationStatus: String, Equatable, Codable {
     /// In the pantry, in enough quantity (once safely unit-converted) -
     /// or the suggestion didn't specify an amount, so presence is all
     /// that could be confirmed.

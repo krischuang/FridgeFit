@@ -11,7 +11,7 @@ import Foundation
 /// realistic dataset - varied enough in ingredients, units, and
 /// essential/optional mixes to exercise every feasibility outcome against
 /// a real pantry.
-final class BundledRecipeRepository: RecipeRepository {
+nonisolated final class BundledRecipeRepository: RecipeRepository {
     private let recipes: [Recipe]
 
     init(recipes: [Recipe] = BundledRecipeRepository.sampleRecipes) {
@@ -69,7 +69,7 @@ extension BundledRecipeRepository {
     /// FridgeFit can assess, and satisfies none of them* - a different
     /// fact from `nil`, meaning never assessed. See `Recipe.dietaryLabels`
     /// and `DietaryCompliance`.
-    static var sampleRecipes: [Recipe] {
+    nonisolated static var sampleRecipes: [Recipe] {
         [
             Recipe(
                 title: "Creamy Chicken Pasta",

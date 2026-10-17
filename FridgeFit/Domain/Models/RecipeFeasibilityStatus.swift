@@ -11,7 +11,7 @@ import Foundation
 /// Deliberately just three explainable states, computed from essential
 /// ingredient coverage only - optional ingredients never change the
 /// verdict. See `EvaluateRecipeFeasibilityUseCase` for the exact rule.
-enum RecipeFeasibilityStatus: String, Equatable {
+nonisolated enum RecipeFeasibilityStatus: String, Equatable {
     /// Every essential ingredient is available in sufficient quantity.
     case makeable
     /// At least one essential ingredient is missing or insufficient, but

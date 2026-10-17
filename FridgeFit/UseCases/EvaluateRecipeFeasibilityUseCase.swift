@@ -11,7 +11,7 @@ import Foundation
 /// Reads the pantry fresh on every call via `PantryRepository`, so calling
 /// it again after the pantry changes always reflects the latest state -
 /// no caching, no substitutions, just a deterministic comparison.
-struct EvaluateRecipeFeasibilityUseCase {
+nonisolated struct EvaluateRecipeFeasibilityUseCase {
     private let pantryRepository: PantryRepository
 
     init(pantryRepository: PantryRepository) {

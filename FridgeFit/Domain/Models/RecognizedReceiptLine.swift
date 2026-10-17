@@ -16,7 +16,7 @@ import Foundation
 /// the text recogniser is about the characters, not a judgement about the
 /// product. It is used to drop unreadable lines, never shown to the user as
 /// a confidence in an ingredient.
-struct RecognizedReceiptLine: Equatable {
+nonisolated struct RecognizedReceiptLine: Equatable {
     /// The text exactly as Vision read it, untrimmed of meaning.
     let text: String
     /// Vision's OCR confidence for this line, `nil` if unavailable.
@@ -34,7 +34,7 @@ struct RecognizedReceiptLine: Equatable {
 }
 
 /// Everything OCR could read from one receipt photo.
-struct RecognizedReceiptText: Equatable {
+nonisolated struct RecognizedReceiptText: Equatable {
     /// Lines in reading order, top of the receipt first.
     let lines: [RecognizedReceiptLine]
 
