@@ -174,7 +174,8 @@ struct ContentView: View {
             NavigationStack {
                 DiscoverRecipesView(
                     viewModel: onlineRecipeSearchViewModel,
-                    recipeViewModel: recipeViewModel
+                    recipeViewModel: recipeViewModel,
+                    substitutionViewModel: substitutionViewModel
                 )
             }
             .tabItem { Label("Discover", systemImage: "globe") }

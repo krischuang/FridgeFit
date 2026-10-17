@@ -31,6 +31,8 @@ struct DiscoverRecipesView: View {
     /// Why online search is unavailable, or `nil` when it is enabled.
     /// Injected so tests and previews can render either state.
     var providerUnavailableExplanation: String? = OnlineRecipeFeature.providerUnavailableExplanation()
+    /// Powers the FridgeFix card on the detail screen; `nil` hides it.
+    var substitutionViewModel: SubstitutionViewModel? = nil
     @State private var isShowingFilters = false
 
     private var isProviderAvailable: Bool { providerUnavailableExplanation == nil }
@@ -160,7 +162,9 @@ struct DiscoverRecipesView: View {
                 intolerances: viewModel.preferences.intolerances,
                 recipeViewModel: recipeViewModel,
                 expiryUse: viewModel.expiryUse(for: match),
-                onHide: { viewModel.hide(match) }
+                onHide: { viewModel.hide(match) },
+                pantrySnapshot: viewModel.pantrySnapshot,
+                substitutionViewModel: substitutionViewModel
             )
         }
         .toolbar {
