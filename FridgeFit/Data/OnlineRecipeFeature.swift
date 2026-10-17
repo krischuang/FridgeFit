@@ -67,12 +67,11 @@ nonisolated enum OnlineRecipeFeature {
 
     /// Current provider state.
     ///
-    /// `.disabled` by deliberate decision: Spoonacular API configuration is
-    /// outstanding pending a conversation with the developer responsible for
-    /// the account. The architecture below it is complete and tested against
-    /// `MockOnlineRecipeService`; only this value stands between it and a
-    /// live call.
-    static let provider: ProviderState = .disabled
+    /// `.enabled`: the developer responsible for the Spoonacular account has
+    /// configured a key in the gitignored `Secrets.xcconfig`. Without a valid
+    /// key the app still builds and Discover reports `notConfigured`, so this
+    /// never makes a keyless checkout fail.
+    static let provider: ProviderState = .enabled
 
     /// Current saved-recipe storage state.
     ///
