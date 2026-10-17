@@ -19,13 +19,14 @@ struct IngredientDrawerView: View {
     @Environment(\.dismiss) private var dismiss
 
     let itemID: UUID
+    private let inventory: InventoryStore
     @Binding var detent: PresentationDetent
     let onRemoved: (UUID) -> Void
 
     @StateObject private var viewModel: IngredientDrawerViewModel
     @State private var showsDeleteConfirmation = false
     @State private var isEditingUsedAmount = false
-    @State private var isEditingDetails = false
+    @State private var itemBeingEdited: PantryItem?
     @State private var isAdjustingQuantity = false
     @State private var repeatTask: Task<Void, Never>?
 
@@ -36,6 +37,7 @@ struct IngredientDrawerView: View {
         onRemoved: @escaping (UUID) -> Void
     ) {
         self.itemID = itemID
+        self.inventory = inventory
         self._detent = detent
         self.onRemoved = onRemoved
         _viewModel = StateObject(wrappedValue: IngredientDrawerViewModel(itemID: itemID, inventory: inventory))
@@ -43,7 +45,7 @@ struct IngredientDrawerView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
                 if let item = viewModel.visibleItem, let draft = viewModel.draft {
                     compactSummary(for: item)
                     usedAmountSection(draft: draft)
@@ -70,12 +72,12 @@ struct IngredientDrawerView: View {
                     )
                 }
             }
-            .padding(20)
-            .padding(.bottom, 90)
+            .padding(FridgeFitTheme.Spacing.large)
+            .padding(.bottom, FridgeFitTheme.Spacing.large)
         }
-        .background(KitchenTheme.background.ignoresSafeArea())
+        .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
         .safeAreaInset(edge: .bottom) {
-            if let draft = viewModel.draft {
+            if let draft = viewModel.draft, shouldShowSaveBar(for: draft) {
                 saveBar(draft: draft)
             }
         }
@@ -95,6 +97,20 @@ struct IngredientDrawerView: View {
         } message: {
             Text(viewModel.errorMessage ?? "Try again.")
         }
+        .sheet(item: $itemBeingEdited) { item in
+            NavigationStack {
+                IngredientEditorView(
+                    mode: .edit(item),
+                    inventory: inventory,
+                    onDone: {
+                        itemBeingEdited = nil
+                        dismiss()
+                    }
+                )
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
         .onAppear {
             viewModel.load()
         }
@@ -104,14 +120,14 @@ struct IngredientDrawerView: View {
     }
 
     private func compactSummary(for item: PantryItem) -> some View {
-        HStack(alignment: .center, spacing: 14) {
-            IngredientArtwork(category: item.ingredient.category, size: 42)
+        HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.medium) {
+            IngredientArtwork(category: item.ingredient.category, size: 52)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(item.name)
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .font(FridgeFitTheme.Typography.screenTitle)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
                         .lineLimit(2)
                         .minimumScaleFactor(0.78)
 
@@ -120,42 +136,27 @@ struct IngredientDrawerView: View {
                     moreMenu()
                 }
 
-                HStack(spacing: 8) {
-                    Text(item.inventoryQuantity.displayText)
-                        .font(.headline.weight(.medium))
+                Text("\(item.ingredient.category.displayName) · \(item.storage.title)")
+                    .font(FridgeFitTheme.Typography.supporting)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
 
-                    if let badge = statusBadge(for: item) {
-                        Text(badge.title)
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(badge.tint)
-                            .padding(.horizontal, 7)
-                            .frame(height: 22)
-                            .background(Capsule().fill(badge.tint.opacity(0.12)))
-                    }
+                Text(item.inventoryQuantity.displayText)
+                    .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                    .lineLimit(1)
+
+                if let badge = statusBadge(for: item) {
+                    Label(badge.title, systemImage: "clock.fill")
+                        .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                        .foregroundStyle(badge.tint)
+                        .padding(.horizontal, FridgeFitTheme.Spacing.small)
+                        .padding(.vertical, FridgeFitTheme.Spacing.xSmall)
+                        .background(badge.tint.opacity(0.14), in: Capsule())
                 }
-
-                Text(metadataLine(for: item))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-
-                Text(expiryLine(for: item))
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(expiryTint(for: item))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
             }
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(KitchenTheme.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(KitchenTheme.separator, lineWidth: 1)
-        )
+        .padding(FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
         .accessibilityElement(children: .combine)
     }
 
@@ -172,7 +173,7 @@ struct IngredientDrawerView: View {
 
             Button {
                 detent = .large
-                isEditingDetails = true
+                itemBeingEdited = viewModel.visibleItem
                 Haptics.selection()
             } label: {
                 Label("Edit Details", systemImage: "pencil")
@@ -209,9 +210,10 @@ struct IngredientDrawerView: View {
     }
 
     private func usedAmountSection(draft: IngredientDraft) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Used")
-                .font(.subheadline.weight(.bold))
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            Text("Use from inventory")
+                .font(FridgeFitTheme.Typography.supporting.weight(.bold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
 
             HStack(spacing: 0) {
                 RepeatButton(systemImage: "minus") {
@@ -264,19 +266,14 @@ struct IngredientDrawerView: View {
                 }
             }
             .frame(height: 48)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(KitchenTheme.surface.opacity(0.96))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(Color.primary.opacity(0.10), lineWidth: 1)
-            )
+            .background(FridgeFitTheme.ColorToken.disabledSurface.opacity(0.65), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
 
             Text("Left \(draft.remainingQuantity.displayText)")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(FridgeFitTheme.Typography.metadata)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
         }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
     }
 
     private func finishedAction(draft: IngredientDraft) -> some View {
@@ -291,28 +288,18 @@ struct IngredientDrawerView: View {
                     .font(.headline)
                 Spacer()
             }
-            .foregroundStyle(draft.finished ? KitchenTheme.forest : .primary)
-            .padding(.horizontal, 14)
+            .foregroundStyle(draft.finished ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.textPrimary)
+            .padding(.horizontal, FridgeFitTheme.Spacing.medium)
             .frame(height: 52)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(draft.finished ? KitchenTheme.tile : KitchenTheme.surface)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(draft.finished ? KitchenTheme.warmAccent : Color.primary.opacity(0.10), lineWidth: 1)
-            )
+            .background(draft.finished ? FridgeFitTheme.ColorToken.successBackground : FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous).stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1) }
         }
         .buttonStyle(.plain)
     }
 
     private func expandedDetails(draft: IngredientDraft) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
             completeDetails(draft: draft)
-
-            if isEditingDetails {
-                inlineEditor()
-            }
 
             if isAdjustingQuantity {
                 correctQuantityEditor()
@@ -320,130 +307,69 @@ struct IngredientDrawerView: View {
 
             recentActivity(for: draft.original)
 
-            VStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+                Text("Actions")
+                    .font(FridgeFitTheme.Typography.metadata.weight(.bold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .textCase(.uppercase)
+
                 Button {
-                    isEditingDetails = true
+                    itemBeingEdited = viewModel.visibleItem
                 } label: {
                     Label("Edit Details", systemImage: "pencil")
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(FridgeFitPrimaryButtonStyle())
 
                 Button {
                     isAdjustingQuantity = true
                 } label: {
                     Label("Correct Quantity", systemImage: "slider.horizontal.3")
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(FridgeFitSecondaryButtonStyle())
 
                 Button(role: .destructive) {
                     discard()
                 } label: {
                     Label("Discard", systemImage: "trash")
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(FridgeFitSecondaryButtonStyle())
 
                 Button(role: .destructive) {
                     showsDeleteConfirmation = true
                 } label: {
-                    Label("Delete Record", systemImage: "xmark.bin")
-                        .frame(maxWidth: .infinity)
+                    Label("Delete Ingredient", systemImage: "trash")
+                        .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                                .stroke(FridgeFitTheme.ColorToken.danger.opacity(0.45), lineWidth: 1)
+                        }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
             }
         }
     }
 
     private func completeDetails(draft: IngredientDraft) -> some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Inventory information")
+                .font(FridgeFitTheme.Typography.metadata.weight(.bold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .textCase(.uppercase)
+                .padding(.horizontal, FridgeFitTheme.Spacing.medium)
+                .padding(.top, FridgeFitTheme.Spacing.medium)
             DrawerInfoRow(title: "Storage", value: draft.storageLocation.title, systemImage: "refrigerator")
             DrawerInfoRow(title: "Category", value: draft.category.displayName, systemImage: "leaf")
+            DrawerInfoRow(title: "Quantity", value: draft.baseQuantity.displayText, systemImage: "number")
             if let expiryDate = draft.expiryDate {
-                DrawerInfoRow(title: "Expiry Date", value: exactDate(expiryDate), systemImage: "calendar")
+                DrawerInfoRow(title: "Use by", value: expiryDetail(expiryDate), systemImage: "calendar")
             }
             if let opened = openedLine(for: draft.openedState) {
                 DrawerInfoRow(title: "Opened", value: opened, systemImage: "seal")
             }
         }
         .drawerPanel()
-    }
-
-    private func inlineEditor() -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Edit Details")
-                .font(.subheadline.weight(.bold))
-
-            VStack(spacing: 0) {
-                editorRow("Name") {
-                    TextField("Name", text: Binding(
-                        get: { viewModel.draft?.name ?? "" },
-                        set: { value in viewModel.updateDraft { $0.name = value } }
-                    ))
-                    .multilineTextAlignment(.trailing)
-                    .kitchenIngredientTextInput()
-                }
-
-                editorRow("Storage") {
-                    Picker("Storage", selection: Binding(
-                        get: { viewModel.draft?.storageLocation ?? .fridge },
-                        set: { value in viewModel.updateDraft { $0.storageLocation = value } }
-                    )) {
-                        ForEach(StorageLocation.allCases) { location in
-                            Text(location.title).tag(location)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
-
-                editorRow("Category") {
-                    Picker("Category", selection: Binding(
-                        get: { viewModel.draft?.category ?? .other },
-                        set: { value in viewModel.updateDraft { $0.category = value } }
-                    )) {
-                        ForEach(IngredientCategory.allCases) { category in
-                            Text(category.displayName).tag(category)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                }
-
-                editorRow("Expiry") {
-                    DatePicker(
-                        "Expiry",
-                        selection: Binding(
-                            get: { viewModel.draft?.expiryDate ?? .now },
-                            set: { value in viewModel.updateDraft { $0.expiryDate = value } }
-                        ),
-                        displayedComponents: .date
-                    )
-                    .labelsHidden()
-                }
-
-                // Only offered for packaged food - see `OpenedState`.
-                if viewModel.draft?.openedState != .notApplicable {
-                    editorRow("Opened") {
-                        Picker("Opened", selection: Binding(
-                            get: { viewModel.draft?.openedState ?? .unopened },
-                            set: { value in viewModel.updateDraft { $0.openedState = value } }
-                        )) {
-                            Text("Unopened").tag(OpenedState.unopened)
-                            Text("Opened").tag(OpenedState.opened)
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                }
-            }
-            .drawerPanel()
-
-            Button {
-                isEditingDetails = false
-            } label: {
-                Text("Done")
-                    .secondaryDrawerButton()
-            }
-        }
     }
 
     private func correctQuantityEditor() -> some View {
@@ -475,37 +401,41 @@ struct IngredientDrawerView: View {
     }
 
     private func saveBar(draft: IngredientDraft) -> some View {
-        Button {
+        let isEnabled = draft.canSave && viewModel.usedAmountInputIsValid
+        return Button {
             save(draft)
         } label: {
             Text("Save")
-                .primaryDrawerButton()
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
-                .padding(.bottom, 8)
-                .background(.ultraThinMaterial)
+                .font(FridgeFitTheme.Typography.button)
+                .foregroundStyle(isEnabled ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.textSecondary)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .background(
+                    isEnabled ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.disabledSurface,
+                    in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                )
         }
         .buttonStyle(.plain)
-        .disabled(!draft.canSave || !viewModel.usedAmountInputIsValid)
-        .opacity(draft.canSave && viewModel.usedAmountInputIsValid ? 1 : 0.45)
+        .disabled(!isEnabled)
+        .padding(.horizontal, FridgeFitTheme.Spacing.large)
+        .padding(.top, FridgeFitTheme.Spacing.small)
+        .padding(.bottom, FridgeFitTheme.Spacing.xSmall)
+        .background(FridgeFitTheme.ColorToken.canvas.opacity(0.96))
     }
 
     private func recentActivity(for item: PantryItem) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
             Text("Recent Activity")
-                .font(.subheadline.weight(.bold))
+                .font(FridgeFitTheme.Typography.sectionTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
 
             let events = viewModel.recentActivity
             if events.isEmpty {
                 Text("No recent activity")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(FridgeFitTheme.Typography.supporting)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(KitchenTheme.surface)
-                    )
+                    .padding(FridgeFitTheme.Spacing.medium)
+                    .fridgeFitCardSurface()
             } else {
                 VStack(spacing: 0) {
                     ForEach(events) { event in
@@ -518,26 +448,6 @@ struct IngredientDrawerView: View {
                 }
                 .drawerPanel()
             }
-        }
-    }
-
-    private func editorRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(spacing: 12) {
-            Text(title)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.primary)
-
-            Spacer(minLength: 12)
-
-            content()
-                .font(.subheadline)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .overlay(alignment: .bottom) {
-            Divider()
-                .overlay(KitchenTheme.separator)
-                .padding(.leading, 14)
         }
     }
 
@@ -612,6 +522,30 @@ struct IngredientDrawerView: View {
         return "Expires \(exactDate(expiryDate))"
     }
 
+    private func expiryDetail(_ date: Date) -> String {
+        guard let days = ExpiryService.state(for: date)?.daysUntilExpiry else {
+            return exactDate(date)
+        }
+
+        let relative: String
+        switch days {
+        case ..<0:
+            let elapsed = abs(days)
+            relative = elapsed == 1 ? "Expired yesterday" : "Expired \(elapsed) days ago"
+        case 0:
+            relative = "Expires today"
+        case 1:
+            relative = "Expires tomorrow"
+        default:
+            relative = "\(days) days left"
+        }
+        return "\(exactDate(date)) · \(relative)"
+    }
+
+    private func shouldShowSaveBar(for draft: IngredientDraft) -> Bool {
+        isAdjustingQuantity || isEditingUsedAmount || draft.canSave
+    }
+
     private func expiryTint(for item: PantryItem) -> Color {
         item.expiryState?.urgency.tint ?? .secondary
     }
@@ -654,23 +588,23 @@ private struct DrawerInfoRow: View {
         HStack(spacing: 12) {
             Image(systemName: systemImage)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
                 .frame(width: 22)
                 .accessibilityHidden(true)
 
             Text(title)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
+                .font(FridgeFitTheme.Typography.supporting)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
 
             Spacer(minLength: 12)
 
             Text(value)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
+                .font(FridgeFitTheme.Typography.supporting.weight(.medium))
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                 .multilineTextAlignment(.trailing)
                 .lineLimit(2)
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, FridgeFitTheme.Spacing.medium)
         .frame(minHeight: 44)
         .overlay(alignment: .bottom) {
             Divider()
@@ -708,36 +642,23 @@ private struct RepeatButton: View {
 
 private extension View {
     func drawerPanel() -> some View {
-        background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(KitchenTheme.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(Color.primary.opacity(0.09), lineWidth: 1)
-        )
+        fridgeFitCardSurface()
     }
 
     func primaryDrawerButton() -> some View {
-        font(.headline)
-            .foregroundStyle(.white)
+        font(FridgeFitTheme.Typography.button)
+            .foregroundStyle(FridgeFitTheme.ColorToken.card)
             .frame(maxWidth: .infinity)
             .frame(height: 48)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(KitchenTheme.warmAccent)
-            )
+            .background(FridgeFitTheme.ColorToken.primary, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
     }
 
     func secondaryDrawerButton() -> some View {
-        font(.headline)
-            .foregroundStyle(KitchenTheme.forest)
+        font(FridgeFitTheme.Typography.button)
+            .foregroundStyle(FridgeFitTheme.ColorToken.primary)
             .frame(maxWidth: .infinity)
             .frame(height: 44)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(KitchenTheme.tile)
-            )
+            .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
     }
 
     @ViewBuilder
