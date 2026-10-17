@@ -23,6 +23,9 @@ import Foundation
 ///   match just means no boost; a false match would be a false claim.
 /// - **No double counting.** Each pantry item is credited at most once per
 ///   recipe.
+/// - Recipes with a usable method rank above ones without steps (the
+///   provider's data is incomplete for some), once expiry has been
+///   considered.
 /// - Otherwise the existing order holds: fewest missing ingredients, then
 ///   most pantry ingredients used, then the provider's order.
 nonisolated enum OnlineRecipeExpiryRanking {
@@ -104,6 +107,7 @@ nonisolated enum OnlineRecipeExpiryRanking {
             let rUrgency = rUse.mostUrgent?.rawValue ?? -1
             if lUrgency != rUrgency { return lUrgency > rUrgency }
             if lUse.urgent.count != rUse.urgent.count { return lUse.urgent.count > rUse.urgent.count }
+            if lhs.recipe.steps.isEmpty != rhs.recipe.steps.isEmpty { return !lhs.recipe.steps.isEmpty }
             if lhs.missedIngredients.count != rhs.missedIngredients.count {
                 return lhs.missedIngredients.count < rhs.missedIngredients.count
             }
