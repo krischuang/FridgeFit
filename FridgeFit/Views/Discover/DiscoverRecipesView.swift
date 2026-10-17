@@ -109,13 +109,34 @@ struct DiscoverRecipesView: View {
                                 expiryUse: viewModel.expiryUse(for: match)
                             )
                         }
+                        .swipeActions(edge: .trailing) {
+                            Button {
+                                viewModel.hide(match)
+                            } label: {
+                                Label("Hide", systemImage: "eye.slash")
+                            }
+                            .tint(.gray)
+                        }
                     }
                 } header: {
                     Text("\(viewModel.matches.count) recipes")
                 } footer: {
-                    if viewModel.excludedForSafetyCount > 0 {
-                        Text("\(viewModel.excludedForSafetyCount) recipes were hidden because they contain - or couldn't be verified free of - one of your intolerances.")
+                    VStack(alignment: .leading, spacing: 4) {
+                        if viewModel.excludedForSafetyCount > 0 {
+                            Text("\(viewModel.excludedForSafetyCount) recipes were hidden because they contain - or couldn't be verified free of - one of your intolerances.")
+                        }
+                        Text("Swipe left on a recipe to stop seeing it.")
                     }
+                }
+            }
+
+            if !viewModel.hiddenRecipeIDs.isEmpty {
+                Section {
+                    Button("Show \(viewModel.hiddenRecipeIDs.count) Hidden Recipes Again") {
+                        viewModel.unhideAll()
+                    }
+                } footer: {
+                    Text("Hidden recipes come back on your next search.")
                 }
             }
 
@@ -138,7 +159,8 @@ struct DiscoverRecipesView: View {
                 match: match,
                 intolerances: viewModel.preferences.intolerances,
                 recipeViewModel: recipeViewModel,
-                expiryUse: viewModel.expiryUse(for: match)
+                expiryUse: viewModel.expiryUse(for: match),
+                onHide: { viewModel.hide(match) }
             )
         }
         .toolbar {

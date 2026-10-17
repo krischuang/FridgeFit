@@ -117,6 +117,29 @@ Discover results that use pantry items close to expiry rank first.
 - Order otherwise: most urgent item, then number of urgent items, then
   fewest missing, then most used, then the provider's order.
 
+## Keeping broken recipes out
+
+Two layers, both checked before any ranking or safety filtering:
+
+| Layer | Scope | Where |
+|---|---|---|
+| Team blocklist | Every user | `FridgeFit/Resources/blocked_online_recipes.json` |
+| "Hide" (swipe left, or ⋯ on the detail screen) | This device | `UserDefaults`, via `HiddenOnlineRecipeStoring` |
+
+**When testing finds a broken recipe:** open it, copy the "Spoonacular recipe
+ID" shown at the bottom of the detail screen, and add an entry with a
+specific reason:
+
+```json
+{ "recipes": [
+  { "id": 716429, "reason": "steps describe a different dish" }
+] }
+```
+
+A malformed file is ignored (empty list) rather than breaking Discover; a
+unit test checks the shipped file is valid JSON. "Show hidden recipes again"
+restores only the user's own hidden recipes, never blocklisted ones.
+
 ## How it fits the existing architecture
 
 ```

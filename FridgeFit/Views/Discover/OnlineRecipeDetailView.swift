@@ -24,6 +24,9 @@ struct OnlineRecipeDetailView: View {
     @ObservedObject var recipeViewModel: RecipeViewModel
     /// Near-expiry / expired pantry items this recipe would use.
     var expiryUse: OnlineRecipeExpiryUse = .none
+    /// Hides this recipe from future searches. `nil` hides the action.
+    var onHide: (() -> Void)? = nil
+    @Environment(\.dismiss) private var dismiss
 
     private var recipe: OnlineRecipe { match.recipe }
 
@@ -145,6 +148,29 @@ struct OnlineRecipeDetailView: View {
                 Link(destination: URL(string: "https://spoonacular.com/food-api")!) {
                     Text("Recipe data powered by Spoonacular")
                         .font(.footnote)
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            Text("Spoonacular recipe ID \(String(recipe.id))")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .padding(.bottom, 4)
+        }
+        .toolbar {
+            if let onHide {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button(role: .destructive) {
+                            onHide()
+                            dismiss()
+                        } label: {
+                            Label("Don't Show This Recipe Again", systemImage: "eye.slash")
+                        }
+                    } label: {
+                        Label("More", systemImage: "ellipsis.circle")
+                    }
                 }
             }
         }
