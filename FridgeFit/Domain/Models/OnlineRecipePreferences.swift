@@ -72,6 +72,13 @@ nonisolated struct OnlineRecipeSearchResult: Hashable {
     /// Recipes the provider returned but the safety filter removed because
     /// they contain - or can't be verified free of - an intolerance.
     var excludedForSafetyCount: Int
+    /// Recipes removed because they're on the team blocklist or the user
+    /// hid them.
+    var excludedAsHiddenCount: Int = 0
+    /// Per recipe id: which near-expiry / expired pantry items it would use.
+    var expiryUse: [Int: OnlineRecipeExpiryUse] = [:]
+    /// Pantry items the ranking prioritised, most urgent first.
+    var urgentPantryIngredients: [UrgentIngredientUse] = []
 
     var isFromCache: Bool { matches.contains { $0.isFromCache } }
 }

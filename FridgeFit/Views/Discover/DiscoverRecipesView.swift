@@ -58,6 +58,14 @@ struct DiscoverRecipesView: View {
                     Label(viewModel.preferences.summary, systemImage: "line.3.horizontal.decrease.circle")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    if !viewModel.urgentPantryIngredients.isEmpty {
+                        Label(
+                            "Using up first: \(OnlineRecipeExpiryPresentation.list(viewModel.urgentPantryIngredients))",
+                            systemImage: "clock.badge.exclamationmark"
+                        )
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                    }
                 }
                 Button {
                     Task { await viewModel.search() }
@@ -95,15 +103,40 @@ struct DiscoverRecipesView: View {
                 Section {
                     ForEach(viewModel.matches) { match in
                         NavigationLink(value: match) {
-                            OnlineRecipeRow(match: match, isSaved: recipeViewModel.isSaved(onlineRecipeID: match.id))
+                            OnlineRecipeRow(
+                                match: match,
+                                isSaved: recipeViewModel.isSaved(onlineRecipeID: match.id),
+                                expiryUse: viewModel.expiryUse(for: match)
+                            )
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button {
+                                viewModel.hide(match)
+                            } label: {
+                                Label("Hide", systemImage: "eye.slash")
+                            }
+                            .tint(.gray)
                         }
                     }
                 } header: {
                     Text("\(viewModel.matches.count) recipes")
                 } footer: {
-                    if viewModel.excludedForSafetyCount > 0 {
-                        Text("\(viewModel.excludedForSafetyCount) recipes were hidden because they contain - or couldn't be verified free of - one of your intolerances.")
+                    VStack(alignment: .leading, spacing: 4) {
+                        if viewModel.excludedForSafetyCount > 0 {
+                            Text("\(viewModel.excludedForSafetyCount) recipes were hidden because they contain - or couldn't be verified free of - one of your intolerances.")
+                        }
+                        Text("Swipe left on a recipe to stop seeing it.")
                     }
+                }
+            }
+
+            if !viewModel.hiddenRecipeIDs.isEmpty {
+                Section {
+                    Button("Show \(viewModel.hiddenRecipeIDs.count) Hidden Recipes Again") {
+                        viewModel.unhideAll()
+                    }
+                } footer: {
+                    Text("Hidden recipes come back on your next search.")
                 }
             }
 
@@ -125,7 +158,9 @@ struct DiscoverRecipesView: View {
             OnlineRecipeDetailView(
                 match: match,
                 intolerances: viewModel.preferences.intolerances,
-                recipeViewModel: recipeViewModel
+                recipeViewModel: recipeViewModel,
+                expiryUse: viewModel.expiryUse(for: match),
+                onHide: { viewModel.hide(match) }
             )
         }
         .toolbar {
@@ -151,6 +186,7 @@ struct DiscoverRecipesView: View {
 private struct OnlineRecipeRow: View {
     let match: OnlineRecipeMatch
     let isSaved: Bool
+    var expiryUse: OnlineRecipeExpiryUse = .none
 
     var body: some View {
         HStack(spacing: 12) {
@@ -180,6 +216,7 @@ private struct OnlineRecipeRow: View {
                     .foregroundStyle(match.missedIngredients.isEmpty ? Color.green : Color.orange)
                 }
                 .font(.caption)
+                OnlineRecipeExpiryBadge(use: expiryUse)
                 if let minutes = match.recipe.readyInMinutes {
                     Label("\(minutes) min", systemImage: "clock")
                         .font(.caption)

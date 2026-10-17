@@ -98,6 +98,48 @@ Until then `makeSavedRecipeRepository()` returns `nil`,
 reason instead of a Save button. That ordering is the point: there is no
 user-facing save action that would fail with `permission-denied`.
 
+## Use-it-up-first ranking
+
+Discover results that use pantry items close to expiry rank first.
+
+- Urgency comes from `ExpiryService` - today, tomorrow, or within 3 days -
+  the same rule as the Kitchen tab's "Use First" and the context-aware
+  recommendations.
+- Ranking happens in the app after the search
+  (`OnlineRecipeExpiryRanking`), so it costs no extra quota. Near-expiry
+  names are also sent first in `includeIngredients`.
+- Recipes that would use an **expired** item sink to the bottom rather than
+  rising, and say so.
+- A provider ingredient name credits a pantry item only on a conservative
+  match (normalised, case-folded, last-word plural fold). No substring or
+  synonym matching, for the same reason as `OnlineIngredientName`: "coconut
+  milk" must never claim to use up the user's milk.
+- Order otherwise: most urgent item, then number of urgent items, then
+  fewest missing, then most used, then the provider's order.
+
+## Keeping broken recipes out
+
+Two layers, both checked before any ranking or safety filtering:
+
+| Layer | Scope | Where |
+|---|---|---|
+| Team blocklist | Every user | `FridgeFit/Resources/blocked_online_recipes.json` |
+| "Hide" (swipe left, or ⋯ on the detail screen) | This device | `UserDefaults`, via `HiddenOnlineRecipeStoring` |
+
+**When testing finds a broken recipe:** open it, copy the "Spoonacular recipe
+ID" shown at the bottom of the detail screen, and add an entry with a
+specific reason:
+
+```json
+{ "recipes": [
+  { "id": 716429, "reason": "steps describe a different dish" }
+] }
+```
+
+A malformed file is ignored (empty list) rather than breaking Discover; a
+unit test checks the shipped file is valid JSON. "Show hidden recipes again"
+restores only the user's own hidden recipes, never blocklisted ones.
+
 ## How it fits the existing architecture
 
 ```

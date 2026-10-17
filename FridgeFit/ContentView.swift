@@ -137,7 +137,9 @@ struct ContentView: View {
                     recipeService: OnlineRecipeFeature.makeOnlineRecipeService(),
                     pantryRepository: pantryRepository
                 ),
-                preferencesStore: UserDefaultsOnlineRecipePreferencesStore()
+                preferencesStore: UserDefaultsOnlineRecipePreferencesStore(),
+                hiddenRecipeStore: UserDefaultsHiddenOnlineRecipeStore(),
+                blockedRecipeIDs: OnlineRecipeBlocklist.bundledIDs()
             )
         )
     }
