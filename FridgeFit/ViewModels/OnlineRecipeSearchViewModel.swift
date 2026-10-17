@@ -23,6 +23,10 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
     @Published private(set) var excludedForSafetyCount = 0
     @Published private(set) var isShowingCachedResults = false
     @Published private(set) var preferences: OnlineRecipePreferences
+    /// Per recipe id: near-expiry / expired pantry items it would use.
+    @Published private(set) var expiryUseByRecipeID: [Int: OnlineRecipeExpiryUse] = [:]
+    /// Pantry items the last search prioritised, most urgent first.
+    @Published private(set) var urgentPantryIngredients: [UrgentIngredientUse] = []
 
     private let useCase: FindOnlineRecipesFromPantryUseCase
     private let preferencesStore: OnlineRecipePreferencesStoring
@@ -51,6 +55,8 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
             matches = result.matches
             excludedForSafetyCount = result.excludedForSafetyCount
             isShowingCachedResults = result.isFromCache
+            expiryUseByRecipeID = result.expiryUse
+            urgentPantryIngredients = result.urgentPantryIngredients
             hasSearched = true
         } catch is CancellationError {
             return
@@ -59,6 +65,8 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
             matches = []
             excludedForSafetyCount = 0
             isShowingCachedResults = false
+            expiryUseByRecipeID = [:]
+            urgentPantryIngredients = []
             hasSearched = true
             errorMessage = (error as? OnlineRecipeSearchError)?.errorDescription
                 ?? OnlineRecipeSearchError.providerUnavailable.errorDescription
@@ -77,7 +85,14 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
         matches = []
         excludedForSafetyCount = 0
         isShowingCachedResults = false
+        expiryUseByRecipeID = [:]
+        urgentPantryIngredients = []
         hasSearched = false
         errorMessage = nil
+    }
+
+    /// Near-expiry / expired pantry items `match` would use.
+    func expiryUse(for match: OnlineRecipeMatch) -> OnlineRecipeExpiryUse {
+        expiryUseByRecipeID[match.id] ?? .none
     }
 }
