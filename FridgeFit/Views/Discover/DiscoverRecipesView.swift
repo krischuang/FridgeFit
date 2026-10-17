@@ -58,6 +58,14 @@ struct DiscoverRecipesView: View {
                     Label(viewModel.preferences.summary, systemImage: "line.3.horizontal.decrease.circle")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    if !viewModel.urgentPantryIngredients.isEmpty {
+                        Label(
+                            "Using up first: \(OnlineRecipeExpiryPresentation.list(viewModel.urgentPantryIngredients))",
+                            systemImage: "clock.badge.exclamationmark"
+                        )
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                    }
                 }
                 Button {
                     Task { await viewModel.search() }
@@ -95,7 +103,11 @@ struct DiscoverRecipesView: View {
                 Section {
                     ForEach(viewModel.matches) { match in
                         NavigationLink(value: match) {
-                            OnlineRecipeRow(match: match, isSaved: recipeViewModel.isSaved(onlineRecipeID: match.id))
+                            OnlineRecipeRow(
+                                match: match,
+                                isSaved: recipeViewModel.isSaved(onlineRecipeID: match.id),
+                                expiryUse: viewModel.expiryUse(for: match)
+                            )
                         }
                     }
                 } header: {
@@ -125,7 +137,8 @@ struct DiscoverRecipesView: View {
             OnlineRecipeDetailView(
                 match: match,
                 intolerances: viewModel.preferences.intolerances,
-                recipeViewModel: recipeViewModel
+                recipeViewModel: recipeViewModel,
+                expiryUse: viewModel.expiryUse(for: match)
             )
         }
         .toolbar {
@@ -151,6 +164,7 @@ struct DiscoverRecipesView: View {
 private struct OnlineRecipeRow: View {
     let match: OnlineRecipeMatch
     let isSaved: Bool
+    var expiryUse: OnlineRecipeExpiryUse = .none
 
     var body: some View {
         HStack(spacing: 12) {
@@ -180,6 +194,7 @@ private struct OnlineRecipeRow: View {
                     .foregroundStyle(match.missedIngredients.isEmpty ? Color.green : Color.orange)
                 }
                 .font(.caption)
+                OnlineRecipeExpiryBadge(use: expiryUse)
                 if let minutes = match.recipe.readyInMinutes {
                     Label("\(minutes) min", systemImage: "clock")
                         .font(.caption)

@@ -22,6 +22,8 @@ struct OnlineRecipeDetailView: View {
     let match: OnlineRecipeMatch
     let intolerances: Set<FoodIntolerance>
     @ObservedObject var recipeViewModel: RecipeViewModel
+    /// Near-expiry / expired pantry items this recipe would use.
+    var expiryUse: OnlineRecipeExpiryUse = .none
 
     private var recipe: OnlineRecipe { match.recipe }
 
@@ -61,6 +63,28 @@ struct OnlineRecipeDetailView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+            }
+
+            if expiryUse != .none {
+                Section("Use It Up") {
+                    if expiryUse.usesUrgentIngredient {
+                        ForEach(expiryUse.urgent, id: \.ingredientName) { use in
+                            Label(
+                                "\(use.ingredientName) expires \(OnlineRecipeExpiryPresentation.whenText(for: use))",
+                                systemImage: "clock.badge.exclamationmark"
+                            )
+                            .foregroundStyle(OnlineRecipeExpiryPresentation.tint(for: use.urgency))
+                        }
+                    }
+                    if expiryUse.usesExpiredIngredient {
+                        Label(
+                            "\(expiryUse.expired.joined(separator: ", ")) in your pantry has expired - check it before cooking.",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .foregroundStyle(.red)
+                    }
+                }
+                .font(.subheadline)
             }
 
             saveSection
