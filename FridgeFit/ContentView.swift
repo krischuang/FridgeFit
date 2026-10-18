@@ -43,6 +43,8 @@ struct ContentView: View {
     /// two readings of one collection, not two stores.
     @StateObject private var inventoryStore: InventoryStore
     @State private var selectedTab: AppTab = .home
+    @State private var isPresentingSmartScan = false
+    @State private var isBrowsingRecipes = false
     /// Shared with the remote-camera review sheet through the environment,
     /// so a confirmed ingredient reaches the same pantry as everything else.
     private let pantryRepository: PantryRepository
@@ -154,7 +156,14 @@ struct ContentView: View {
                     pantryViewModel: pantryViewModel,
                     scannerViewModel: scannerViewModel,
                     onOpenMyFridge: { selectedTab = .kitchen },
-                    onOpenDiscover: { selectedTab = .discover }
+                    onOpenSmartScan: {
+                        selectedTab = .kitchen
+                        isPresentingSmartScan = true
+                    },
+                    onBrowseRecipes: {
+                        isBrowsingRecipes = true
+                        selectedTab = .recipes
+                    }
                 )
             }
             .tabItem { Label("Home", systemImage: "house") }
@@ -170,7 +179,8 @@ struct ContentView: View {
             NavigationStack {
                 MyKitchenView(
                     inventory: inventoryStore,
-                    scannerViewModel: scannerViewModel
+                    scannerViewModel: scannerViewModel,
+                    isPresentingSmartScan: $isPresentingSmartScan
                 )
             }
             .tabItem { Label("My Fridge", systemImage: "refrigerator") }
@@ -181,8 +191,17 @@ struct ContentView: View {
                     viewModel: recommendationViewModel,
                     recipeViewModel: recipeViewModel,
                     substitutionViewModel: substitutionViewModel,
-                    suggestionViewModel: recipeSuggestionViewModel
+                    suggestionViewModel: recipeSuggestionViewModel,
+                    onBrowseAllRecipes: { isBrowsingRecipes = true }
                 )
+                .navigationDestination(isPresented: $isBrowsingRecipes) {
+                    RecipeListView(
+                        viewModel: recipeViewModel,
+                        substitutionViewModel: substitutionViewModel,
+                        suggestionViewModel: recipeSuggestionViewModel,
+                        recommendationViewModel: recommendationViewModel
+                    )
+                }
             }
             .tabItem { Label("Recipes", systemImage: "fork.knife") }
             .tag(AppTab.recipes)

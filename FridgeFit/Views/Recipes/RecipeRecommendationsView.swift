@@ -10,6 +10,9 @@ struct RecipeRecommendationsView: View {
     /// existing pantry-ideas state. Optional only to keep focused previews and
     /// rendering tests lightweight.
     var suggestionViewModel: RecipeSuggestionViewModel? = nil
+    /// The Recipes tab supplies this to keep catalogue navigation on its
+    /// existing stack. Other presentations can use the direct link fallback.
+    var onBrowseAllRecipes: (() -> Void)? = nil
 
     @State private var isPresentingPreferences = false
     @State private var reportingRecipe: Recipe?
@@ -27,18 +30,26 @@ struct RecipeRecommendationsView: View {
                     onOpenPreferences: { isPresentingPreferences = true }
                 )
                 if let suggestionViewModel {
-                    NavigationLink {
-                        RecipeListView(
-                            viewModel: recipeViewModel,
-                            substitutionViewModel: substitutionViewModel,
-                            suggestionViewModel: suggestionViewModel,
-                            recommendationViewModel: viewModel
-                        )
-                    } label: {
-                        Label("Browse All Recipes", systemImage: "books.vertical")
-                            .frame(maxWidth: .infinity)
+                    if let onBrowseAllRecipes {
+                        Button(action: onBrowseAllRecipes) {
+                            Label("Browse All Recipes", systemImage: "books.vertical")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(FridgeFitSecondaryButtonStyle())
+                    } else {
+                        NavigationLink {
+                            RecipeListView(
+                                viewModel: recipeViewModel,
+                                substitutionViewModel: substitutionViewModel,
+                                suggestionViewModel: suggestionViewModel,
+                                recommendationViewModel: viewModel
+                            )
+                        } label: {
+                            Label("Browse All Recipes", systemImage: "books.vertical")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(FridgeFitSecondaryButtonStyle())
                     }
-                    .buttonStyle(FridgeFitSecondaryButtonStyle())
                 }
                 RecommendationScreenContent(
                     viewModel: viewModel,

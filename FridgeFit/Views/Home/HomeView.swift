@@ -17,7 +17,8 @@ struct HomeView: View {
     @ObservedObject var scannerViewModel: ReceiptScannerViewModel
 
     let onOpenMyFridge: () -> Void
-    let onOpenDiscover: () -> Void
+    let onOpenSmartScan: () -> Void
+    let onBrowseRecipes: () -> Void
 
     @State private var isPresentingPreferences = false
     @State private var isShowingPantry = false
@@ -68,9 +69,9 @@ struct HomeView: View {
                     }
 
                     HomeQuickActions(
-                        onOpenPantry: { isShowingPantry = true },
                         onOpenMyFridge: onOpenMyFridge,
-                        onOpenDiscover: onOpenDiscover
+                        onOpenSmartScan: onOpenSmartScan,
+                        onBrowseRecipes: onBrowseRecipes
                     )
                 }
 
@@ -461,9 +462,9 @@ private struct HomeRecommendationLoadingCard: View {
 }
 
 private struct HomeQuickActions: View {
-    let onOpenPantry: () -> Void
     let onOpenMyFridge: () -> Void
-    let onOpenDiscover: () -> Void
+    let onOpenSmartScan: () -> Void
+    let onBrowseRecipes: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
@@ -471,10 +472,10 @@ private struct HomeQuickActions: View {
                 .font(FridgeFitTheme.Typography.sectionTitle)
                 .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
 
-            HStack(spacing: FridgeFitTheme.Spacing.small) {
-                HomeQuickAction(title: "Pantry", systemImage: "cabinet.fill", action: onOpenPantry)
+            HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.small) {
                 HomeQuickAction(title: "My Fridge", systemImage: "refrigerator.fill", action: onOpenMyFridge)
-                HomeQuickAction(title: "Discover", systemImage: "globe", action: onOpenDiscover)
+                HomeQuickAction(title: "Smart Scan", systemImage: "viewfinder", action: onOpenSmartScan)
+                HomeQuickAction(title: "Browse Recipes", systemImage: "book.closed", action: onBrowseRecipes)
             }
         }
     }
@@ -492,11 +493,12 @@ private struct HomeQuickAction: View {
                     .font(.title3)
                 Text(title)
                     .font(FridgeFitTheme.Typography.caption.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(FridgeFitTheme.ColorToken.primary)
-            .frame(maxWidth: .infinity, minHeight: 76)
+            .frame(maxWidth: .infinity, minHeight: 88)
             .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
@@ -697,7 +699,8 @@ private struct HomePreviewContainer: View {
                 pantryViewModel: pantryViewModel,
                 scannerViewModel: scannerViewModel,
                 onOpenMyFridge: {},
-                onOpenDiscover: {}
+                onOpenSmartScan: {},
+                onBrowseRecipes: {}
             )
         }
     }
@@ -719,4 +722,14 @@ private struct HomePreviewContainer: View {
 
 #Preview("Home — Empty") {
     HomePreviewContainer(items: [])
+}
+
+#Preview("Home — Quick Access") {
+    HomeQuickActions(
+        onOpenMyFridge: {},
+        onOpenSmartScan: {},
+        onBrowseRecipes: {}
+    )
+    .padding(FridgeFitTheme.Spacing.large)
+    .background(FridgeFitTheme.ColorToken.canvas)
 }

@@ -14,13 +14,18 @@ struct MyKitchenView: View {
     @StateObject private var viewModel: MyKitchenViewModel
     @FocusState private var isSearchFocused: Bool
     @State private var itemPendingDeletion: PantryItem?
-    @State private var isPresentingSmartScan = false
+    @Binding private var isPresentingSmartScan: Bool
     @State private var opensManualAddAfterSmartScan = false
     @State private var quickAddTemplate: IngredientTemplate?
 
-    init(inventory: InventoryStore, scannerViewModel: ReceiptScannerViewModel) {
+    init(
+        inventory: InventoryStore,
+        scannerViewModel: ReceiptScannerViewModel,
+        isPresentingSmartScan: Binding<Bool>
+    ) {
         self.inventory = inventory
         self.scannerViewModel = scannerViewModel
+        _isPresentingSmartScan = isPresentingSmartScan
         _viewModel = StateObject(wrappedValue: MyKitchenViewModel(inventory: inventory))
     }
 
@@ -936,6 +941,6 @@ private struct MyFridgeIngredientRow: View {
             textRecognizer: MockReceiptTextRecognizer(lines: SampleReceiptPreviewData.lines),
             interpreter: MockReceiptIngredientInterpreter(),
             pantryRepository: InMemoryPantryRepository()
-        ))
+        ), isPresentingSmartScan: .constant(false))
     }
 }
