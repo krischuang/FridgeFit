@@ -14,6 +14,10 @@ struct IngredientReviewView: View {
 
     private let snapshot: UIImage
     private let onConfirm: ([ConfirmedIngredient]) -> Void
+    /// Exposes the existing persisted save summary to the local Smart Scan
+    /// flow. The Remote Camera caller does not need a completion surface, so
+    /// it retains the no-op default.
+    private let onSaveCompleted: (AddDetectedIngredientsSummary) -> Void
 
     @State private var editingItem: IngredientReviewItem?
     @State private var isAddingManually = false
@@ -23,7 +27,8 @@ struct IngredientReviewView: View {
         analysis: SnapshotAnalysis,
         snapshot: UIImage,
         addIngredientsUseCase: AddDetectedIngredientsUseCase,
-        onConfirm: @escaping ([ConfirmedIngredient]) -> Void = { _ in }
+        onConfirm: @escaping ([ConfirmedIngredient]) -> Void = { _ in },
+        onSaveCompleted: @escaping (AddDetectedIngredientsSummary) -> Void = { _ in }
     ) {
         _viewModel = StateObject(wrappedValue: IngredientReviewViewModel(
             analysis: analysis,
@@ -31,16 +36,19 @@ struct IngredientReviewView: View {
         ))
         self.snapshot = snapshot
         self.onConfirm = onConfirm
+        self.onSaveCompleted = onSaveCompleted
     }
 
     init(
         viewModel: IngredientReviewViewModel,
         snapshot: UIImage,
-        onConfirm: @escaping ([ConfirmedIngredient]) -> Void = { _ in }
+        onConfirm: @escaping ([ConfirmedIngredient]) -> Void = { _ in },
+        onSaveCompleted: @escaping (AddDetectedIngredientsSummary) -> Void = { _ in }
     ) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.snapshot = snapshot
         self.onConfirm = onConfirm
+        self.onSaveCompleted = onSaveCompleted
     }
 
     var body: some View {
@@ -131,27 +139,22 @@ struct IngredientReviewView: View {
 
     private var scanSummaryCard: some View {
         HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.medium) {
-            ZStack(alignment: .bottomTrailing) {
-                Image(uiImage: snapshot)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 76, height: 76)
-                    .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
-
-                Text("\(viewModel.items.count) found")
-                    .font(FridgeFitTheme.Typography.caption.weight(.semibold))
-                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
-                    .padding(.horizontal, FridgeFitTheme.Spacing.xSmall)
-                    .padding(.vertical, 2)
-                    .background(FridgeFitTheme.ColorToken.primary.opacity(0.94), in: Capsule())
-                    .padding(FridgeFitTheme.Spacing.xSmall)
-            }
+            scanSummaryThumbnail
 
             VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
                 Text("Here’s what we found")
                     .font(FridgeFitTheme.Typography.screenTitle)
                     .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
-                Text("Check detected items below. Adjust names, categories, and quantities before saving to My Fridge.")
+
+                Text("\(viewModel.items.count) \(viewModel.items.count == 1 ? "item" : "items") to review")
+                    .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                    .padding(.horizontal, FridgeFitTheme.Spacing.small)
+                    .padding(.vertical, 2)
+                    .background(FridgeFitTheme.ColorToken.successBackground, in: Capsule())
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("Check the items below. Adjust names, categories, and quantities before saving to My Fridge.")
                     .font(FridgeFitTheme.Typography.supporting)
                     .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -160,6 +163,28 @@ struct IngredientReviewView: View {
         .padding(FridgeFitTheme.Spacing.medium)
         .fridgeFitCardSurface()
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var scanSummaryThumbnail: some View {
+        if snapshot.isSymbolImage {
+            Image(systemName: "camera.viewfinder")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 76, height: 76)
+                .background(
+                    FridgeFitTheme.ColorToken.successBackground,
+                    in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                )
+                .accessibilityLabel("Ingredient scan placeholder")
+        } else {
+            Image(uiImage: snapshot)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 76, height: 76)
+                .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+                .accessibilityLabel("Scanned ingredient photo")
+        }
     }
 
     @ViewBuilder
@@ -393,6 +418,9 @@ struct IngredientReviewView: View {
     private func save() async {
         await viewModel.saveToPantry()
         if viewModel.saveState.allowsAutomaticDismissal {
+            if let summary = viewModel.saveState.summary {
+                onSaveCompleted(summary)
+            }
             onConfirm(viewModel.confirmed ?? [])
             dismiss()
         }
@@ -678,3 +706,84 @@ struct CategoryPicker: View {
         .labelsHidden()
     }
 }
+
+#if DEBUG
+private enum IngredientReviewPreviewData {
+    private static func recognisedItem(
+        _ name: String,
+        category: IngredientGroup,
+        quantity: String,
+        boundingBox: CGRect?
+    ) -> IngredientReviewItem {
+        IngredientReviewItem(
+            origin: .recognised,
+            recognised: FusedIngredient(
+                ingredientId: name.lowercased(),
+                displayName: name,
+                category: category,
+                tier: .agreed,
+                sources: .detector,
+                boundingBox: boundingBox,
+                detectorConfidence: 0.91,
+                assertsIngredient: true
+            ),
+            displayName: name,
+            category: category,
+            isAccepted: true,
+            quantityText: quantity,
+            unit: .pieces
+        )
+    }
+
+    static func detectedAndSuggested() -> IngredientReviewViewModel {
+        var milk = IngredientReviewItem(manualName: "Milk", category: .dairy)
+        milk.quantityText = "1"
+        return IngredientReviewViewModel(items: [
+            recognisedItem(
+                "Tomatoes",
+                category: .vegetable,
+                quantity: "4",
+                boundingBox: CGRect(x: 0.1, y: 0.2, width: 0.25, height: 0.25)
+            ),
+            recognisedItem("Baby Spinach", category: .vegetable, quantity: "1", boundingBox: nil),
+            milk
+        ])
+    }
+
+    static func validationAndPartialFailure() -> IngredientReviewViewModel {
+        let viewModel = IngredientReviewViewModel(items: [
+            recognisedItem(
+                "Tomatoes",
+                category: .vegetable,
+                quantity: "",
+                boundingBox: CGRect(x: 0.1, y: 0.2, width: 0.25, height: 0.25)
+            ),
+            recognisedItem("Milk", category: .dairy, quantity: "1", boundingBox: nil)
+        ])
+        viewModel.presentPreviewSaveState(
+            .partial(
+                AddDetectedIngredientsSummary(
+                    addedNames: ["Milk"],
+                    duplicateNames: [],
+                    failures: [.init(name: "Tomatoes", message: "Enter an amount before saving.")]
+                )
+            )
+        )
+        return viewModel
+    }
+}
+
+#Preview("Ingredient Review — Detected and Suggested") {
+    IngredientReviewView(
+        viewModel: IngredientReviewPreviewData.detectedAndSuggested(),
+        snapshot: UIImage(systemName: "photo")!
+    )
+}
+
+#Preview("Ingredient Review — Validation and Partial Failure") {
+    IngredientReviewView(
+        viewModel: IngredientReviewPreviewData.validationAndPartialFailure(),
+        snapshot: UIImage(systemName: "photo")!
+    )
+}
+#endif

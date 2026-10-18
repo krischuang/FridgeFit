@@ -26,6 +26,10 @@ struct SmartScanPreviewView: View {
     @State private var isRequestingIngredientCamera = false
     @State private var cameraAccessMessage: String?
     @State private var ingredientPhotoItem: PhotosPickerItem?
+    /// Completion is staged until its review sheet has dismissed, avoiding a
+    /// success cover appearing above an active review sheet.
+    @State private var pendingSuccessResult: SmartScanSuccessResult?
+    @State private var successResult: SmartScanSuccessResult?
 
     var body: some View {
         NavigationStack {
@@ -114,10 +118,13 @@ struct SmartScanPreviewView: View {
             }
             .sheet(isPresented: $isPresentingReceiptScanner, onDismiss: {
                 receiptScannerViewModel.reset()
+                presentPendingSuccessIfNeeded()
             }) {
-                ReceiptScannerView(viewModel: receiptScannerViewModel) { _ in
+                ReceiptScannerView(viewModel: receiptScannerViewModel) { summary in
+                    recordCompleteSave(summary) {
+                        onReceiptFinished()
+                    }
                     isPresentingReceiptScanner = false
-                    onReceiptFinished()
                 }
             }
             .fullScreenCover(isPresented: $isPresentingIngredientCamera) {
@@ -127,7 +134,9 @@ struct SmartScanPreviewView: View {
                 )
                 .ignoresSafeArea()
             }
-            .sheet(isPresented: $isPresentingIngredientReview) {
+            .sheet(isPresented: $isPresentingIngredientReview, onDismiss: {
+                presentPendingSuccessIfNeeded()
+            }) {
                 if let analysis = ingredientScanner.currentAnalysis,
                    let snapshot = ingredientScanner.snapshot {
                     IngredientReviewView(
@@ -138,8 +147,17 @@ struct SmartScanPreviewView: View {
                         )
                     ) { _ in
                         onIngredientsFinished()
+                    } onSaveCompleted: { summary in
+                        recordCompleteSave(summary) {}
                     }
                 }
+            }
+            .fullScreenCover(item: $successResult) { result in
+                SmartScanSuccessView(
+                    summary: result.summary,
+                    onScanMore: scanMore,
+                    onViewMyFridge: finishSmartScan
+                )
             }
             .alert(
                 "Camera Unavailable",
@@ -157,6 +175,35 @@ struct SmartScanPreviewView: View {
                 loadIngredientPhoto(item)
             }
         }
+    }
+
+    /// Only a complete, non-empty persistence result may progress to the
+    /// success surface. Partial/failed results intentionally remain in their
+    /// review sheet with the existing retry UI.
+    private func recordCompleteSave(
+        _ summary: AddDetectedIngredientsSummary,
+        onInventoryChanged: () -> Void
+    ) {
+        guard summary.isCompleteSuccess, summary.addedCount > 0 else { return }
+        pendingSuccessResult = SmartScanSuccessResult(summary: summary)
+        onInventoryChanged()
+    }
+
+    private func presentPendingSuccessIfNeeded() {
+        guard let pendingSuccessResult else { return }
+        successResult = pendingSuccessResult
+        self.pendingSuccessResult = nil
+    }
+
+    private func scanMore() {
+        successResult = nil
+        receiptScannerViewModel.reset()
+        ingredientPhotoItem = nil
+    }
+
+    private func finishSmartScan() {
+        successResult = nil
+        dismiss()
     }
 
     private var hero: some View {
