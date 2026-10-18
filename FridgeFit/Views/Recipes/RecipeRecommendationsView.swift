@@ -6,6 +6,10 @@ struct RecipeRecommendationsView: View {
     @ObservedObject var viewModel: RecommendationViewModel
     @ObservedObject var recipeViewModel: RecipeViewModel
     @ObservedObject var substitutionViewModel: SubstitutionViewModel
+    /// Supplied by app navigation so the original catalogue can reuse its
+    /// existing pantry-ideas state. Optional only to keep focused previews and
+    /// rendering tests lightweight.
+    var suggestionViewModel: RecipeSuggestionViewModel? = nil
 
     @State private var isPresentingPreferences = false
     @State private var reportingRecipe: Recipe?
@@ -22,6 +26,20 @@ struct RecipeRecommendationsView: View {
                     context: viewModel.appliedContext ?? viewModel.draftContext,
                     onOpenPreferences: { isPresentingPreferences = true }
                 )
+                if let suggestionViewModel {
+                    NavigationLink {
+                        RecipeListView(
+                            viewModel: recipeViewModel,
+                            substitutionViewModel: substitutionViewModel,
+                            suggestionViewModel: suggestionViewModel,
+                            recommendationViewModel: viewModel
+                        )
+                    } label: {
+                        Label("Browse All Recipes", systemImage: "books.vertical")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(FridgeFitSecondaryButtonStyle())
+                }
                 RecommendationScreenContent(
                     viewModel: viewModel,
                     recipeViewModel: recipeViewModel,
@@ -35,17 +53,6 @@ struct RecipeRecommendationsView: View {
             .padding(.bottom, FridgeFitTheme.Spacing.screen)
         }
         .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
-        .navigationTitle("Recommendations")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    isPresentingPreferences = true
-                } label: {
-                    Label("Preferences", systemImage: "slider.horizontal.3")
-                }
-            }
-        }
         .task {
             if !viewModel.hasRun {
                 await viewModel.generate()
@@ -635,6 +642,12 @@ private struct RecommendationErrorState: View {
                     substitutionService: MockSubstitutionService(),
                     pantryRepository: pantry,
                     cache: SubstitutionCache()
+                )
+            ),
+            suggestionViewModel: RecipeSuggestionViewModel(
+                useCase: SuggestRecipesFromPantryUseCase(
+                    suggestionService: MockRecipeSuggestionService(),
+                    pantryRepository: pantry
                 )
             )
         )

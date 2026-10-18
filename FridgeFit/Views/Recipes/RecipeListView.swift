@@ -11,8 +11,8 @@ struct RecipeListView: View {
     @ObservedObject var viewModel: RecipeViewModel
     @ObservedObject var substitutionViewModel: SubstitutionViewModel
     @ObservedObject var suggestionViewModel: RecipeSuggestionViewModel
-    /// Drives the context-aware recommendation screen, pushed from the
-    /// toolbar onto this tab's existing stack.
+    /// Kept shared with the Recipes tab's recommendation root so catalogue
+    /// navigation never creates a second recommendation session.
     @ObservedObject var recommendationViewModel: RecommendationViewModel
     @State private var isPresentingPantryIdeas = false
 
@@ -70,22 +70,6 @@ struct RecipeListView: View {
         }
         .navigationTitle("Recipes")
         .toolbar {
-            // A push, not a sheet: the recommendation screen leads on to
-            // `RecipeDetailView`, and sharing this tab's stack is what
-            // lets the back button return to the ranked list instead of
-            // dismissing it.
-            ToolbarItem(placement: .primaryAction) {
-                NavigationLink {
-                    RecipeRecommendationsView(
-                        viewModel: recommendationViewModel,
-                        recipeViewModel: viewModel,
-                        substitutionViewModel: substitutionViewModel
-                    )
-                } label: {
-                    Label("Recommended", systemImage: "sparkles")
-                }
-            }
-
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     isPresentingPantryIdeas = true

@@ -12,6 +12,7 @@ struct HomeView: View {
     @ObservedObject var recommendationViewModel: RecommendationViewModel
     @ObservedObject var recipeViewModel: RecipeViewModel
     @ObservedObject var substitutionViewModel: SubstitutionViewModel
+    @ObservedObject var suggestionViewModel: RecipeSuggestionViewModel
     @ObservedObject var pantryViewModel: PantryViewModel
     @ObservedObject var scannerViewModel: ReceiptScannerViewModel
 
@@ -95,8 +96,10 @@ struct HomeView: View {
             RecipeRecommendationsView(
                 viewModel: recommendationViewModel,
                 recipeViewModel: recipeViewModel,
-                substitutionViewModel: substitutionViewModel
+                substitutionViewModel: substitutionViewModel,
+                suggestionViewModel: suggestionViewModel
             )
+            .toolbar(.visible, for: .navigationBar)
         }
         .sheet(isPresented: $isPresentingPreferences) {
             CookingContextFormView(context: recommendationViewModel.draftContext) { updated in
@@ -641,6 +644,7 @@ private struct HomePreviewContainer: View {
     @StateObject private var recommendationViewModel: RecommendationViewModel
     @StateObject private var recipeViewModel: RecipeViewModel
     @StateObject private var substitutionViewModel: SubstitutionViewModel
+    @StateObject private var suggestionViewModel: RecipeSuggestionViewModel
     @StateObject private var pantryViewModel: PantryViewModel
     @StateObject private var scannerViewModel: ReceiptScannerViewModel
 
@@ -668,6 +672,12 @@ private struct HomePreviewContainer: View {
                 cache: SubstitutionCache()
             )
         ))
+        _suggestionViewModel = StateObject(wrappedValue: RecipeSuggestionViewModel(
+            useCase: SuggestRecipesFromPantryUseCase(
+                suggestionService: MockRecipeSuggestionService(),
+                pantryRepository: pantry
+            )
+        ))
         _pantryViewModel = StateObject(wrappedValue: PantryViewModel(pantryRepository: pantry))
         _scannerViewModel = StateObject(wrappedValue: ReceiptScannerViewModel(
             textRecognizer: MockReceiptTextRecognizer(lines: []),
@@ -683,6 +693,7 @@ private struct HomePreviewContainer: View {
                 recommendationViewModel: recommendationViewModel,
                 recipeViewModel: recipeViewModel,
                 substitutionViewModel: substitutionViewModel,
+                suggestionViewModel: suggestionViewModel,
                 pantryViewModel: pantryViewModel,
                 scannerViewModel: scannerViewModel,
                 onOpenMyFridge: {},

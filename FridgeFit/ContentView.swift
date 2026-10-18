@@ -150,6 +150,7 @@ struct ContentView: View {
                     recommendationViewModel: recommendationViewModel,
                     recipeViewModel: recipeViewModel,
                     substitutionViewModel: substitutionViewModel,
+                    suggestionViewModel: recipeSuggestionViewModel,
                     pantryViewModel: pantryViewModel,
                     scannerViewModel: scannerViewModel,
                     onOpenMyFridge: { selectedTab = .kitchen },
@@ -176,11 +177,11 @@ struct ContentView: View {
             .tag(AppTab.kitchen)
 
             NavigationStack {
-                RecipeListView(
-                    viewModel: recipeViewModel,
+                RecipeRecommendationsView(
+                    viewModel: recommendationViewModel,
+                    recipeViewModel: recipeViewModel,
                     substitutionViewModel: substitutionViewModel,
-                    suggestionViewModel: recipeSuggestionViewModel,
-                    recommendationViewModel: recommendationViewModel
+                    suggestionViewModel: recipeSuggestionViewModel
                 )
             }
             .tabItem { Label("Recipes", systemImage: "fork.knife") }
