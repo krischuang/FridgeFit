@@ -169,28 +169,34 @@ struct MyKitchenView: View {
                     .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
             }
 
-            Spacer(minLength: FridgeFitTheme.Spacing.small)
+            Spacer(minLength: 0)
 
-            titleAction("arrow.clockwise", label: "Refresh inventory") {
-                Task { await inventory.load() }
-            }
+            HStack(spacing: 0) {
+                titleAction("arrow.clockwise", label: "Refresh inventory") {
+                    Task { await inventory.load() }
+                }
 
-            titleAction("clock", label: "Kitchen activity", highlighted: true) {
-                viewModel.showsActivity = true
-            }
+                titleAction("clock", label: "Kitchen activity", highlighted: true) {
+                    viewModel.showsActivity = true
+                }
 
-            Button {
-                viewModel.showsAddIngredient = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
-                    .frame(width: 36, height: 36)
-                    .background(FridgeFitTheme.ColorToken.primary, in: Circle())
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+                titleAction("viewfinder", label: "Smart Scan", highlighted: true) {
+                    isPresentingSmartScan = true
+                }
+
+                Button {
+                    viewModel.showsAddIngredient = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                        .frame(width: 36, height: 36)
+                        .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Add ingredient")
             }
-            .accessibilityLabel("Add ingredient")
         }
     }
 
