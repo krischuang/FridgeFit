@@ -9,8 +9,8 @@ import SwiftUI
 /// The mode-selection surface shown before either existing Smart Scan flow.
 ///
 /// It owns presentation only. Receipt OCR remains in `ReceiptScannerView`,
-/// while ingredient recognition continues to use the existing local-photo
-/// analysis and review pipeline without opening the Remote Camera/WebRTC UI.
+/// local ingredient recognition continues to use the existing photo-analysis
+/// and review pipeline, and Live AI opens the established dual-device flow.
 struct SmartScanPreviewView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.pantryRepository) private var pantryRepository
@@ -21,6 +21,7 @@ struct SmartScanPreviewView: View {
 
     @StateObject private var ingredientScanner = RemoteCameraViewModel(identity: DeviceIdentity.current())
     @State private var isPresentingReceiptScanner = false
+    @State private var isPresentingLiveAICameraSetup = false
     @State private var isPresentingIngredientCamera = false
     @State private var isPresentingIngredientReview = false
     @State private var isRequestingIngredientCamera = false
@@ -37,13 +38,15 @@ struct SmartScanPreviewView: View {
                 VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
                     hero
 
+                    liveAICameraCard
+
                     VStack(spacing: FridgeFitTheme.Spacing.medium) {
                         scanModeCard(
                             title: "Scan Ingredients",
                             systemImage: "camera.viewfinder",
-                            badgeTitle: "Live Object AI",
-                            badgeImage: "sparkles",
-                            detail: "Point your camera at fresh produce or kitchen groceries to identify them before saving.",
+                            badgeTitle: "Ingredient recognition",
+                            badgeImage: "leaf",
+                            detail: "Capture or choose a photo of ingredients, then review them before saving.",
                             actionTitle: ingredientScanner.isAnalyzingSnapshot ? "Analysing…" : "Open Camera",
                             actionImage: "camera"
                         ) {
@@ -125,6 +128,18 @@ struct SmartScanPreviewView: View {
                         onReceiptFinished()
                     }
                     isPresentingReceiptScanner = false
+                }
+            }
+            .sheet(isPresented: $isPresentingLiveAICameraSetup) {
+                NavigationStack {
+                    ConnectedDevicesView(identity: DeviceIdentity.current())
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Close") {
+                                    isPresentingLiveAICameraSetup = false
+                                }
+                            }
+                        }
                 }
             }
             .fullScreenCover(isPresented: $isPresentingIngredientCamera) {
@@ -226,6 +241,73 @@ struct SmartScanPreviewView: View {
         }
     }
 
+    private var liveAICameraCard: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            HStack(alignment: .center, spacing: FridgeFitTheme.Spacing.medium) {
+                liveAIArtwork
+
+                VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                    Label("Live AI Camera", systemImage: "sparkles")
+                        .font(FridgeFitTheme.Typography.sectionTitle)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+
+                    Text("Use one phone as a kitchen camera and another to watch and control it.")
+                        .font(FridgeFitTheme.Typography.supporting)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Button {
+                isPresentingLiveAICameraSetup = true
+            } label: {
+                Label("Set Up Live AI Camera", systemImage: "iphone.gen3.radiowaves.left.and.right")
+            }
+            .buttonStyle(FridgeFitPrimaryButtonStyle())
+            .accessibilityHint("Opens Connected Devices setup")
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [
+                    FridgeFitTheme.ColorToken.successBackground,
+                    FridgeFitTheme.ColorToken.card
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous)
+                .stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1)
+        }
+    }
+
+    private var liveAIArtwork: some View {
+        HStack(spacing: 2) {
+            Image(systemName: "video.fill")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 38, height: 48)
+                .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+
+            Image(systemName: "arrow.left.and.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 22, height: 22)
+                .background(FridgeFitTheme.ColorToken.card, in: Circle())
+
+            Image(systemName: "viewfinder")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 38, height: 48)
+                .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+        }
+        .accessibilityHidden(true)
+    }
+
     private func scanModeCard(
         title: String,
         systemImage: String,
@@ -286,7 +368,7 @@ struct SmartScanPreviewView: View {
                 .padding(FridgeFitTheme.Spacing.small)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 112)
+        .frame(height: 88)
         .accessibilityHidden(true)
     }
 

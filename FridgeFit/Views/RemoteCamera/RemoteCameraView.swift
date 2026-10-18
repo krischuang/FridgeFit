@@ -17,17 +17,33 @@ struct RemoteCameraView: View {
     @StateObject private var viewModel: RemoteCameraViewModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedCamera: RegisteredDevice?
+    @State private var hasConnectedInitialCamera = false
     @State private var isReviewingIngredients = false
     @State private var confirmedIngredients: [ConfirmedIngredient] = []
     @Environment(\.pantryRepository) private var pantryRepository
     @State private var localPhotoItem: PhotosPickerItem?
 
-    init(identity: DeviceIdentity) {
+    private let initialCamera: RegisteredDevice?
+    private let onPresentationChange: ((Bool) -> Void)?
+
+    init(
+        identity: DeviceIdentity,
+        initialCamera: RegisteredDevice? = nil,
+        onPresentationChange: ((Bool) -> Void)? = nil
+    ) {
         _viewModel = StateObject(wrappedValue: RemoteCameraViewModel(identity: identity))
+        self.initialCamera = initialCamera
+        self.onPresentationChange = onPresentationChange
     }
 
-    init(viewModel: RemoteCameraViewModel) {
+    init(
+        viewModel: RemoteCameraViewModel,
+        initialCamera: RegisteredDevice? = nil,
+        onPresentationChange: ((Bool) -> Void)? = nil
+    ) {
         _viewModel = StateObject(wrappedValue: viewModel)
+        self.initialCamera = initialCamera
+        self.onPresentationChange = onPresentationChange
     }
 
     var body: some View {
@@ -59,8 +75,13 @@ struct RemoteCameraView: View {
         }
         .navigationTitle("Remote Camera")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await viewModel.start() }
+        .task {
+            await viewModel.start()
+            connectInitialCameraIfNeeded()
+        }
+        .onAppear { onPresentationChange?(true) }
         .onDisappear {
+            onPresentationChange?(false)
             Task { await viewModel.stop() }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -97,6 +118,16 @@ struct RemoteCameraView: View {
     }
 
     // MARK: - Choosing a camera
+
+    /// The role-selection flow forwards a real discovery result here. The
+    /// existing Remote Camera view model remains the sole owner of the actual
+    /// connection and this guard ensures a task restart cannot connect twice.
+    private func connectInitialCameraIfNeeded() {
+        guard let initialCamera, !hasConnectedInitialCamera else { return }
+        hasConnectedInitialCamera = true
+        selectedCamera = initialCamera
+        Task { await viewModel.connect(to: initialCamera) }
+    }
 
     private var cameraPickerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
