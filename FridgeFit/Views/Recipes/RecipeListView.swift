@@ -17,67 +17,54 @@ struct RecipeListView: View {
     @State private var isPresentingPantryIdeas = false
 
     var body: some View {
-        Group {
-            if viewModel.isLoading && viewModel.recipes.isEmpty {
-                ProgressView("Loading Recipes\u{2026}")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.recipes.isEmpty {
-                ContentUnavailableView {
-                    Label("No Recipes", systemImage: "fork.knife")
-                } description: {
-                    Text("Check back later for recipes to cook.")
-                }
-            } else {
-                // Two sections only when there is something saved from
-                // Discover. With saving gated off `savedRecipes` is always
-                // empty, so this renders as the single unheaded list it
-                // always has - the section split appears the first time it
-                // means something.
-                List {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.section) {
+                RecipeCatalogueHeader(
+                    recipeCount: viewModel.recipes.count,
+                    onOpenPantryIdeas: { isPresentingPantryIdeas = true }
+                )
+
+                if viewModel.isLoading && viewModel.recipes.isEmpty {
+                    RecipeCatalogueLoadingState()
+                } else if viewModel.recipes.isEmpty {
+                    RecipeCatalogueEmptyState(
+                        hasLoadError: viewModel.errorMessage != nil,
+                        onRetry: { Task { await viewModel.loadRecipes() } }
+                    )
+                } else {
                     if !viewModel.savedRecipes.isEmpty {
-                        Section {
-                            ForEach(viewModel.savedRecipes) { recipe in
-                                recipeLink(recipe)
+                        RecipeCatalogueSection(
+                            title: "Saved from Discover",
+                            subtitle: "Your saved recipes, checked against today's pantry",
+                            systemImage: "bookmark.fill",
+                            recipes: viewModel.savedRecipes,
+                            viewModel: viewModel,
+                            substitutionViewModel: substitutionViewModel,
+                            footer: "Recipe data via Spoonacular. Use the Saved menu on a card to remove it.",
+                            onRemove: { recipe in
+                                Task { await viewModel.removeSavedRecipe(recipe) }
                             }
-                            .onDelete { offsets in
-                                let targets = offsets.map { viewModel.savedRecipes[$0] }
-                                Task {
-                                    for recipe in targets {
-                                        await viewModel.removeSavedRecipe(recipe)
-                                    }
-                                }
-                            }
-                        } header: {
-                            Text("Saved from Discover")
-                        } footer: {
-                            Text("Recipe data via Spoonacular. Checked against your pantry like any other recipe. Swipe left to remove.")
-                        }
+                        )
                     }
 
-                    Section {
-                        ForEach(viewModel.bundledRecipes) { recipe in
-                            recipeLink(recipe)
-                        }
-                    } header: {
-                        if !viewModel.savedRecipes.isEmpty {
-                            Text("FridgeFit Recipes")
-                        }
-                    }
-                }
-                .listStyle(.insetGrouped)
-                .refreshable { await viewModel.refreshFeasibility() }
-            }
-        }
-        .navigationTitle("Recipes")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    isPresentingPantryIdeas = true
-                } label: {
-                    Label("Pantry Ideas", systemImage: "lightbulb")
+                    RecipeCatalogueSection(
+                        title: "FridgeFit Recipes",
+                        subtitle: "Reliable recipes from the built-in collection",
+                        systemImage: "leaf.fill",
+                        recipes: viewModel.bundledRecipes,
+                        viewModel: viewModel,
+                        substitutionViewModel: substitutionViewModel
+                    )
                 }
             }
+            .padding(.horizontal, FridgeFitTheme.Spacing.large)
+            .padding(.top, FridgeFitTheme.Spacing.small)
+            .padding(.bottom, FridgeFitTheme.Spacing.screen)
         }
+        .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .refreshable { await viewModel.refreshFeasibility() }
         .onAppear {
             Task { await viewModel.loadRecipes() }
         }
@@ -116,15 +103,232 @@ struct RecipeListView: View {
         }
     }
 
-    /// One row, pushing the existing detail screen. Shared by both sections
-    /// so a saved recipe and a bundled one are presented identically - same
-    /// detail view, same feasibility verdict, same substitutions.
-    private func recipeLink(_ recipe: Recipe) -> some View {
-        NavigationLink {
-            RecipeDetailView(recipe: recipe, viewModel: viewModel, substitutionViewModel: substitutionViewModel)
-        } label: {
-            RecipeRow(recipe: recipe, feasibility: viewModel.feasibility(for: recipe))
+}
+
+private struct RecipeCatalogueHeader: View {
+    let recipeCount: Int
+    let onOpenPantryIdeas: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            Text("Browse All Recipes")
+                .font(FridgeFitTheme.Typography.hero)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+            Text("Explore the full collection and see how every recipe matches your kitchen.")
+                .font(FridgeFitTheme.Typography.body)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: FridgeFitTheme.Spacing.small) {
+                    FridgeFitStatusBadge(
+                        title: "\(recipeCount) recipes",
+                        systemImage: "books.vertical.fill",
+                        tone: .success
+                    )
+                    pantryIdeasButton
+                }
+                VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+                    FridgeFitStatusBadge(
+                        title: "\(recipeCount) recipes",
+                        systemImage: "books.vertical.fill",
+                        tone: .success
+                    )
+                    pantryIdeasButton
+                }
+            }
         }
+    }
+
+    private var pantryIdeasButton: some View {
+        Button(action: onOpenPantryIdeas) {
+            Label("Pantry Ideas", systemImage: "lightbulb.fill")
+        }
+        .buttonStyle(FridgeFitSecondaryButtonStyle())
+    }
+}
+
+private struct RecipeCatalogueSection: View {
+    let title: LocalizedStringKey
+    let subtitle: LocalizedStringKey
+    let systemImage: String
+    let recipes: [Recipe]
+    @ObservedObject var viewModel: RecipeViewModel
+    @ObservedObject var substitutionViewModel: SubstitutionViewModel
+    let footer: LocalizedStringKey?
+    var onRemove: ((Recipe) -> Void)?
+
+    init(
+        title: LocalizedStringKey,
+        subtitle: LocalizedStringKey,
+        systemImage: String,
+        recipes: [Recipe],
+        viewModel: RecipeViewModel,
+        substitutionViewModel: SubstitutionViewModel,
+        footer: LocalizedStringKey? = nil,
+        onRemove: ((Recipe) -> Void)? = nil
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.systemImage = systemImage
+        self.recipes = recipes
+        self.viewModel = viewModel
+        self.substitutionViewModel = substitutionViewModel
+        self.footer = footer
+        self.onRemove = onRemove
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.small) {
+                Image(systemName: systemImage)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                    .frame(width: 28, height: 28)
+                    .background(FridgeFitTheme.ColorToken.successBackground, in: Circle())
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(FridgeFitTheme.Typography.screenTitle)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                    Text(subtitle)
+                        .font(FridgeFitTheme.Typography.metadata)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                }
+                Spacer(minLength: FridgeFitTheme.Spacing.small)
+                Text(recipes.count, format: .number)
+                    .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .padding(.horizontal, FridgeFitTheme.Spacing.small)
+                    .padding(.vertical, FridgeFitTheme.Spacing.xSmall)
+                    .background(FridgeFitTheme.ColorToken.disabledSurface, in: Capsule())
+            }
+
+            ForEach(recipes) { recipe in
+                RecipeCatalogueCard(
+                    recipe: recipe,
+                    feasibility: viewModel.feasibility(for: recipe),
+                    isSaved: onRemove != nil,
+                    viewModel: viewModel,
+                    substitutionViewModel: substitutionViewModel,
+                    onRemove: onRemove.map { action in { action(recipe) } }
+                )
+            }
+
+            if let footer {
+                Text(footer)
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .padding(.horizontal, FridgeFitTheme.Spacing.xSmall)
+            }
+        }
+    }
+}
+
+private struct RecipeCatalogueCard: View {
+    let recipe: Recipe
+    let feasibility: RecipeFeasibilityResult?
+    let isSaved: Bool
+    @ObservedObject var viewModel: RecipeViewModel
+    @ObservedObject var substitutionViewModel: SubstitutionViewModel
+    let onRemove: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            RecipeRow(recipe: recipe, feasibility: feasibility, isSaved: isSaved)
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: FridgeFitTheme.Spacing.small) {
+                    if let onRemove {
+                        removeMenu(action: onRemove)
+                    }
+                    detailLink
+                }
+                VStack(spacing: FridgeFitTheme.Spacing.small) {
+                    detailLink
+                    if let onRemove {
+                        removeMenu(action: onRemove)
+                    }
+                }
+            }
+        }
+        .padding(FridgeFitTheme.Spacing.large)
+        .fridgeFitCardSurface()
+    }
+
+    private var detailLink: some View {
+        NavigationLink {
+            RecipeDetailView(
+                recipe: recipe,
+                viewModel: viewModel,
+                substitutionViewModel: substitutionViewModel
+            )
+        } label: {
+            Label("View Recipe", systemImage: "arrow.right")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(FridgeFitPrimaryButtonStyle())
+    }
+
+    private func removeMenu(action: @escaping () -> Void) -> some View {
+        Menu {
+            Button(role: .destructive, action: action) {
+                Label("Remove Saved Recipe", systemImage: "bookmark.slash")
+            }
+        } label: {
+            Label("Saved", systemImage: "bookmark.fill")
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(FridgeFitSecondaryButtonStyle())
+        .accessibilityHint("Opens actions for this saved recipe")
+    }
+}
+
+private struct RecipeCatalogueLoadingState: View {
+    var body: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.large) {
+            ProgressView()
+                .controlSize(.large)
+                .tint(FridgeFitTheme.ColorToken.primary)
+            Text("Checking every recipe against your pantry…")
+                .font(FridgeFitTheme.Typography.cardTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(FridgeFitTheme.Spacing.xLarge)
+        .frame(maxWidth: .infinity, minHeight: 240)
+        .fridgeFitCardSurface()
+    }
+}
+
+private struct RecipeCatalogueEmptyState: View {
+    let hasLoadError: Bool
+    let onRetry: () -> Void
+
+    var body: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.large) {
+            Image(systemName: hasLoadError ? "exclamationmark.triangle.fill" : "fork.knife")
+                .font(.largeTitle)
+                .foregroundStyle(hasLoadError ? FridgeFitTheme.ColorToken.danger : FridgeFitTheme.ColorToken.primary)
+                .frame(width: 88, height: 88)
+                .background(FridgeFitTheme.ColorToken.successBackground, in: Circle())
+                .accessibilityHidden(true)
+            VStack(spacing: FridgeFitTheme.Spacing.small) {
+                Text(hasLoadError ? "Couldn't load recipes" : "No recipes available yet")
+                    .font(FridgeFitTheme.Typography.screenTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                    .multilineTextAlignment(.center)
+                Text(hasLoadError ? "Check your connection and try loading the catalogue again." : "Check back later for recipes to cook.")
+                    .font(FridgeFitTheme.Typography.body)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+            if hasLoadError {
+                Button("Try Again", action: onRetry)
+                    .buttonStyle(FridgeFitPrimaryButtonStyle())
+            }
+        }
+        .padding(FridgeFitTheme.Spacing.xLarge)
+        .frame(maxWidth: .infinity)
+        .fridgeFitCardSurface()
     }
 }
 
