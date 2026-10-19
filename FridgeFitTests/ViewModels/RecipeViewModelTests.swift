@@ -8,6 +8,25 @@ import XCTest
 
 @MainActor
 final class RecipeViewModelTests: XCTestCase {
+    private enum TestError: LocalizedError {
+        case unavailable
+
+        var errorDescription: String? { "Temporarily unavailable" }
+    }
+
+    private final class SequencedRecipeRepository: RecipeRepository {
+        private var results: [Result<[Recipe], Error>]
+
+        init(results: [Result<[Recipe], Error>]) {
+            self.results = results
+        }
+
+        func fetchAll() async throws -> [Recipe] {
+            guard !results.isEmpty else { return [] }
+            return try results.removeFirst().get()
+        }
+    }
+
     private func singleIngredientRecipe() -> Recipe {
         Recipe(
             title: "Test Recipe",
@@ -37,6 +56,54 @@ final class RecipeViewModelTests: XCTestCase {
 
         let result = viewModel.feasibility(for: recipe)
         XCTAssertEqual(result?.status, .makeable)
+    }
+
+    func test_dismissingLoadErrorAlertPreservesInlineRetryState() async {
+        let repository = SequencedRecipeRepository(results: [.failure(TestError.unavailable)])
+        let viewModel = RecipeViewModel(recipeRepository: repository, pantryRepository: InMemoryPantryRepository())
+
+        await viewModel.loadRecipes()
+        XCTAssertTrue(viewModel.isLoadErrorAlertPresented)
+
+        viewModel.dismissLoadErrorAlert()
+
+        XCTAssertFalse(viewModel.isLoadErrorAlertPresented)
+        XCTAssertEqual(viewModel.errorMessage, "Temporarily unavailable")
+        XCTAssertTrue(viewModel.recipes.isEmpty)
+    }
+
+    func test_retryAfterTransientFailureRecoversAndClearsFailureState() async {
+        let recipe = singleIngredientRecipe()
+        let repository = SequencedRecipeRepository(results: [
+            .failure(TestError.unavailable),
+            .success([recipe]),
+        ])
+        let viewModel = RecipeViewModel(recipeRepository: repository, pantryRepository: InMemoryPantryRepository())
+
+        await viewModel.loadRecipes()
+        viewModel.dismissLoadErrorAlert()
+        await viewModel.loadRecipes()
+
+        XCTAssertEqual(viewModel.recipes, [recipe])
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertFalse(viewModel.isLoadErrorAlertPresented)
+        XCTAssertFalse(viewModel.isLoading)
+    }
+
+    func test_successfulRetryWithNoResultsIsAGenuineEmptyState() async {
+        let repository = SequencedRecipeRepository(results: [
+            .failure(TestError.unavailable),
+            .success([]),
+        ])
+        let viewModel = RecipeViewModel(recipeRepository: repository, pantryRepository: InMemoryPantryRepository())
+
+        await viewModel.loadRecipes()
+        await viewModel.loadRecipes()
+
+        XCTAssertTrue(viewModel.recipes.isEmpty)
+        XCTAssertNil(viewModel.errorMessage)
+        XCTAssertFalse(viewModel.isLoadErrorAlertPresented)
+        XCTAssertTrue(viewModel.hasLoaded)
     }
 
     func test_feasibility_forUnknownRecipe_returnsNil() async {
