@@ -237,7 +237,13 @@ struct ContentView: View {
             .tag(AppTab.discover)
 
             NavigationStack {
-                ProfileView()
+                ProfileView(
+                    inventory: inventoryStore,
+                    onFindRecipes: {
+                        recipesPath = [.recommendations]
+                        selectedTab = .recipes
+                    }
+                )
             }
             // Profile owns no presentation that should replace the root tabs.
             // Make that contract explicit so toolbar state inherited from a

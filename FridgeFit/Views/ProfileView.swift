@@ -13,27 +13,43 @@ import SwiftUI
 /// will be added when their corresponding product state exists.
 struct ProfileView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
+    @ObservedObject private var inventory: InventoryStore
     @State private var onlineRecipePreferences = OnlineRecipePreferences.default
     @State private var kitchenImpact = KitchenImpact()
+    @State private var selectedSection: ProfileSection = .preferences
+    private let onFindRecipes: () -> Void
+
+    init(inventory: InventoryStore, onFindRecipes: @escaping () -> Void) {
+        self.inventory = inventory
+        self.onFindRecipes = onFindRecipes
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
                 appHeader
                 header
-                sectionTabs
+                ProfileSectionTabs(selection: $selectedSection)
                 accountCard
-                personalisationCard
-                kitchenImpactCard
-                dietarySafeguardsCard
-                savedRecipesCard
-                applicationSettingsCard
 
-                if let errorMessage = authViewModel.errorMessage {
-                    errorCard(message: errorMessage)
+                switch selectedSection {
+                case .preferences:
+                    personalisationCard
+                    kitchenImpactCard
+                    dietarySafeguardsCard
+                    savedRecipesCard
+                    applicationSettingsCard
+
+                    if let errorMessage = authViewModel.errorMessage {
+                        errorCard(message: errorMessage)
+                    }
+
+                    signOutButton
+                case .impact:
+                    ProfileImpactView(inventory: inventory, onFindRecipes: onFindRecipes)
+                case .settings:
+                    ProfileSettingsView()
                 }
-
-                signOutButton
             }
             .padding(.horizontal, FridgeFitTheme.Spacing.large)
             .padding(.top, FridgeFitTheme.Spacing.small)
@@ -42,6 +58,8 @@ struct ProfileView: View {
         .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(FridgeFitTheme.ColorToken.canvas, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .task { await loadProfileData() }
     }
 
@@ -79,34 +97,6 @@ struct ProfileView: View {
         .accessibilityLabel("FridgeFit, signed in as \(accountName)")
     }
 
-    /// Mirrors the three visual categories in the Stitch reference. These
-    /// labels are intentionally informational until profile preferences and
-    /// settings have their own editable destinations.
-    private var sectionTabs: some View {
-        HStack(spacing: FridgeFitTheme.Spacing.xSmall) {
-            profileTab("Preferences", selected: true)
-            profileTab("Impact & Waste", selected: false)
-            profileTab("Settings", selected: false)
-        }
-        .padding(FridgeFitTheme.Spacing.xSmall)
-        .frame(maxWidth: .infinity)
-        .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
-                .stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Profile sections: Preferences, Impact and Waste, Settings")
-    }
-
-    private func profileTab(_ title: LocalizedStringKey, selected: Bool) -> some View {
-        Text(title)
-            .font(FridgeFitTheme.Typography.caption.weight(selected ? .semibold : .regular))
-            .foregroundStyle(selected ? FridgeFitTheme.ColorToken.textPrimary : FridgeFitTheme.ColorToken.textSecondary)
-            .frame(maxWidth: .infinity, minHeight: 40)
-            .background(selected ? FridgeFitTheme.ColorToken.canvas : .clear, in: Capsule())
-    }
-
     private var accountCard: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
             HStack(spacing: FridgeFitTheme.Spacing.medium) {
@@ -121,7 +111,8 @@ struct ProfileView: View {
                     Text(accountEmail)
                         .font(FridgeFitTheme.Typography.supporting)
                         .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
-                        .lineLimit(2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .textSelection(.enabled)
 
                     FridgeFitStatusBadge(
@@ -537,15 +528,76 @@ struct ProfileView: View {
         onlineRecipePreferences = UserDefaultsOnlineRecipePreferencesStore().load()
         kitchenImpact.isLoading = true
         defer { kitchenImpact.isLoading = false }
+        await inventory.load()
+        kitchenImpact.finishedCount = inventory.events.filter { $0.kind == .finished }.count
+        kitchenImpact.discardedCount = inventory.events.filter { $0.kind == .discarded }.count
+        kitchenImpact.isAvailable = inventory.errorMessage == nil
+    }
+}
 
-        do {
-            let events = try await FirestoreInventoryEventRepository().fetchAll(limit: InventoryStore.activityFetchLimit)
-            kitchenImpact.finishedCount = events.filter { $0.kind == .finished }.count
-            kitchenImpact.discardedCount = events.filter { $0.kind == .discarded }.count
-            kitchenImpact.isAvailable = true
-        } catch {
-            kitchenImpact.isAvailable = false
+private enum ProfileSection: String, CaseIterable, Identifiable {
+    case preferences
+    case impact
+    case settings
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .preferences: "Preferences"
+        case .impact: "Impact & Waste"
+        case .settings: "Settings"
         }
+    }
+}
+
+private struct ProfileSectionTabs: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Binding var selection: ProfileSection
+
+    var body: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.xSmall) {
+            if dynamicTypeSize.isAccessibilitySize {
+                ForEach(ProfileSection.allCases) { section in
+                    ProfileSectionButton(section: section, selection: $selection)
+                }
+            } else {
+                HStack(spacing: FridgeFitTheme.Spacing.xSmall) {
+                    ForEach(ProfileSection.allCases) { section in
+                        ProfileSectionButton(section: section, selection: $selection)
+                    }
+                }
+            }
+        }
+        .padding(FridgeFitTheme.Spacing.xSmall)
+        .frame(maxWidth: .infinity)
+        .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                .stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Profile sections")
+    }
+}
+
+private struct ProfileSectionButton: View {
+    let section: ProfileSection
+    @Binding var selection: ProfileSection
+
+    var body: some View {
+        Button {
+            selection = section
+        } label: {
+            Text(section.title)
+                .font(FridgeFitTheme.Typography.caption.weight(selection == section ? .semibold : .regular))
+                .foregroundStyle(selection == section ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.textSecondary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(selection == section ? FridgeFitTheme.ColorToken.primary : .clear, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selection == section ? .isSelected : [])
     }
 }
 
@@ -564,7 +616,13 @@ private extension OnlineRecipePreferences {
 
 #Preview {
     NavigationStack {
-        ProfileView()
+        ProfileView(
+            inventory: InventoryStore(
+                pantryRepository: InMemoryPantryRepository(),
+                eventRepository: InMemoryInventoryEventRepository()
+            ),
+            onFindRecipes: {}
+        )
             .environmentObject(AuthViewModel())
     }
 }
