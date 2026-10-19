@@ -288,4 +288,26 @@ final class DiscoverIntegrationRenderingTests: XCTestCase {
             }
         )
     }
+
+    func test_recipeDetailRendersInDarkModeAtAccessibilityThree() async throws {
+        let pantry = InMemoryPantryRepository(seedItems: Fixture.stockedPantry)
+        let recipeViewModel = RecipeViewModel(
+            recipeRepository: BundledRecipeRepository(),
+            pantryRepository: pantry
+        )
+        await recipeViewModel.loadRecipes()
+        let recipe = try XCTUnwrap(recipeViewModel.recipes.first)
+
+        assertRenders(
+            NavigationStack {
+                RecipeDetailView(
+                    recipe: recipe,
+                    viewModel: recipeViewModel,
+                    substitutionViewModel: substitutionViewModel(pantry: pantry)
+                )
+            }
+            .environment(\.dynamicTypeSize, .accessibility3)
+            .preferredColorScheme(.dark)
+        )
+    }
 }

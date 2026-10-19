@@ -5,205 +5,354 @@
 
 import SwiftUI
 
-/// Full view of an online recipe: what you have vs. need to buy, any
-/// allergen findings, and the method. Read-only - it never edits the pantry
-/// or the bundled recipes.
-///
-/// ## Allergen wording
-///
-/// The source branch rendered an empty finding as "No common allergens
-/// detected" with a green shield. That reads as a clearance, and FridgeFit
-/// cannot issue one: the finding comes from keyword matching over provider
-/// ingredient *names*, with no brands, processing or "may contain"
-/// information behind it. The wording below reports what was actually done -
-/// a screen of the ingredient list - and says plainly that it is not a
-/// safety check. See `RecipeIntoleranceAnalysis` and `FoodIntolerance`.
+/// Discover's provider-backed detail. It shares the Fresh Botanical structure
+/// of `RecipeDetailView`, while clearly retaining the provider's name-only
+/// pantry match until the recipe is saved and fully evaluated by FridgeFit.
 struct OnlineRecipeDetailView: View {
     let match: OnlineRecipeMatch
     let intolerances: Set<FoodIntolerance>
     @ObservedObject var recipeViewModel: RecipeViewModel
 
-    private var recipe: OnlineRecipe { match.recipe }
-
     var body: some View {
-        List {
-            Section {
-                OnlineRecipeImage(url: recipe.imageURL)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 200)
-                    .clipped()
-                    .listRowInsets(EdgeInsets())
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.section) {
+                OnlineRecipeDetailHero(match: match)
+                OnlineRecipeMatchCard(match: match)
+                OnlineRecipeSaveCard(recipe: match.recipe, viewModel: recipeViewModel)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(recipe.title)
-                        .font(.title2.bold())
-                    HStack(spacing: 14) {
-                        if let minutes = recipe.readyInMinutes {
-                            Label("\(minutes) min", systemImage: "clock")
-                        }
-                        if let servings = recipe.servings {
-                            Label("\(servings) servings", systemImage: "person.2.fill")
-                        }
-                        if let score = recipe.healthScore {
-                            Label("Health \(Int(score))", systemImage: "heart.fill")
-                        }
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    if !recipe.diets.isEmpty {
-                        Text(recipe.diets.map(\.capitalized).joined(separator: " · "))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    if match.isFromCache {
-                        Label("Saved from an earlier search", systemImage: "icloud.slash")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                if let summary = match.recipe.summary, !summary.isEmpty {
+                    OnlineRecipeAboutCard(summary: summary)
                 }
+
+                OnlineAllergenCard(recipe: match.recipe, intolerances: intolerances)
+                OnlineIngredientsBreakdown(match: match)
+                OnlineInstructionsSection(recipe: match.recipe)
+                OnlineRecipeAttribution(recipe: match.recipe)
             }
-
-            saveSection
-
-            if let summary = recipe.summary, !summary.isEmpty {
-                Section("About") {
-                    Text(summary)
-                        .font(.subheadline)
-                        .lineLimit(6)
-                }
-            }
-
-            allergenSection
-
-            Section {
-                ForEach(recipe.ingredients) { ingredient in
-                    let missing = match.isMissing(ingredient)
-                    HStack {
-                        Image(systemName: missing ? "cart.badge.plus" : "checkmark.circle.fill")
-                            .foregroundStyle(missing ? Color.orange : Color.green)
-                        Text(OnlineIngredientName.displayName(ingredient.name))
-                        Spacer()
-                        Text(ingredient.formattedQuantity)
-                            .foregroundStyle(ingredient.quantityIsUncertain ? Color.orange : Color.secondary)
-                    }
-                    .font(.subheadline)
-                }
-            } header: {
-                Text("Ingredients")
-            } footer: {
-                Text("\(match.missedIngredients.count) to buy · matched by the recipe service against your pantry names, not quantities. Save this recipe to have FridgeFit check quantities against your pantry.")
-            }
-
-            Section("Instructions") {
-                if recipe.steps.isEmpty {
-                    Text("No step-by-step method available for this recipe.")
-                        .foregroundStyle(.secondary)
-                    if let source = recipe.sourceURL {
-                        Link("Open the original recipe", destination: source)
-                    }
-                } else {
-                    ForEach(Array(recipe.steps.enumerated()), id: \.offset) { index, step in
-                        HStack(alignment: .top, spacing: 8) {
-                            Text("\(index + 1).")
-                                .fontWeight(.semibold)
-                            Text(step)
-                        }
-                    }
-                }
-            }
-
-            Section {
-                if let source = recipe.sourceURL {
-                    Link(destination: source) {
-                        Label("Source: \(recipe.sourceName ?? source.host() ?? "original recipe")", systemImage: "safari")
-                    }
-                }
-                Link(destination: URL(string: "https://spoonacular.com/food-api")!) {
-                    Text("Recipe data powered by Spoonacular")
-                        .font(.footnote)
-                }
-            }
+            .padding(.horizontal, FridgeFitTheme.Spacing.large)
+            .padding(.top, FridgeFitTheme.Spacing.small)
+            .padding(.bottom, FridgeFitTheme.Spacing.screen)
         }
-        .navigationTitle(recipe.title)
+        .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
+        .navigationTitle("Recipe Detail")
         .navigationBarTitleDisplayMode(.inline)
         .onDisappear { recipeViewModel.savedRecipeErrorMessage = nil }
     }
+}
 
-    /// The save control, or an explanation of why saving is switched off.
-    ///
-    /// Never renders a button that cannot work: while saved-recipe storage
-    /// is gated off there is no repository behind it, so the control is
-    /// replaced by the reason rather than left to fail.
-    @ViewBuilder
-    private var saveSection: some View {
-        if recipeViewModel.canSaveRecipes {
-            Section {
-                if recipeViewModel.isSaved(onlineRecipeID: recipe.id) {
+private struct OnlineRecipeDetailHero: View {
+    let match: OnlineRecipeMatch
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            ZStack(alignment: .topLeading) {
+                OnlineRecipeImage(url: match.recipe.imageURL)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 230)
+                    .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.largeCard, style: .continuous))
+                FridgeFitStatusBadge(title: "Discover pick", systemImage: "leaf.fill", tone: .success)
+                    .padding(FridgeFitTheme.Spacing.medium)
+            }
+
+            Text(match.recipe.title)
+                .font(FridgeFitTheme.Typography.hero)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+
+            FlowLayout(spacing: FridgeFitTheme.Spacing.small) {
+                if let minutes = match.recipe.readyInMinutes {
+                    OnlineMetadataPill(title: "\(minutes) min", systemImage: "clock")
+                }
+                if let servings = match.recipe.servings {
+                    OnlineMetadataPill(title: "\(servings) servings", systemImage: "person.2.fill")
+                }
+                if match.isFromCache {
+                    OnlineMetadataPill(title: "Earlier result", systemImage: "icloud.slash")
+                }
+            }
+
+            if !match.recipe.diets.isEmpty {
+                Text(match.recipe.diets.map(\.capitalized).formatted())
+                    .font(FridgeFitTheme.Typography.metadata)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            }
+        }
+    }
+}
+
+private struct OnlineMetadataPill: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        Label(title, systemImage: systemImage)
+            .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            .padding(.horizontal, FridgeFitTheme.Spacing.medium)
+            .padding(.vertical, FridgeFitTheme.Spacing.small)
+            .background(FridgeFitTheme.ColorToken.disabledSurface, in: Capsule())
+    }
+}
+
+private struct OnlineRecipeMatchCard: View {
+    let match: OnlineRecipeMatch
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            HStack(spacing: FridgeFitTheme.Spacing.medium) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                    .frame(width: 44, height: 44)
+                    .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(match.usedIngredientNames.count) pantry ingredients matched")
+                        .font(FridgeFitTheme.Typography.sectionTitle)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                    Text("\(match.missedIngredients.count) ingredients still needed")
+                        .font(FridgeFitTheme.Typography.metadata)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                }
+            }
+            Label(
+                "This provider match compares ingredient names. Save the recipe for FridgeFit quantity checks and substitutions.",
+                systemImage: "info.circle"
+            )
+            .font(FridgeFitTheme.Typography.caption)
+            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+        }
+        .padding(FridgeFitTheme.Spacing.large)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            FridgeFitTheme.ColorToken.successBackground,
+            in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.largeCard, style: .continuous)
+        )
+    }
+}
+
+private struct OnlineRecipeSaveCard: View {
+    let recipe: OnlineRecipe
+    @ObservedObject var viewModel: RecipeViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            if viewModel.canSaveRecipes {
+                if viewModel.isSaved(onlineRecipeID: recipe.id) {
                     Label("Saved to Recipes", systemImage: "bookmark.fill")
-                        .foregroundStyle(.tint)
+                        .font(FridgeFitTheme.Typography.cardTitle)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.primary)
                 } else {
                     Button {
-                        Task { await recipeViewModel.saveOnlineRecipe(recipe) }
+                        Task { await viewModel.saveOnlineRecipe(recipe) }
                     } label: {
                         HStack {
                             Label("Save to Recipes", systemImage: "bookmark")
-                            Spacer()
-                            if recipeViewModel.isSaving(onlineRecipeID: recipe.id) {
-                                ProgressView()
+                            if viewModel.isSaving(onlineRecipeID: recipe.id) {
+                                Spacer()
+                                ProgressView().tint(FridgeFitTheme.ColorToken.card)
                             }
                         }
+                        .frame(maxWidth: .infinity)
                     }
-                    .disabled(recipeViewModel.isSaving(onlineRecipeID: recipe.id))
+                    .buttonStyle(FridgeFitPrimaryButtonStyle())
+                    .disabled(viewModel.isSaving(onlineRecipeID: recipe.id))
                 }
-                if let message = recipeViewModel.savedRecipeErrorMessage {
-                    Text(message)
-                        .font(.footnote)
-                        .foregroundStyle(.orange)
-                }
-            } footer: {
-                Text("Saved recipes appear on the Recipes tab, where FridgeFit checks them against your pantry like any other recipe.")
+            } else if let explanation = viewModel.savedRecipeUnavailableExplanation {
+                Label("Saving isn't available yet", systemImage: "bookmark.slash")
+                    .font(FridgeFitTheme.Typography.cardTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                Text(explanation)
+                    .font(FridgeFitTheme.Typography.metadata)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
             }
-        } else if let explanation = recipeViewModel.savedRecipeUnavailableExplanation {
-            Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    Label("Saving isn't available yet", systemImage: "bookmark.slash")
-                        .font(.subheadline.weight(.semibold))
-                    Text(explanation)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+
+            if let message = viewModel.savedRecipeErrorMessage {
+                Text(message)
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+            }
+
+            Text("Saved recipes appear in the Recipes tab and use the same pantry and substitution services as bundled recipes.")
+                .font(FridgeFitTheme.Typography.caption)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+        }
+        .padding(FridgeFitTheme.Spacing.large)
+        .fridgeFitCardSurface()
+    }
+}
+
+private struct OnlineRecipeAboutCard: View {
+    let summary: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            Text("About")
+                .font(FridgeFitTheme.Typography.sectionTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+            Text(summary)
+                .font(FridgeFitTheme.Typography.body)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+        }
+        .padding(FridgeFitTheme.Spacing.large)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fridgeFitCardSurface()
+    }
+}
+
+private struct OnlineAllergenCard: View {
+    let recipe: OnlineRecipe
+    let intolerances: Set<FoodIntolerance>
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            Text("Allergen Screening")
+                .font(FridgeFitTheme.Typography.sectionTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+            if let contained = recipe.containsIntolerances {
+                if contained.isEmpty {
+                    Label(
+                        "None of the allergens FridgeFit screens for appear in the supplied ingredient names.",
+                        systemImage: "magnifyingglass"
+                    )
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                } else {
+                    Label(
+                        "May contain: \(contained.map(\.displayName).sorted().formatted())",
+                        systemImage: "exclamationmark.shield"
+                    )
+                    .foregroundStyle(contained.isDisjoint(with: intolerances) ? FridgeFitTheme.ColorToken.textSecondary : FridgeFitTheme.ColorToken.danger)
                 }
-                .padding(.vertical, 2)
+            } else {
+                Label("FridgeFit couldn't screen the supplied ingredients.", systemImage: "questionmark.diamond")
+                    .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+            }
+            Text("This is a keyword screen, not an allergy safety check. Always verify packaging and preparation details.")
+                .font(FridgeFitTheme.Typography.caption)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+        }
+        .font(FridgeFitTheme.Typography.supporting)
+        .padding(FridgeFitTheme.Spacing.large)
+        .fridgeFitCardSurface()
+    }
+}
+
+private struct OnlineIngredientsBreakdown: View {
+    let match: OnlineRecipeMatch
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            Text("Ingredients Breakdown")
+                .font(FridgeFitTheme.Typography.screenTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+
+            if !matchedIngredients.isEmpty {
+                OnlineIngredientGroup(title: "Matched in pantry", ingredients: matchedIngredients, match: match)
+            }
+            if !match.missedIngredients.isEmpty {
+                OnlineIngredientGroup(title: "Still needed", ingredients: match.missedIngredients, match: match)
+            }
+        }
+    }
+
+    private var matchedIngredients: [OnlineRecipeIngredient] {
+        match.recipe.ingredients.filter { !match.isMissing($0) }
+    }
+}
+
+private struct OnlineIngredientGroup: View {
+    let title: LocalizedStringKey
+    let ingredients: [OnlineRecipeIngredient]
+    let match: OnlineRecipeMatch
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            Text(title)
+                .font(FridgeFitTheme.Typography.cardTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+            ForEach(ingredients) { ingredient in
+                let isMissing = match.isMissing(ingredient)
+                HStack(spacing: FridgeFitTheme.Spacing.medium) {
+                    Image(systemName: isMissing ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
+                        .foregroundStyle(isMissing ? FridgeFitTheme.ColorToken.danger : FridgeFitTheme.ColorToken.primary)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(OnlineIngredientName.displayName(ingredient.name))
+                            .font(FridgeFitTheme.Typography.cardTitle)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                        Text(ingredient.formattedQuantity)
+                            .font(FridgeFitTheme.Typography.metadata)
+                            .foregroundStyle(ingredient.quantityIsUncertain ? FridgeFitTheme.ColorToken.warningText : FridgeFitTheme.ColorToken.textSecondary)
+                    }
+                    Spacer()
+                    Text(isMissing ? "Missing" : "Matched")
+                        .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                        .foregroundStyle(isMissing ? FridgeFitTheme.ColorToken.danger : FridgeFitTheme.ColorToken.primary)
+                }
+                .padding(FridgeFitTheme.Spacing.medium)
+                .fridgeFitCardSurface()
                 .accessibilityElement(children: .combine)
             }
         }
     }
+}
 
-    @ViewBuilder
-    private var allergenSection: some View {
-        Section {
-            if let contained = recipe.containsIntolerances {
-                if contained.isEmpty {
-                    Label(
-                        "None of the allergens FridgeFit screens for appear in this recipe's ingredient list.",
-                        systemImage: "magnifyingglass"
-                    )
-                    .foregroundStyle(.secondary)
-                } else {
-                    Label(
-                        "May contain: " + contained.map(\.displayName).sorted().joined(separator: ", "),
-                        systemImage: "exclamationmark.shield"
-                    )
-                    .foregroundStyle(contained.isDisjoint(with: intolerances) ? Color.secondary : Color.red)
+private struct OnlineInstructionsSection: View {
+    let recipe: OnlineRecipe
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            Text("Cooking Instructions")
+                .font(FridgeFitTheme.Typography.screenTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+            if recipe.steps.isEmpty {
+                VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+                    Text("No step-by-step method is available for this recipe.")
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    if let source = recipe.sourceURL {
+                        Link("Open the original recipe", destination: source)
+                            .font(FridgeFitTheme.Typography.button)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                    }
                 }
+                .padding(FridgeFitTheme.Spacing.large)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fridgeFitCardSurface()
             } else {
-                Label("FridgeFit couldn't screen this recipe's ingredients.", systemImage: "questionmark.diamond")
-                    .foregroundStyle(.orange)
+                ForEach(Array(recipe.steps.enumerated()), id: \.offset) { index, step in
+                    HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.medium) {
+                        Text(index + 1, format: .number)
+                            .font(FridgeFitTheme.Typography.cardTitle)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                            .frame(width: 32, height: 32)
+                            .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                        Text(step)
+                            .font(FridgeFitTheme.Typography.body)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                    }
+                    .padding(FridgeFitTheme.Spacing.medium)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fridgeFitCardSurface()
+                }
             }
-        } header: {
-            Text("Allergen screening")
-        } footer: {
-            Text("This is a keyword screen of the ingredient names the recipe service supplied, not a safety check. It knows nothing about brands, processing or shared equipment. If you have an allergy, read the packaging of everything you cook with.")
         }
-        .font(.subheadline)
+    }
+}
+
+private struct OnlineRecipeAttribution: View {
+    let recipe: OnlineRecipe
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            if let source = recipe.sourceURL {
+                Link(destination: source) {
+                    Label("Source: \(recipe.sourceName ?? source.host() ?? "original recipe")", systemImage: "safari")
+                }
+            }
+            if let spoonacularURL = URL(string: "https://spoonacular.com/food-api") {
+                Link("Recipe data powered by Spoonacular", destination: spoonacularURL)
+            }
+        }
+        .font(FridgeFitTheme.Typography.caption)
+        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
     }
 }
