@@ -7,12 +7,32 @@
 
 import SwiftUI
 
-private enum AppTab: Hashable {
+enum AppTab: Hashable, CaseIterable {
     case home
     case kitchen
     case recipes
     case discover
     case profile
+}
+
+struct AppNavigationState: Equatable {
+    var selectedTab: AppTab = .home
+    var isPresentingSmartScan = false
+    var isBrowsingRecipes = false
+
+    mutating func openMyFridge() {
+        selectedTab = .kitchen
+    }
+
+    mutating func openSmartScan() {
+        selectedTab = .kitchen
+        isPresentingSmartScan = true
+    }
+
+    mutating func browseRecipes() {
+        selectedTab = .recipes
+        isBrowsingRecipes = true
+    }
 }
 
 /// Root of the authenticated app: Home, My Fridge, Recipes, Discover, and
@@ -42,9 +62,7 @@ struct ContentView: View {
     /// and counts towards recipe feasibility with no sync step - they are
     /// two readings of one collection, not two stores.
     @StateObject private var inventoryStore: InventoryStore
-    @State private var selectedTab: AppTab = .home
-    @State private var isPresentingSmartScan = false
-    @State private var isBrowsingRecipes = false
+    @State private var navigation = AppNavigationState()
     /// Shared with the remote-camera review sheet through the environment,
     /// so a confirmed ingredient reaches the same pantry as everything else.
     private let pantryRepository: PantryRepository
@@ -145,7 +163,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: $navigation.selectedTab) {
             NavigationStack {
                 HomeView(
                     inventory: inventoryStore,
@@ -155,15 +173,9 @@ struct ContentView: View {
                     suggestionViewModel: recipeSuggestionViewModel,
                     pantryViewModel: pantryViewModel,
                     scannerViewModel: scannerViewModel,
-                    onOpenMyFridge: { selectedTab = .kitchen },
-                    onOpenSmartScan: {
-                        selectedTab = .kitchen
-                        isPresentingSmartScan = true
-                    },
-                    onBrowseRecipes: {
-                        isBrowsingRecipes = true
-                        selectedTab = .recipes
-                    }
+                    onOpenMyFridge: { navigation.openMyFridge() },
+                    onOpenSmartScan: { navigation.openSmartScan() },
+                    onBrowseRecipes: { navigation.browseRecipes() }
                 )
             }
             .tabItem { Label("Home", systemImage: "house") }
@@ -180,7 +192,7 @@ struct ContentView: View {
                 MyKitchenView(
                     inventory: inventoryStore,
                     scannerViewModel: scannerViewModel,
-                    isPresentingSmartScan: $isPresentingSmartScan
+                    isPresentingSmartScan: $navigation.isPresentingSmartScan
                 )
             }
             .tabItem { Label("My Fridge", systemImage: "refrigerator") }
@@ -192,9 +204,9 @@ struct ContentView: View {
                     recipeViewModel: recipeViewModel,
                     substitutionViewModel: substitutionViewModel,
                     suggestionViewModel: recipeSuggestionViewModel,
-                    onBrowseAllRecipes: { isBrowsingRecipes = true }
+                    onBrowseAllRecipes: { navigation.isBrowsingRecipes = true }
                 )
-                .navigationDestination(isPresented: $isBrowsingRecipes) {
+                .navigationDestination(isPresented: $navigation.isBrowsingRecipes) {
                     RecipeListView(
                         viewModel: recipeViewModel,
                         substitutionViewModel: substitutionViewModel,
