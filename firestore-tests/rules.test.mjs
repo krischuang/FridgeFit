@@ -587,6 +587,7 @@ describe("FridgeFunds", () => {
     ["fundsSpends", "spend-1", { amount: "35", currency: "AUD", store: "Coles" }],
     ["fundsWaste", "waste-1", { lostAmount: "2.25", currency: "AUD", reason: "expired" }],
     ["fundsItemPrices", "pantry-item-1", { unitCost: "0.5", currency: "AUD" }],
+    ["fundsPriceBook", "chicken%20breast", { displayName: "Chicken Breast", unitCost: "0.017", currency: "AUD", unit: "g" }],
   ];
 
   for (const [col, id, data] of fundsDocs) {
@@ -611,7 +612,7 @@ describe("FridgeFunds", () => {
     });
   }
 
-  // the rule lists the four names on purpose - it isn't a free-for-all under users/{uid}
+  // the rule lists the five names on purpose - it isn't a free-for-all under users/{uid}
   it("denies a collection name FridgeFunds doesn't use", async () => {
     await assertFails(setDoc(doc(asUser(ALICE), `users/${ALICE}/fundsAnythingElse/x`), { a: 1 }));
   });

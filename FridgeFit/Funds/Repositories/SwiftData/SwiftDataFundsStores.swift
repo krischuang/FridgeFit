@@ -176,3 +176,53 @@ final class SwiftDataItemPriceStore: ItemPriceStore {
         return (try? context.fetch(descriptor))?.first
     }
 }
+
+@MainActor
+final class SwiftDataPriceBookStore: PriceBookStore {
+    private let context: ModelContext
+    private let ownerIDProvider: () -> String?
+
+    init(context: ModelContext, ownerIDProvider: @escaping () -> String?) {
+        self.context = context
+        self.ownerIDProvider = ownerIDProvider
+    }
+
+    private var ownerID: String? {
+        guard let id = ownerIDProvider(), !id.isEmpty else { return nil }
+        return id
+    }
+
+    func entry(forIngredientNamed name: String) -> PriceBookEntry? {
+        guard let ownerID else { return nil }
+        return entity(ownerID, PriceBookEntry.key(for: name)).flatMap(FundsEntityMapper.toDomain)
+    }
+
+    func record(_ entry: PriceBookEntry) {
+        guard let ownerID else { return logger.notice("No signed-in user, price book not updated") }
+        let cost = FundsEntityMapper.string(entry.unitCost)
+        if let existing = entity(ownerID, entry.key) {
+            existing.displayName = entry.displayName
+            existing.unitCost = cost
+            existing.currency = entry.unitCost.currency.rawValue
+            existing.unit = entry.unit
+            existing.recordedOn = entry.recordedOn
+        } else {
+            context.insert(PriceBookEntity(ownerID: ownerID, key: entry.key, displayName: entry.displayName,
+                                           unitCost: cost, currency: entry.unitCost.currency.rawValue,
+                                           unit: entry.unit, recordedOn: entry.recordedOn))
+        }
+        do {
+            try context.save()
+        } catch {
+            logger.error("Saving price book failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func entity(_ ownerID: String, _ key: String) -> PriceBookEntity? {
+        var descriptor = FetchDescriptor<PriceBookEntity>(
+            predicate: #Predicate { $0.ownerID == ownerID && $0.key == key }
+        )
+        descriptor.fetchLimit = 1
+        return (try? context.fetch(descriptor))?.first
+    }
+}

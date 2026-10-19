@@ -87,6 +87,9 @@ final class MoneyInFridgeViewModel {
         // expiry lives on the pantry item now, just keep whatever old value we had
         let oldExpiry = environment.priceStore.info(for: item.id)?.expiryDate
         environment.priceStore.save(ItemPriceInfo(pantryItemID: item.id, unitCost: unitCost, expiryDate: oldExpiry))
+        if let unitCost {
+            environment.rememberPrice(of: item.name, unit: item.unit, unitCost: unitCost)
+        }
         refresh()
         return nil
     }

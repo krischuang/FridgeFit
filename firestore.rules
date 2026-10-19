@@ -20,6 +20,7 @@ rules_version = '2';
 //   users/{uid}/fundsSpends/{spendId}
 //   users/{uid}/fundsWaste/{wasteId}
 //   users/{uid}/fundsItemPrices/{pantryItemId}
+//   users/{uid}/fundsPriceBook/{encodedIngredientName}
 //
 // Covered by FirestoreRulesTests (`npm test` in firestore-tests/), which runs
 // these rules against the Firestore emulator.
@@ -133,14 +134,14 @@ service cloud.firestore {
     // --- FridgeFunds (Budget tab) ------------------------------------------
     //
     // The active budget, logged grocery spends, wasted-food costs, and the
-    // price attached to each pantry item (see FirestoreBudgetStore and
-    // FirestoreItemPriceStore). Same own-data-only boundary as the pantry.
+    // price attached to each pantry item, and the per-ingredient price book
+    // (see FirestoreBudgetStore, FirestoreItemPriceStore, FirestorePriceBookStore). Same own-data-only boundary as the pantry.
     //
-    // Restricted to the four collection names the module actually uses
+    // Restricted to the five collection names the module actually uses
     // rather than a wildcard, same reasoning as the ICE candidate rule above.
     match /users/{uid}/{fundsCollection}/{docId} {
       allow read, write: if isOwner(uid)
-        && fundsCollection in ['fundsBudget', 'fundsSpends', 'fundsWaste', 'fundsItemPrices'];
+        && fundsCollection in ['fundsBudget', 'fundsSpends', 'fundsWaste', 'fundsItemPrices', 'fundsPriceBook'];
     }
 
     // --- Default deny -----------------------------------------------------

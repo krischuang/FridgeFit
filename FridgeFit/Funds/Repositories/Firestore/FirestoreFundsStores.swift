@@ -19,6 +19,7 @@ import OSLog
 //   users/{uid}/fundsSpends/{spendId}
 //   users/{uid}/fundsWaste/{wasteId}
 //   users/{uid}/fundsItemPrices/{pantryItemId}
+//   users/{uid}/fundsPriceBook/{encoded ingredient name}
 
 private let logger = Logger(subsystem: "com.fridgefit.app", category: "FridgeFunds")
 
@@ -123,6 +124,37 @@ final class FirestoreItemPriceStore: ItemPriceStore {
     }
 }
 
+final class FirestorePriceBookStore: PriceBookStore {
+    private let firestore: Firestore
+    private let userIDProvider: () -> String?
+    private var byKey: [String: PriceBookEntry] = [:]
+
+    init(
+        firestore: Firestore = Firestore.firestore(),
+        userIDProvider: @escaping () -> String? = { Auth.auth().currentUser?.uid }
+    ) {
+        self.firestore = firestore
+        self.userIDProvider = userIDProvider
+    }
+
+    func load() async throws {
+        let docs = try await userDocument(firestore, userIDProvider).collection("fundsPriceBook").getDocuments().documents
+        let entries = docs.compactMap { FundsFirestoreMapping.decodePriceBookEntry($0.data()) }
+        byKey = Dictionary(entries.map { ($0.key, $0) }, uniquingKeysWith: { _, last in last })
+    }
+
+    func entry(forIngredientNamed name: String) -> PriceBookEntry? {
+        byKey[PriceBookEntry.key(for: name)]
+    }
+
+    func record(_ entry: PriceBookEntry) {
+        byKey[entry.key] = entry
+        guard let user = try? userDocument(firestore, userIDProvider) else { return }
+        user.collection("fundsPriceBook").document(FundsFirestoreMapping.documentID(forPriceBookKey: entry.key))
+            .setData(FundsFirestoreMapping.encode(entry), completion: logIfFailed("price book"))
+    }
+}
+
 // plain dictionary <-> model functions, no Firestore instance needed, so they can be
 // unit tested (same approach as FirestorePantryRepository's mapping).
 // money is stored as a string on purpose - Decimal through a Double would turn
@@ -214,6 +246,31 @@ enum FundsFirestoreMapping {
         return ItemPriceInfo(pantryItemID: PantryItemID(id),
                              unitCost: money(data["unitCost"], data["currency"]),
                              expiryDate: date(data["expiryDate"]))
+    }
+
+    // names can have spaces, slashes etc, which a document id can't, so encode it
+    static func documentID(forPriceBookKey key: String) -> String {
+        key.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? key
+    }
+
+    static func encode(_ entry: PriceBookEntry) -> [String: Any] {
+        [
+            "displayName": entry.displayName,
+            "unitCost": "\(entry.unitCost.amount)",
+            "currency": entry.unitCost.currency.rawValue,
+            "unit": entry.unit,
+            "recordedOn": entry.recordedOn,
+        ]
+    }
+
+    static func decodePriceBookEntry(_ data: [String: Any]) -> PriceBookEntry? {
+        guard
+            let name = data["displayName"] as? String,
+            let cost = money(data["unitCost"], data["currency"]),
+            let unit = data["unit"] as? String,
+            let recordedOn = date(data["recordedOn"])
+        else { return nil }
+        return PriceBookEntry(displayName: name, unitCost: cost, unit: unit, recordedOn: recordedOn)
     }
 
     private static func money(_ amount: Any?, _ currency: Any?) -> Money? {

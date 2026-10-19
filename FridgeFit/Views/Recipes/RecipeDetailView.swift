@@ -68,6 +68,10 @@ struct RecipeDetailView: View {
                 }
             }
 
+            // FridgeFunds: rough cost from recorded prices. shows nothing if the
+            // Budget module isn't in the environment (previews)
+            RecipeCostSection(recipe: recipe)
+
             Section("Instructions") {
                 ForEach(Array(recipe.instructions.enumerated()), id: \.offset) { index, step in
                     HStack(alignment: .top, spacing: 8) {

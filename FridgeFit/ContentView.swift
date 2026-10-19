@@ -233,6 +233,8 @@ struct ContentView: View {
         // pantry. Same repository instance as every other tab, so a confirmed
         // ingredient lands in the same place and under the same auth.
         .environment(\.pantryRepository, pantryRepository)
+        // recipe detail screens show a cost estimate from FridgeFunds
+        .environment(\.fundsEnvironment, fundsEnvironment)
     }
 }
 

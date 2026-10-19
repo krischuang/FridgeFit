@@ -66,6 +66,7 @@ final class PersistenceContainer {
         GrocerySpendEntity.self,
         WastedFoodCostEntity.self,
         ItemPriceEntity.self,
+        PriceBookEntity.self,
     ])
 
     let modelContainer: ModelContainer

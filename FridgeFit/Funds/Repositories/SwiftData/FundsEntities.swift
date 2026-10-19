@@ -137,3 +137,33 @@ enum FundsEntityMapper {
                       expiryDate: e.expiryDate)
     }
 }
+
+// price book: one row per ingredient name per account, latest price wins
+@Model
+final class PriceBookEntity {
+    var ownerID: String
+    var key: String
+    var displayName: String
+    var unitCost: String
+    var currency: String
+    var unit: String
+    var recordedOn: Date
+
+    init(ownerID: String, key: String, displayName: String, unitCost: String,
+         currency: String, unit: String, recordedOn: Date) {
+        self.ownerID = ownerID
+        self.key = key
+        self.displayName = displayName
+        self.unitCost = unitCost
+        self.currency = currency
+        self.unit = unit
+        self.recordedOn = recordedOn
+    }
+}
+
+extension FundsEntityMapper {
+    static func toDomain(_ e: PriceBookEntity) -> PriceBookEntry? {
+        guard let cost = money(e.unitCost, e.currency) else { return nil }
+        return PriceBookEntry(displayName: e.displayName, unitCost: cost, unit: e.unit, recordedOn: e.recordedOn)
+    }
+}

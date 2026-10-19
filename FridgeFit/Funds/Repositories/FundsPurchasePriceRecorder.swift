@@ -24,10 +24,12 @@ final class FundsPurchasePriceRecorder: PurchasePriceRecording {
         // keep an expiry date if one was already set for this item
         let existingExpiry = environment.priceStore.info(for: id)?.expiryDate
 
+        let unitCost = Money(total / Decimal(item.quantity), currency)
         environment.priceStore.save(ItemPriceInfo(
             pantryItemID: id,
-            unitCost: Money(total / Decimal(item.quantity), currency),
+            unitCost: unitCost,
             expiryDate: existingExpiry
         ))
+        environment.rememberPrice(of: item.name, unit: item.unit.rawValue, unitCost: unitCost)
     }
 }

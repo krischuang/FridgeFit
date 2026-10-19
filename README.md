@@ -250,16 +250,24 @@ It **reads** the pantry but never writes to it.
   the receipt scanner (line prices), from the optional "What you paid"
   field in *Add to Pantry*, or by tapping an item in *Budget → Money in my
   fridge*. You always enter the total paid; it works out the per-unit cost.
+- **Recipe cost**: every recorded price also goes into a price book (last
+  price per unit, by ingredient name). Recipe detail screens get a *Cost*
+  section (`EstimateRecipeCostUseCase`): what you'd use from the pantry,
+  what you'd still have to buy (pantry shortfall and missing ingredients,
+  priced from the price book), per serving, and whether the shopping fits
+  what's left of this week's budget. Units convert the same safe way
+  feasibility does (g/kg, ml/L); anything without a price is listed, not
+  guessed. Optional ingredients aren't counted.
 - With Kitchen, Discover and Budget there'd be six tabs, and iPhone folds
   anything past five into "More". So Profile is now a button at the top
   right of the Pantry tab.
 - Storage follows `PersistenceConfiguration.backend`, same as the pantry
   (`FundsEnvironment.matching`):
   - **SwiftData (default)**: `FundsBudgetEntity`, `GrocerySpendEntity`,
-    `WastedFoodCostEntity` and `ItemPriceEntity`, in the same on-device
+    `WastedFoodCostEntity`, `ItemPriceEntity` and `PriceBookEntity`, in the same on-device
     store as the pantry and scoped by the same owner id.
   - **Firebase**: `users/{uid}/fundsBudget`, `fundsSpends`, `fundsWaste`,
-    `fundsItemPrices`. These stores keep a local copy for the sync reads
+    `fundsItemPrices`, `fundsPriceBook`. These stores keep a local copy for the sync reads
     and save to Firestore in the background. `firestore.rules` covers
     them (and `firestore-tests` tests it), so deploy the rules before
     switching the backend to Firebase.

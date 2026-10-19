@@ -14,6 +14,8 @@ final class FundsEnvironment {
     let budgetStore: BudgetStore
     let pantry: PantryReading
     let priceStore: ItemPriceStore
+    // last price paid per ingredient name, so recipes can guess what missing stuff costs
+    let priceBook: PriceBookStore
     private let reloadData: () async throws -> Void
 
     var lastLoadError: String?
@@ -21,10 +23,12 @@ final class FundsEnvironment {
     init(budgetStore: BudgetStore,
          pantry: PantryReading,
          priceStore: ItemPriceStore = InMemoryItemPriceStore(),
+         priceBook: PriceBookStore = InMemoryPriceBookStore(),
          reload: @escaping () async throws -> Void = {}) {
         self.budgetStore = budgetStore
         self.pantry = pantry
         self.priceStore = priceStore
+        self.priceBook = priceBook
         self.reloadData = reload
     }
 
@@ -51,6 +55,15 @@ final class FundsEnvironment {
     var valueFridge: ValueFridgeUseCase {
         ValueFridgeUseCase(pantry: pantry)
     }
+    var estimateRecipeCost: EstimateRecipeCostUseCase {
+        EstimateRecipeCostUseCase(pantry: pantry, priceBook: priceBook, budgetStore: budgetStore)
+    }
+
+    // every time a price gets recorded (receipt, add form, Money in my fridge)
+    // the price book remembers it under the ingredient's name too
+    func rememberPrice(of name: String, unit: String, unitCost: Money, on date: Date = Date()) {
+        priceBook.record(PriceBookEntry(displayName: name, unitCost: unitCost, unit: unit, recordedOn: date))
+    }
 }
 
 extension FundsEnvironment {
@@ -58,10 +71,12 @@ extension FundsEnvironment {
     static func firestore(pantryRepository: PantryRepository) -> FundsEnvironment {
         let budgetStore = FirestoreBudgetStore()
         let priceStore = FirestoreItemPriceStore()
+        let priceBook = FirestorePriceBookStore()
         let pantry = FridgeFitPantryReading(repository: pantryRepository, priceStore: priceStore)
-        return FundsEnvironment(budgetStore: budgetStore, pantry: pantry, priceStore: priceStore) {
+        return FundsEnvironment(budgetStore: budgetStore, pantry: pantry, priceStore: priceStore, priceBook: priceBook) {
             try await budgetStore.load()
             try await priceStore.load()
+            try await priceBook.load()
             try await pantry.refresh()
         }
     }
@@ -72,9 +87,10 @@ extension FundsEnvironment {
                           ownerIDProvider: @escaping () -> String?) -> FundsEnvironment {
         let budgetStore = SwiftDataBudgetStore(context: context, ownerIDProvider: ownerIDProvider)
         let priceStore = SwiftDataItemPriceStore(context: context, ownerIDProvider: ownerIDProvider)
+        let priceBook = SwiftDataPriceBookStore(context: context, ownerIDProvider: ownerIDProvider)
         let pantry = FridgeFitPantryReading(repository: pantryRepository, priceStore: priceStore)
         // SwiftData reads are live, only the pantry snapshot needs refreshing
-        return FundsEnvironment(budgetStore: budgetStore, pantry: pantry, priceStore: priceStore) {
+        return FundsEnvironment(budgetStore: budgetStore, pantry: pantry, priceStore: priceStore, priceBook: priceBook) {
             try await pantry.refresh()
         }
     }
