@@ -15,6 +15,11 @@ private enum AppTab: Hashable {
     case profile
 }
 
+private enum RecipesRoute: Hashable {
+    case recommendations
+    case catalogue
+}
+
 /// Root of the authenticated app: Home, My Fridge, Recipes, Discover, and
 /// Profile, each in its own tab with its own navigation stack. The legacy
 /// Pantry management screen remains reachable from Home.
@@ -41,7 +46,7 @@ struct ContentView: View {
     @StateObject private var inventoryStore: InventoryStore
     @State private var selectedTab: AppTab = .home
     @State private var isPresentingSmartScan = false
-    @State private var isBrowsingRecipes = false
+    @State private var recipesPath: [RecipesRoute] = []
     /// Shared with the remote-camera review sheet through the environment,
     /// so a confirmed ingredient reaches the same pantry as everything else.
     private let pantryRepository: PantryRepository
@@ -158,7 +163,7 @@ struct ContentView: View {
                         isPresentingSmartScan = true
                     },
                     onBrowseRecipes: {
-                        isBrowsingRecipes = true
+                        recipesPath = [.catalogue]
                         selectedTab = .recipes
                     }
                 )
@@ -183,21 +188,32 @@ struct ContentView: View {
             .tabItem { Label("My Fridge", systemImage: "refrigerator") }
             .tag(AppTab.kitchen)
 
-            NavigationStack {
-                RecipeRecommendationsView(
-                    viewModel: recommendationViewModel,
-                    recipeViewModel: recipeViewModel,
+            NavigationStack(path: $recipesPath) {
+                SavedRecipesView(
+                    viewModel: recipeViewModel,
                     substitutionViewModel: substitutionViewModel,
-                    suggestionViewModel: recipeSuggestionViewModel,
-                    onBrowseAllRecipes: { isBrowsingRecipes = true }
+                    onExploreDiscover: { selectedTab = .discover },
+                    onFindRecommendations: { recipesPath.append(.recommendations) },
+                    onBrowseAllRecipes: { recipesPath.append(.catalogue) }
                 )
-                .navigationDestination(isPresented: $isBrowsingRecipes) {
+                .navigationDestination(for: RecipesRoute.self) { route in
+                    switch route {
+                    case .recommendations:
+                        RecipeRecommendationsView(
+                            viewModel: recommendationViewModel,
+                            recipeViewModel: recipeViewModel,
+                            substitutionViewModel: substitutionViewModel,
+                            suggestionViewModel: recipeSuggestionViewModel,
+                            onBrowseAllRecipes: { recipesPath.append(.catalogue) }
+                        )
+                    case .catalogue:
                     RecipeListView(
                         viewModel: recipeViewModel,
                         substitutionViewModel: substitutionViewModel,
                         suggestionViewModel: recipeSuggestionViewModel,
                         recommendationViewModel: recommendationViewModel
                     )
+                    }
                 }
             }
             .tabItem { Label("Recipes", systemImage: "fork.knife") }

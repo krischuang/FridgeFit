@@ -136,7 +136,52 @@ final class DiscoverIntegrationRenderingTests: XCTestCase {
         )
     }
 
-    // MARK: - Existing screens are unchanged
+    // MARK: - Recipes and shared detail presentation
+
+    func test_savedRecipesLandingRendersEmptyState() async {
+        let pantry = InMemoryPantryRepository()
+        let recipeViewModel = RecipeViewModel(
+            recipeRepository: InMemoryRecipeRepository(recipes: []),
+            pantryRepository: pantry,
+            savedRecipeRepository: InMemorySavedRecipeRepository()
+        )
+        await recipeViewModel.loadRecipes()
+
+        assertRenders(
+            NavigationStack {
+                SavedRecipesView(
+                    viewModel: recipeViewModel,
+                    substitutionViewModel: substitutionViewModel(pantry: pantry),
+                    onExploreDiscover: {},
+                    onFindRecommendations: {},
+                    onBrowseAllRecipes: {}
+                )
+            }
+        )
+    }
+
+    func test_savedRecipesLandingRendersSavedCollection() async {
+        let pantry = InMemoryPantryRepository(seedItems: Fixture.stockedPantry)
+        let recipeViewModel = RecipeViewModel(
+            recipeRepository: InMemoryRecipeRepository(recipes: []),
+            pantryRepository: pantry,
+            savedRecipeRepository: InMemorySavedRecipeRepository()
+        )
+        await recipeViewModel.saveOnlineRecipe(OnlineRecipeFixtures.recipe(id: 79, title: "Saved Landing Dish"))
+
+        XCTAssertEqual(recipeViewModel.savedRecipes.map(\.title), ["Saved Landing Dish"])
+        assertRenders(
+            NavigationStack {
+                SavedRecipesView(
+                    viewModel: recipeViewModel,
+                    substitutionViewModel: substitutionViewModel(pantry: pantry),
+                    onExploreDiscover: {},
+                    onFindRecommendations: {},
+                    onBrowseAllRecipes: {}
+                )
+            }
+        )
+    }
 
     func test_pantryIdeasStillRendersAppleIntelligenceSuggestions() async {
         // The on-device feature `main` shipped. Still reached by the Recipes
