@@ -30,12 +30,9 @@ struct ContentView: View {
     /// judged against one pantry and one catalogue - there is no separate
     /// sample store behind this feature.
     @StateObject private var recommendationViewModel: RecommendationViewModel
-    /// The Discover tab's state: online recipe search.
-    ///
-    /// Built on `OnlineRecipeFeature`, which currently yields
-    /// `UnconfiguredOnlineRecipeService` - no live service object exists in
-    /// the process, so nothing here can reach the network. Discover renders
-    /// an explicit "not set up" state instead.
+    /// The Discover tab's state: online recipe search. The feature factory
+    /// supplies the live cached service when a Spoonacular key is configured,
+    /// and an explained unavailable service when it is not.
     @StateObject private var onlineRecipeSearchViewModel: OnlineRecipeSearchViewModel
     /// The Kitchen tab's state. Built on the *same* `pantryRepository` as
     /// every other tab, so an item added here shows up in the Pantry list

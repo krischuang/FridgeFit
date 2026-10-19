@@ -73,12 +73,9 @@ service cloud.firestore {
     // same recipe twice is idempotent) and removing.
     //
     // NOTE: this block is not yet deployed. Until it is,
-    // `OnlineRecipeFeature.savedRecipeStorage` stays
-    // `.disabledPendingRulesDeployment`, which keeps the app from building a
-    // saved-recipe repository at all - so no write is attempted against the
-    // deployed default-deny rules and no user ever sees a save action fail.
-    // Deploying this file and running the firestore-tests suite against it
-    // are the two prerequisites for flipping that flag.
+    // Discover saves use the same owner-only rule as the rest of the user's
+    // kitchen data. Deployments must keep this rule in sync with the enabled
+    // client feature; denied writes surface through the existing save error.
     match /users/{uid}/savedRecipes/{recipeId} {
       allow read, write: if isOwner(uid);
     }

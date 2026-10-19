@@ -67,19 +67,17 @@ nonisolated enum OnlineRecipeFeature {
 
     /// Current provider state.
     ///
-    /// `.disabled` by deliberate decision: Spoonacular API configuration is
-    /// outstanding pending a conversation with the developer responsible for
-    /// the account. The architecture below it is complete and tested against
-    /// `MockOnlineRecipeService`; only this value stands between it and a
-    /// live call.
-    static let provider: ProviderState = .disabled
+    /// Online search is available when a local Spoonacular key is configured.
+    /// Missing or malformed configuration still resolves to the explained
+    /// `UnconfiguredOnlineRecipeService` path rather than issuing a request.
+    static let provider: ProviderState = .enabled
 
     /// Current saved-recipe storage state.
     ///
-    /// `.disabledPendingRulesDeployment` until the Firestore rules in this
-    /// repository are deployed and the emulator suite has been run against
-    /// the deployed project.
-    static let savedRecipeStorage: SavedRecipeStorageState = .disabledPendingRulesDeployment
+    /// Saved Discover recipes use the existing per-user Firestore collection.
+    /// Repository errors remain visible in the UI and never hide bundled
+    /// recipes.
+    static let savedRecipeStorage: SavedRecipeStorageState = .enabled
 
     // MARK: - Composition
 

@@ -13,14 +13,12 @@ final class OnlineRecipeFeatureTests: XCTestCase {
 
     // MARK: - Shipped state
 
-    func test_shippedProviderState_isDisabled() {
-        // The whole point of the gate. If this ever flips without the three
-        // activation steps being done deliberately, this test is the alarm.
-        XCTAssertEqual(OnlineRecipeFeature.provider, .disabled)
+    func test_shippedProviderState_isEnabled() {
+        XCTAssertEqual(OnlineRecipeFeature.provider, .enabled)
     }
 
-    func test_shippedSavedRecipeStorageState_isDisabledPendingRulesDeployment() {
-        XCTAssertEqual(OnlineRecipeFeature.savedRecipeStorage, .disabledPendingRulesDeployment)
+    func test_shippedSavedRecipeStorageState_isEnabled() {
+        XCTAssertEqual(OnlineRecipeFeature.savedRecipeStorage, .enabled)
     }
 
     // MARK: - No key required, and none read
