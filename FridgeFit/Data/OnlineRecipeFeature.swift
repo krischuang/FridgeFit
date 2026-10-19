@@ -55,11 +55,9 @@ nonisolated enum OnlineRecipeFeature {
         /// section.
         ///
         /// This is the correct state until `firestore.rules` has been
-        /// deployed and verified: the rules file in this repository grants
-        /// `users/{uid}/savedRecipes/{recipeId}`, but the *deployed* rules
-        /// still end in default-deny, so every write would come back
-        /// `permission-denied`. Offering a save button that always fails is
-        /// worse than not offering one.
+        /// deployed and verified. The repository cannot establish the live
+        /// Firebase project's deployment state; denied writes surface through
+        /// the existing save error rather than being treated as successful.
         case disabledPendingRulesDeployment
         /// Saved recipes are read from and written to Firestore.
         case enabled

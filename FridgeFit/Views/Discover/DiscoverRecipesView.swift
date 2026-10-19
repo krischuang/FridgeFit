@@ -285,10 +285,11 @@ private struct DiscoverRecipeCard: View {
     let match: OnlineRecipeMatch
     let isSaved: Bool
 
-    private var pantryMatchPercentage: Int {
-        let total = match.usedIngredientNames.count + match.missedIngredients.count
-        guard total > 0 else { return 0 }
-        return Int((Double(match.usedIngredientNames.count) / Double(total) * 100).rounded())
+    private var pantryMatchPresentation: DiscoverPantryMatchPresentation {
+        DiscoverPantryMatchPresentation(
+            matchedIngredientCount: match.usedIngredientNames.count,
+            missingIngredientCount: match.missedIngredients.count
+        )
     }
 
     var body: some View {
@@ -360,10 +361,61 @@ private struct DiscoverRecipeCard: View {
 
     private var pantryBadge: some View {
         FridgeFitStatusBadge(
-            title: "\(pantryMatchPercentage)% pantry match",
-            systemImage: "refrigerator.fill",
+            title: LocalizedStringKey(pantryMatchPresentation.title),
+            systemImage: pantryMatchPresentation.systemImage,
             tone: .neutral
         )
+    }
+}
+
+/// Turns ingredient counts into honest badge copy. In particular, a recipe
+/// with no matches is not described as pantry-matched, while a recipe with no
+/// ingredient data is distinguished from a measured zero-percent result.
+struct DiscoverPantryMatchPresentation: Equatable {
+    enum State: Equatable {
+        case unavailable
+        case noMatches
+        case matched(percentage: Int)
+    }
+
+    let state: State
+
+    init(matchedIngredientCount: Int, missingIngredientCount: Int) {
+        let matched = max(0, matchedIngredientCount)
+        let missing = max(0, missingIngredientCount)
+        let total = matched + missing
+
+        guard total > 0 else {
+            state = .unavailable
+            return
+        }
+        guard matched > 0 else {
+            state = .noMatches
+            return
+        }
+
+        let percentage = Int((Double(matched) / Double(total) * 100).rounded())
+        state = .matched(percentage: percentage)
+    }
+
+    var title: String {
+        switch state {
+        case .unavailable:
+            return "Pantry match unavailable"
+        case .noMatches:
+            return "No pantry matches"
+        case .matched(let percentage):
+            return "\(percentage)% pantry match"
+        }
+    }
+
+    var systemImage: String {
+        switch state {
+        case .unavailable:
+            return "questionmark.circle"
+        case .noMatches, .matched:
+            return "refrigerator.fill"
+        }
     }
 }
 

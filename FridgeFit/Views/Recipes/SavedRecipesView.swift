@@ -27,15 +27,21 @@ struct SavedRecipesView: View {
                     onBrowseAllRecipes: onBrowseAllRecipes
                 )
 
-                if viewModel.isLoading && !viewModel.hasLoaded {
-                    SavedRecipesLoadingState()
-                } else if viewModel.savedRecipes.isEmpty {
-                    SavedRecipesEmptyState(
-                        hasError: viewModel.savedRecipeErrorMessage != nil,
-                        onExploreDiscover: onExploreDiscover,
+                if let message = viewModel.savedRecipeLoadErrorMessage {
+                    SavedRecipesLoadErrorState(
+                        message: message,
+                        isRetrying: viewModel.isLoading,
                         onRetry: { Task { await viewModel.loadRecipes() } }
                     )
-                } else {
+                }
+
+                if viewModel.isLoading && !viewModel.hasLoaded {
+                    SavedRecipesLoadingState()
+                } else if viewModel.savedRecipes.isEmpty && viewModel.savedRecipeLoadErrorMessage == nil {
+                    SavedRecipesEmptyState(
+                        onExploreDiscover: onExploreDiscover
+                    )
+                } else if !viewModel.savedRecipes.isEmpty {
                     SavedRecipeCollection(
                         recipes: viewModel.savedRecipes,
                         viewModel: viewModel,
@@ -191,33 +197,63 @@ private struct SavedRecipesLoadingState: View {
 }
 
 private struct SavedRecipesEmptyState: View {
-    let hasError: Bool
     let onExploreDiscover: () -> Void
-    let onRetry: () -> Void
 
     var body: some View {
         VStack(spacing: FridgeFitTheme.Spacing.large) {
-            Image(systemName: hasError ? "exclamationmark.triangle.fill" : "bookmark")
+            Image(systemName: "bookmark")
                 .font(.largeTitle)
-                .foregroundStyle(hasError ? FridgeFitTheme.ColorToken.danger : FridgeFitTheme.ColorToken.primary)
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
                 .frame(width: 88, height: 88)
                 .background(FridgeFitTheme.ColorToken.successBackground, in: Circle())
                 .accessibilityHidden(true)
             VStack(spacing: FridgeFitTheme.Spacing.small) {
-                Text(hasError ? "Couldn't load saved recipes" : "Save recipes you love")
+                Text("Save recipes you love")
                     .font(FridgeFitTheme.Typography.screenTitle)
                     .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
                     .multilineTextAlignment(.center)
-                Text(hasError ? "Try loading your collection again." : "Explore Discover and bookmark a recipe to keep it here.")
+                Text("Explore Discover and bookmark a recipe to keep it here.")
                     .font(FridgeFitTheme.Typography.body)
                     .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     .multilineTextAlignment(.center)
             }
-            Button(hasError ? "Try Again" : "Explore Discover", action: hasError ? onRetry : onExploreDiscover)
+            Button("Explore Discover", action: onExploreDiscover)
                 .buttonStyle(FridgeFitPrimaryButtonStyle())
         }
         .padding(FridgeFitTheme.Spacing.xLarge)
         .frame(maxWidth: .infinity)
+        .fridgeFitCardSurface()
+    }
+}
+
+private struct SavedRecipesLoadErrorState: View {
+    let message: String
+    let isRetrying: Bool
+    let onRetry: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            Label("Couldn't load saved recipes", systemImage: "exclamationmark.triangle.fill")
+                .font(FridgeFitTheme.Typography.cardTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+            Text(message)
+                .font(FridgeFitTheme.Typography.supporting)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            Button(action: onRetry) {
+                HStack(spacing: FridgeFitTheme.Spacing.small) {
+                    if isRetrying {
+                        ProgressView()
+                            .tint(FridgeFitTheme.ColorToken.primary)
+                    }
+                    Text(isRetrying ? "Trying Again…" : "Try Again")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(FridgeFitSecondaryButtonStyle())
+            .disabled(isRetrying)
+        }
+        .padding(FridgeFitTheme.Spacing.large)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .fridgeFitCardSurface()
     }
 }
