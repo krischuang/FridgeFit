@@ -20,6 +20,11 @@ extension SubstitutionValidationStatus {
 /// "Find Substitute" affordance and results for one recipe ingredient.
 /// Reads only from `SubstitutionViewModel`'s already-validated state - no
 /// matching or pantry logic here.
+///
+/// Suggestions are generated on-device by Apple Intelligence, which isn't
+/// available on every device, so there is a fourth state alongside idle,
+/// loading and results: an explained unavailable state in place of a button
+/// that could only fail. Nothing is fabricated when the model can't run.
 struct SubstitutionSectionView: View {
     let recipeIngredient: RecipeIngredient
     let recipe: Recipe
@@ -34,6 +39,10 @@ struct SubstitutionSectionView: View {
                     Text("Finding substitutes\u{2026}")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Cancel") { viewModel.cancel(for: recipeIngredient) }
+                        .font(.caption)
+                        .buttonStyle(.borderless)
                 }
             } else if let suggestions = viewModel.suggestions(for: recipeIngredient), !suggestions.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
@@ -43,7 +52,12 @@ struct SubstitutionSectionView: View {
                     ForEach(suggestions) { suggestion in
                         SubstitutionSuggestionCard(suggestion: suggestion)
                     }
+                    Text("Suggested on-device by Apple Intelligence. Pantry availability is checked against your pantry, not guessed.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
+            } else if !viewModel.canFindSubstitutes {
+                unavailableContent
             } else {
                 Button {
                     Task { await viewModel.findSubstitutes(for: recipeIngredient, recipe: recipe, feasibility: feasibility) }
@@ -63,6 +77,22 @@ struct SubstitutionSectionView: View {
         }
         .padding(.leading, 44)
         .padding(.vertical, 2)
+    }
+
+    /// Mirrors how `PantryRecipeIdeasView` and `ReceiptScannerView` explain
+    /// an unavailable model, scaled down to an inline row rather than a
+    /// full-screen `ContentUnavailableView`.
+    @ViewBuilder
+    private var unavailableContent: some View {
+        let availability = viewModel.availability
+        VStack(alignment: .leading, spacing: 2) {
+            Label(availability.unavailableTitle ?? "Substitutes Unavailable", systemImage: "sparkles.slash")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+            Text(SubstitutionServiceError.substitutionUnavailable(availability).localizedDescription)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 
