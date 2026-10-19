@@ -7,8 +7,37 @@
 
 import SwiftUI
 
-/// Root of the authenticated app: Pantry, Kitchen, Recipes, Discover, and
-/// Profile, each in its own tab with its own navigation stack.
+enum AppTab: Hashable, CaseIterable {
+    case home
+    case kitchen
+    case recipes
+    case discover
+    case profile
+}
+
+struct AppNavigationState: Equatable {
+    var selectedTab: AppTab = .home
+    var isPresentingSmartScan = false
+    var isBrowsingRecipes = false
+
+    mutating func openMyFridge() {
+        selectedTab = .kitchen
+    }
+
+    mutating func openSmartScan() {
+        selectedTab = .kitchen
+        isPresentingSmartScan = true
+    }
+
+    mutating func browseRecipes() {
+        selectedTab = .recipes
+        isBrowsingRecipes = true
+    }
+}
+
+/// Root of the authenticated app: Home, My Fridge, Recipes, Discover, and
+/// Profile, each in its own tab with its own navigation stack. The legacy
+/// Pantry management screen remains reachable from Home.
 struct ContentView: View {
     @StateObject private var pantryViewModel: PantryViewModel
     @StateObject private var recipeViewModel: RecipeViewModel
@@ -33,6 +62,7 @@ struct ContentView: View {
     /// and counts towards recipe feasibility with no sync step - they are
     /// two readings of one collection, not two stores.
     @StateObject private var inventoryStore: InventoryStore
+    @State private var navigation = AppNavigationState()
     /// Shared with the remote-camera review sheet through the environment,
     /// so a confirmed ingredient reaches the same pantry as everything else.
     private let pantryRepository: PantryRepository
@@ -133,11 +163,23 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView {
+        TabView(selection: $navigation.selectedTab) {
             NavigationStack {
-                PantryView(viewModel: pantryViewModel, scannerViewModel: scannerViewModel)
+                HomeView(
+                    inventory: inventoryStore,
+                    recommendationViewModel: recommendationViewModel,
+                    recipeViewModel: recipeViewModel,
+                    substitutionViewModel: substitutionViewModel,
+                    suggestionViewModel: recipeSuggestionViewModel,
+                    pantryViewModel: pantryViewModel,
+                    scannerViewModel: scannerViewModel,
+                    onOpenMyFridge: { navigation.openMyFridge() },
+                    onOpenSmartScan: { navigation.openSmartScan() },
+                    onBrowseRecipes: { navigation.browseRecipes() }
+                )
             }
-            .tabItem { Label("Pantry", systemImage: "cabinet") }
+            .tabItem { Label("Home", systemImage: "house") }
+            .tag(AppTab.home)
 
             // Kitchen is the spatial view of the same pantry - fridge,
             // freezer, pantry, plus expiry. Deliberately second rather than
@@ -149,20 +191,32 @@ struct ContentView: View {
             NavigationStack {
                 MyKitchenView(
                     inventory: inventoryStore,
-                    scannerViewModel: scannerViewModel
+                    scannerViewModel: scannerViewModel,
+                    isPresentingSmartScan: $navigation.isPresentingSmartScan
                 )
             }
-            .tabItem { Label("Kitchen", systemImage: "refrigerator") }
+            .tabItem { Label("My Fridge", systemImage: "refrigerator") }
+            .tag(AppTab.kitchen)
 
             NavigationStack {
-                RecipeListView(
-                    viewModel: recipeViewModel,
+                RecipeRecommendationsView(
+                    viewModel: recommendationViewModel,
+                    recipeViewModel: recipeViewModel,
                     substitutionViewModel: substitutionViewModel,
                     suggestionViewModel: recipeSuggestionViewModel,
-                    recommendationViewModel: recommendationViewModel
+                    onBrowseAllRecipes: { navigation.isBrowsingRecipes = true }
                 )
+                .navigationDestination(isPresented: $navigation.isBrowsingRecipes) {
+                    RecipeListView(
+                        viewModel: recipeViewModel,
+                        substitutionViewModel: substitutionViewModel,
+                        suggestionViewModel: recipeSuggestionViewModel,
+                        recommendationViewModel: recommendationViewModel
+                    )
+                }
             }
             .tabItem { Label("Recipes", systemImage: "fork.knife") }
+            .tag(AppTab.recipes)
 
             // Discover is online recipes, and is deliberately its own tab
             // rather than a surface inside Recipes: Recipes is the catalogue
@@ -179,11 +233,13 @@ struct ContentView: View {
                 )
             }
             .tabItem { Label("Discover", systemImage: "globe") }
+            .tag(AppTab.discover)
 
             NavigationStack {
                 ProfileView()
             }
             .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+            .tag(AppTab.profile)
         }
         // Reaches the remote-camera review sheet, four levels down, without
         // adding a pantry parameter to ProfileView, ConnectedDevicesView and

@@ -279,28 +279,29 @@ final class RecommendationViewRenderingTests: XCTestCase {
         assertRenders(CookingContextFormView(context: context) { _ in })
     }
 
-    /// The Recipes tab itself, with the recommendation entry point in its
-    /// toolbar, in one stack.
-    func testRecipesTabRendersWithTheRecommendationEntryPoint() async {
+    /// The Recipes tab starts with recommendations and pushes the original
+    /// catalogue from the same navigation stack.
+    func testRecipesTabRendersWithTheCatalogueEntryPoint() async {
         let pantry = InMemoryPantryRepository(seedItems: Fixture.stockedPantry)
         let recipes = BundledRecipeRepository()
         let recipeViewModel = RecipeViewModel(recipeRepository: recipes, pantryRepository: pantry)
-        await recipeViewModel.loadRecipes()
+        let recommendationViewModel = RecommendationViewModel(
+            generateUseCase: GenerateContextAwareRecommendationsUseCase(
+                recipeRepository: recipes,
+                pantryRepository: pantry
+            )
+        )
+        await recommendationViewModel.generate()
 
         assertRenders(
             NavigationStack {
-                RecipeListView(
-                    viewModel: recipeViewModel,
+                RecipeRecommendationsView(
+                    viewModel: recommendationViewModel,
+                    recipeViewModel: recipeViewModel,
                     substitutionViewModel: Self.substitutionViewModel(pantry: pantry),
                     suggestionViewModel: RecipeSuggestionViewModel(
                         useCase: SuggestRecipesFromPantryUseCase(
                             suggestionService: MockRecipeSuggestionService(),
-                            pantryRepository: pantry
-                        )
-                    ),
-                    recommendationViewModel: RecommendationViewModel(
-                        generateUseCase: GenerateContextAwareRecommendationsUseCase(
-                            recipeRepository: recipes,
                             pantryRepository: pantry
                         )
                     )
