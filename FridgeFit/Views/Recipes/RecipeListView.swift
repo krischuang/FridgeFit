@@ -24,6 +24,14 @@ struct RecipeListView: View {
                     onOpenPantryIdeas: { isPresentingPantryIdeas = true }
                 )
 
+                if let errorMessage = viewModel.errorMessage, !viewModel.recipes.isEmpty {
+                    RecipeCatalogueErrorBanner(
+                        message: errorMessage,
+                        isRetrying: viewModel.isLoading,
+                        onRetry: { Task { await viewModel.loadRecipes() } }
+                    )
+                }
+
                 if viewModel.isLoading && viewModel.recipes.isEmpty {
                     RecipeCatalogueLoadingState()
                 } else if viewModel.recipes.isEmpty {
@@ -74,13 +82,15 @@ struct RecipeListView: View {
         .alert(
             "Couldn't Load Recipes",
             isPresented: Binding(
-                get: { viewModel.errorMessage != nil },
+                get: { viewModel.isLoadErrorAlertPresented },
                 set: { isPresented in
-                    if !isPresented { viewModel.errorMessage = nil }
+                    if !isPresented { viewModel.dismissLoadErrorAlert() }
                 }
             )
         ) {
-            Button("OK") { viewModel.errorMessage = nil }
+            Button("Retry") { Task { await viewModel.loadRecipes() } }
+                .disabled(viewModel.isLoading)
+            Button("Dismiss", role: .cancel) { viewModel.dismissLoadErrorAlert() }
         } message: {
             Text(viewModel.errorMessage ?? "")
         }
@@ -103,6 +113,46 @@ struct RecipeListView: View {
         }
     }
 
+}
+
+private struct RecipeCatalogueErrorBanner: View {
+    let message: String
+    let isRetrying: Bool
+    let onRetry: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.medium) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                Text("Recipes couldn't be refreshed")
+                    .font(FridgeFitTheme.Typography.cardTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                Text(message)
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            }
+
+            Spacer(minLength: FridgeFitTheme.Spacing.small)
+
+            Button(action: onRetry) {
+                if isRetrying {
+                    ProgressView()
+                } else {
+                    Text("Retry")
+                }
+            }
+            .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+            .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+            .frame(minWidth: 44, minHeight: 44)
+            .disabled(isRetrying)
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .background(FridgeFitTheme.ColorToken.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
+        .accessibilityElement(children: .contain)
+    }
 }
 
 private struct RecipeCatalogueHeader: View {

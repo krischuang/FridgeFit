@@ -6,6 +6,43 @@
 import Combine
 import Foundation
 
+/// A mutually exclusive snapshot of the pantry's expiry states.
+///
+/// Expiry is resolved through `ExpiryService`, so Home uses the same
+/// calendar-day and timezone semantics as My Fridge. Undated and non-urgent
+/// items are fresh; expired items are never included in that cooking-safe
+/// count.
+nonisolated struct InventoryExpirySummary: Equatable {
+    let freshItems: [PantryItem]
+    let expiringItems: [PantryItem]
+    let expiredItems: [PantryItem]
+
+    init(items: [PantryItem], now: Date = .now, calendar: Calendar = .current) {
+        var fresh: [PantryItem] = []
+        var expiring: [PantryItem] = []
+        var expired: [PantryItem] = []
+
+        for item in items {
+            guard let state = ExpiryService.state(for: item.expiryDate, now: now, calendar: calendar) else {
+                fresh.append(item)
+                continue
+            }
+
+            if state.urgency == .expired {
+                expired.append(item)
+            } else if state.shouldPrioritise {
+                expiring.append(item)
+            } else {
+                fresh.append(item)
+            }
+        }
+
+        freshItems = fresh
+        expiringItems = expiring
+        expiredItems = expired
+    }
+}
+
 /// The kitchen screen's view of the pantry.
 ///
 /// ## What this replaces
@@ -157,6 +194,10 @@ final class InventoryStore: ObservableObject {
 
     func remainingItems(searchText: String = "", filter: InventoryFilter = .all) -> [PantryItem] {
         identifyExpiring.remainder(items: items, searchText: searchText, filter: filter)
+    }
+
+    func expirySummary(now: Date = .now, calendar: Calendar = .current) -> InventoryExpirySummary {
+        InventoryExpirySummary(items: items, now: now, calendar: calendar)
     }
 
     // MARK: - Writing
