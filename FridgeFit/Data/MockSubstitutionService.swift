@@ -11,7 +11,7 @@ import Foundation
 /// was asked about so tests can assert on what
 /// `GetIngredientSubstitutionsUseCase` actually sent - no network, no live
 /// provider, fully deterministic.
-final class MockSubstitutionService: SubstitutionService {
+nonisolated final class MockSubstitutionService: SubstitutionService {
     var result: Result<[RawSubstitutionSuggestion], Error>
     private(set) var requestCount = 0
     private(set) var lastRequest: SubstitutionRequest?

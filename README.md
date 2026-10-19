@@ -253,13 +253,16 @@ It **reads** the pantry but never writes to it.
 - With Kitchen, Discover and Budget there'd be six tabs, and iPhone folds
   anything past five into "More". So Profile is now a button at the top
   right of the Pantry tab.
-- Data is saved per user in Firestore, next to the pantry:
-  `users/{uid}/fundsBudget`, `fundsSpends`, `fundsWaste`,
-  `fundsItemPrices`. Stores keep a local copy for the sync reads and save
-  to Firestore in the background.
-- **`firestore.rules` was extended for these collections. Deploy it**
-  (`firebase deploy --only firestore:rules`) or the Budget tab can't load
-  or save anything on a project that enforces the committed rules.
+- Storage follows `PersistenceConfiguration.backend`, same as the pantry
+  (`FundsEnvironment.matching`):
+  - **SwiftData (default)**: `FundsBudgetEntity`, `GrocerySpendEntity`,
+    `WastedFoodCostEntity` and `ItemPriceEntity`, in the same on-device
+    store as the pantry and scoped by the same owner id.
+  - **Firebase**: `users/{uid}/fundsBudget`, `fundsSpends`, `fundsWaste`,
+    `fundsItemPrices`. These stores keep a local copy for the sync reads
+    and save to Firestore in the background. `firestore.rules` covers
+    them (and `firestore-tests` tests it), so deploy the rules before
+    switching the backend to Firebase.
 
 ## Repository layout
 

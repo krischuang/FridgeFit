@@ -38,7 +38,7 @@ final class RecipeUITests: FridgeFitUITestCase {
         openRecipesTab()
         waitForLabel(of: recipeRow("Classic Cheese Omelette"), toContain: "Almost makeable")
 
-        app.tabBars.buttons["Pantry"].tap()
+        selectTab("Pantry")
         addIngredient(name: "Cheddar", quantity: "100")
         XCTAssertTrue(pantryRow("Cheddar").waitForExistence(timeout: 5))
 

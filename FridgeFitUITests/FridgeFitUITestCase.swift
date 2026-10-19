@@ -47,8 +47,25 @@ class FridgeFitUITestCase: XCTestCase {
     }
 
     func openRecipesTab() {
-        app.tabBars.buttons["Recipes"].tap()
+        selectTab("Recipes")
         XCTAssertTrue(app.navigationBars["Recipes"].waitForExistence(timeout: 5))
+    }
+
+    // right after launch the app can still be settling (it opens the SwiftData
+    // store on startup now), and a tab tap in that window just gets lost - even
+    // twice in a row. so keep tapping until the tab really is selected.
+    func selectTab(_ name: String) {
+        let tab = app.tabBars.buttons[name]
+        XCTAssertTrue(tab.waitForExistence(timeout: 15), "\(name) tab never showed up")
+        let selected = NSPredicate(format: "isSelected == true")
+        let deadline = Date().addingTimeInterval(15)
+        while !tab.isSelected && Date() < deadline {
+            if tab.isHittable {
+                tab.tap()
+            }
+            _ = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: selected, object: tab)], timeout: 2)
+        }
+        XCTAssertTrue(tab.isSelected, "Never got onto the \(name) tab")
     }
 
     // Recipe list is lazy, so rows further down don't exist until you scroll to them.

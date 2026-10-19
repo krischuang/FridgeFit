@@ -11,7 +11,7 @@ import Foundation
 /// or no - some can succeed while others are rejected as duplicates. Each
 /// outcome is reported by name so the confirmation screen can say exactly
 /// what went in and what didn't.
-struct AddDetectedIngredientsSummary: Equatable {
+nonisolated struct AddDetectedIngredientsSummary: Equatable {
     /// Names added to the pantry.
     let addedNames: [String]
     /// Names rejected by `AddPantryItemUseCase`'s duplicate rule.
@@ -65,7 +65,7 @@ struct AddDetectedIngredientsSummary: Equatable {
 /// invent an amount nobody stated - see `ReceiptItemDraft`'s note about the
 /// old fridge-scan defaulting every row to `1 pcs`. A `nil` here is reported
 /// as a failure with a message telling the user what to fill in.
-struct ConfirmedIngredientDraft: Equatable {
+nonisolated struct ConfirmedIngredientDraft: Equatable {
     /// The name to store. Passed to `AddPantryItemUseCase` exactly as given,
     /// including when it is blank - validation belongs there, not here.
     let name: String
@@ -110,7 +110,7 @@ struct ConfirmedIngredientDraft: Equatable {
 ///
 /// This is the only path from a scan into the pantry. The scanner UI has no
 /// repository and no Firestore access of its own.
-struct AddDetectedIngredientsUseCase {
+nonisolated struct AddDetectedIngredientsUseCase {
     private let addPantryItemUseCase: AddPantryItemUseCase
     // gets told what each added item cost, when we know. optional so the
     // scanner still works fine without the Budget tab

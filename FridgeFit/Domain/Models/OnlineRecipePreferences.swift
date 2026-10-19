@@ -7,13 +7,20 @@ import Foundation
 
 /// The user's standing filters for online recipe search. Persisted locally
 /// (see `OnlineRecipePreferencesStoring`) so they survive relaunches.
-struct OnlineRecipePreferences: Hashable, Codable {
+nonisolated struct OnlineRecipePreferences: Hashable, Codable {
     var diet: DietPreference = .none
     var intolerances: Set<FoodIntolerance> = []
     /// Upper bound on total prep + cook time; `nil` for no limit.
     var maxReadyTimeMinutes: Int?
 
-    static let `default` = OnlineRecipePreferences()
+    /// `nonisolated` so it can be used as a default argument.
+    ///
+    /// `OnlineRecipePreferencesStoring` and its implementations are
+    /// `nonisolated`, and a default argument is evaluated in the caller's
+    /// isolation - so a MainActor-isolated `default` could not be the
+    /// default for `InMemoryOnlineRecipePreferencesStore.init`. Three empty
+    /// filters have no main-actor affinity to lose.
+    nonisolated static let `default` = OnlineRecipePreferences()
 
     /// The same preferences with any intolerance FridgeFit cannot assess
     /// removed.
@@ -51,7 +58,7 @@ struct OnlineRecipePreferences: Hashable, Codable {
 }
 
 /// Everything one online recipe search needs.
-struct OnlineRecipeSearchCriteria: Hashable {
+nonisolated struct OnlineRecipeSearchCriteria: Hashable {
     var pantryIngredientNames: [String]
     var preferences: OnlineRecipePreferences
     /// How many results to request. Kept modest: every result costs
@@ -60,11 +67,18 @@ struct OnlineRecipeSearchCriteria: Hashable {
 }
 
 /// What a pantry-based online search produced.
-struct OnlineRecipeSearchResult: Hashable {
+nonisolated struct OnlineRecipeSearchResult: Hashable {
     var matches: [OnlineRecipeMatch]
     /// Recipes the provider returned but the safety filter removed because
     /// they contain - or can't be verified free of - an intolerance.
     var excludedForSafetyCount: Int
+    /// Recipes removed because they're on the team blocklist or the user
+    /// hid them.
+    var excludedAsHiddenCount: Int = 0
+    /// Per recipe id: which near-expiry / expired pantry items it would use.
+    var expiryUse: [Int: OnlineRecipeExpiryUse] = [:]
+    /// Pantry items the ranking prioritised, most urgent first.
+    var urgentPantryIngredients: [UrgentIngredientUse] = []
 
     var isFromCache: Bool { matches.contains { $0.isFromCache } }
 }

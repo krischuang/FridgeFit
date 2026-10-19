@@ -43,7 +43,18 @@ struct ContentView: View {
     /// so a confirmed ingredient reaches the same pantry as everything else.
     private let pantryRepository: PantryRepository
 
-    init(dependencies: AppDependencies = .live()) {
+    /// Takes its repositories from the composition root rather than building
+    /// them.
+    ///
+    /// This initializer used to construct `FirestorePantryRepository()` and
+    /// `FirestoreInventoryEventRepository()` itself, which put the choice of
+    /// backend inside a `View`. Everything below is unchanged: each view model
+    /// is still handed `pantryRepository` by constructor injection, so the
+    /// recipe catalogue, the receipt scanner, substitutions, recommendations
+    /// and Discover all read the one pantry they always did - it is now just
+    /// whichever pantry `AppDependencies` selected.
+    // `services` is the AI side + FridgeFunds (see AppServices); UI tests pass mocks
+    init(dependencies: AppDependencies, services: AppServices = .live()) {
         let pantryRepository = dependencies.pantryRepository
         self.pantryRepository = pantryRepository
         let bundledRecipeRepository = BundledRecipeRepository()
@@ -67,7 +78,7 @@ struct ContentView: View {
 
         // FridgeFunds is built first so the add form and the receipt scanner can
         // pass prices to it
-        let fundsEnvironment = dependencies.makeFundsEnvironment(pantryRepository)
+        let fundsEnvironment = services.makeFundsEnvironment(dependencies)
         _fundsEnvironment = State(initialValue: fundsEnvironment)
 
         _pantryViewModel = StateObject(wrappedValue: PantryViewModel(
@@ -93,7 +104,7 @@ struct ContentView: View {
         _inventoryStore = StateObject(
             wrappedValue: InventoryStore(
                 pantryRepository: pantryRepository,
-                eventRepository: dependencies.inventoryEventRepository
+                eventRepository: dependencies.eventRepository
             )
         )
 
@@ -106,8 +117,8 @@ struct ContentView: View {
         // device, and the photo never reaches the language model.
         _scannerViewModel = StateObject(
             wrappedValue: ReceiptScannerViewModel(
-                textRecognizer: dependencies.textRecognizer,
-                interpreter: dependencies.interpreter,
+                textRecognizer: services.textRecognizer,
+                interpreter: services.interpreter,
                 pantryRepository: pantryRepository,
                 priceRecorder: FundsPurchasePriceRecorder(environment: fundsEnvironment)
             )
@@ -115,14 +126,14 @@ struct ContentView: View {
         _recipeSuggestionViewModel = StateObject(
             wrappedValue: RecipeSuggestionViewModel(
                 useCase: SuggestRecipesFromPantryUseCase(
-                    suggestionService: dependencies.recipeSuggestionService,
+                    suggestionService: services.recipeSuggestionService,
                     pantryRepository: pantryRepository
                 )
             )
         )
 
         let substitutionUseCase = GetIngredientSubstitutionsUseCase(
-            substitutionService: dependencies.substitutionService,
+            substitutionService: services.substitutionService,
             pantryRepository: pantryRepository,
             cache: SubstitutionCache()
         )
@@ -139,7 +150,9 @@ struct ContentView: View {
                     recipeService: OnlineRecipeFeature.makeOnlineRecipeService(),
                     pantryRepository: pantryRepository
                 ),
-                preferencesStore: UserDefaultsOnlineRecipePreferencesStore()
+                preferencesStore: UserDefaultsOnlineRecipePreferencesStore(),
+                hiddenRecipeStore: UserDefaultsHiddenOnlineRecipeStore(),
+                blockedRecipeIDs: OnlineRecipeBlocklist.bundledIDs()
             )
         )
     }
@@ -224,6 +237,12 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
-        .environmentObject(AuthViewModel())
+    ContentView(
+        dependencies: AppDependencies(
+            backend: .swiftData,
+            pantryRepository: InMemoryPantryRepository(),
+            eventRepository: InMemoryInventoryEventRepository()
+        )
+    )
+    .environmentObject(AuthViewModel())
 }

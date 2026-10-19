@@ -271,7 +271,7 @@ nonisolated enum QuantityFormatter {
 }
 
 private extension String {
-    func trimmingTrailingFractionZeros() -> String {
+    nonisolated func trimmingTrailingFractionZeros() -> String {
         var output = self
         while output.contains(".") && output.last == "0" {
             output.removeLast()

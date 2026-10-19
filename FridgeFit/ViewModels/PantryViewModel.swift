@@ -31,8 +31,15 @@ final class PantryViewModel: ObservableObject {
     // where the optional price from the add form goes (the Budget tab)
     private let priceRecorder: PurchasePriceRecording?
 
-    init(pantryRepository: PantryRepository = InMemoryPantryRepository(),
-         priceRecorder: PurchasePriceRecording? = nil) {
+    /// The repository is required rather than defaulted.
+    ///
+    /// The only sensible default would be an in-memory store, and silently
+    /// writing a user's food into a dictionary that disappears is a worse
+    /// failure than a compile error - the same reasoning `InventoryStore`
+    /// already records. It also avoids constructing a main-actor type in a
+    /// default-argument expression, which this project's
+    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` setting warns about.
+    init(pantryRepository: PantryRepository, priceRecorder: PurchasePriceRecording? = nil) {
         self.pantryRepository = pantryRepository
         self.priceRecorder = priceRecorder
         self.addPantryItemUseCase = AddPantryItemUseCase(pantryRepository: pantryRepository)

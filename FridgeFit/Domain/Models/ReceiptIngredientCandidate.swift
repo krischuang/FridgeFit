@@ -14,7 +14,7 @@ import Foundation
 /// `ScanReceiptUseCase`, never from the model.
 ///
 /// Still not a pantry item: nothing is stored until the user confirms it.
-struct ReceiptIngredientCandidate: Identifiable, Equatable {
+nonisolated struct ReceiptIngredientCandidate: Identifiable, Equatable {
     let id: UUID
     /// What the user sees, in their own terms - "Red Capsicum", not
     /// "bell_pepper".
@@ -87,7 +87,7 @@ struct ReceiptIngredientCandidate: Identifiable, Equatable {
 /// classification - but silently dropping half the receipt makes the feature
 /// impossible to debug, so the rejected items stay attached to the result
 /// and are surfaced in DEBUG diagnostics.
-struct ReceiptScanOutcome: Equatable {
+nonisolated struct ReceiptScanOutcome: Equatable {
     let pantryCandidates: [ReceiptIngredientCandidate]
     let excluded: [ReceiptIngredientCandidate]
 

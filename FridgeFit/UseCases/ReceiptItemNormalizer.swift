@@ -28,7 +28,7 @@ import Foundation
 /// 5. Resolve the quantity, with the receipt text overriding the model.
 /// 6. Collapse duplicates by canonical name.
 /// 7. Split into pantry candidates and everything else.
-struct ReceiptItemNormalizer {
+nonisolated struct ReceiptItemNormalizer {
     /// Longer than any real product name - anything past this is a
     /// sentence, not a product.
     private static let maximumNameLength = 60

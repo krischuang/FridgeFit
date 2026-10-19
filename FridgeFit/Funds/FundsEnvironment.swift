@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import SwiftData
 
 // composition root for the FridgeFunds bits - holds whatever BudgetStore /
 // PantryReading / ItemPriceStore it's running on and builds use cases from them.
@@ -62,6 +63,35 @@ extension FundsEnvironment {
             try await budgetStore.load()
             try await priceStore.load()
             try await pantry.refresh()
+        }
+    }
+
+    // on-device (the default backend): same SwiftData store and owner as the pantry
+    static func swiftData(pantryRepository: PantryRepository,
+                          context: ModelContext,
+                          ownerIDProvider: @escaping () -> String?) -> FundsEnvironment {
+        let budgetStore = SwiftDataBudgetStore(context: context, ownerIDProvider: ownerIDProvider)
+        let priceStore = SwiftDataItemPriceStore(context: context, ownerIDProvider: ownerIDProvider)
+        let pantry = FridgeFitPantryReading(repository: pantryRepository, priceStore: priceStore)
+        // SwiftData reads are live, only the pantry snapshot needs refreshing
+        return FundsEnvironment(budgetStore: budgetStore, pantry: pantry, priceStore: priceStore) {
+            try await pantry.refresh()
+        }
+    }
+
+    // FridgeFunds follows whichever backend the rest of the app is on
+    static func matching(_ dependencies: AppDependencies) -> FundsEnvironment {
+        switch dependencies.backend {
+        case .swiftData:
+            if let context = dependencies.modelContext {
+                return .swiftData(pantryRepository: dependencies.pantryRepository,
+                                  context: context,
+                                  ownerIDProvider: dependencies.ownerIDProvider)
+            }
+            // only happens for the previews/tests init, which has no store
+            return .inMemory(pantryRepository: dependencies.pantryRepository)
+        case .firebase:
+            return .firestore(pantryRepository: dependencies.pantryRepository)
         }
     }
 

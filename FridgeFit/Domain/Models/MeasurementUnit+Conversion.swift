@@ -5,7 +5,7 @@
 
 import Foundation
 
-extension MeasurementUnit {
+nonisolated extension MeasurementUnit {
     /// Converts `quantity` from `unit` into `targetUnit`, if that
     /// conversion is safe and unambiguous.
     ///

@@ -9,19 +9,8 @@ import XCTest
 // still reads the same (seeded) pantry as the rest of the app.
 final class BudgetUITests: FridgeFitUITestCase {
 
-    // first launch after install can be slow (Firebase setup etc), so give the tab
-    // bar a moment before tapping instead of assuming it's there
     private func openBudgetTab() {
-        let tab = app.tabBars.buttons["Budget"]
-        XCTAssertTrue(tab.waitForExistence(timeout: 15))
-        tab.tap()
-        // on a cold first launch the first tap sometimes just doesn't register
-        // (the app is still settling) - if we're not on Budget yet, tap again
-        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: tab)
-        if XCTWaiter().wait(for: [selected], timeout: 3) != .completed {
-            tab.tap()
-        }
-        XCTAssertTrue(tab.isSelected, "Never got onto the Budget tab")
+        selectTab("Budget")
     }
 
     private func setBudget(_ amount: String) {
@@ -103,7 +92,7 @@ final class BudgetUITests: FridgeFitUITestCase {
         openBudgetTab()
         setBudget("120")
 
-        app.tabBars.buttons["Pantry"].tap()
+        selectTab("Pantry")
         app.buttons["pantry.addButton"].tap()
         let name = app.textFields["addItem.name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))

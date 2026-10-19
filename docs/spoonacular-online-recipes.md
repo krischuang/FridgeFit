@@ -1,9 +1,9 @@
 # Spoonacular online recipes (Discover)
 
-Online recipe search, integrated but **switched off**. The code is complete
-and tested; it is not connected to a recipe provider, and it does not write
-saved recipes to Firestore. Both of those are deliberate, and each is a
-separate switch with its own prerequisite.
+Online recipe search is **switched on** (it needs a key in the gitignored
+`Secrets.xcconfig`). Saving online recipes to Firestore is still **switched
+off**, pending rules deployment. Each is a separate switch with its own
+prerequisite.
 
 The app builds, launches and is fully usable with no Spoonacular API key.
 
@@ -12,7 +12,7 @@ The app builds, launches and is fully usable with no Spoonacular API key.
 | Capability | State | Gate |
 |---|---|---|
 | Browse the Discover tab | On | — |
-| Online recipe search | **Off** | `OnlineRecipeFeature.provider` |
+| Online recipe search | **On** (needs `SPOONACULAR_API_KEY` in `Secrets.xcconfig`) | `OnlineRecipeFeature.provider` |
 | Save a recipe to the Recipes tab | **Off** | `OnlineRecipeFeature.savedRecipeStorage` |
 | Saved recipes in context-aware recommendations | Wired, inert while saving is off | `CompositeRecipeRepository` |
 | Apple Intelligence Pantry Ideas | On, unchanged | — |
@@ -50,9 +50,9 @@ behaviour.
    returns `nil` and Discover reports itself as not configured rather than
    failing. No extra error handling is needed.
 
-`OnlineRecipeFeatureTests.test_shippedProviderState_isDisabled` will fail
-once step 2 is done. That is intended: update the test deliberately, so the
-change cannot happen by accident.
+`OnlineRecipeFeatureTests.test_shippedProviderState_isEnabled` (formerly
+`..._isDisabled`) pins this value, so it can't change by accident; it was
+updated deliberately when step 2 was done.
 
 ### Before enabling, settle these
 
@@ -97,6 +97,48 @@ Until then `makeSavedRecipeRepository()` returns `nil`,
 `RecipeViewModel.canSaveRecipes` is `false`, and the detail screen shows the
 reason instead of a Save button. That ordering is the point: there is no
 user-facing save action that would fail with `permission-denied`.
+
+## Use-it-up-first ranking
+
+Discover results that use pantry items close to expiry rank first.
+
+- Urgency comes from `ExpiryService` - today, tomorrow, or within 3 days -
+  the same rule as the Kitchen tab's "Use First" and the context-aware
+  recommendations.
+- Ranking happens in the app after the search
+  (`OnlineRecipeExpiryRanking`), so it costs no extra quota. Near-expiry
+  names are also sent first in `includeIngredients`.
+- Recipes that would use an **expired** item sink to the bottom rather than
+  rising, and say so.
+- A provider ingredient name credits a pantry item only on a conservative
+  match (normalised, case-folded, last-word plural fold). No substring or
+  synonym matching, for the same reason as `OnlineIngredientName`: "coconut
+  milk" must never claim to use up the user's milk.
+- Order otherwise: most urgent item, then number of urgent items, then
+  fewest missing, then most used, then the provider's order.
+
+## Keeping broken recipes out
+
+Two layers, both checked before any ranking or safety filtering:
+
+| Layer | Scope | Where |
+|---|---|---|
+| Team blocklist | Every user | `FridgeFit/Resources/blocked_online_recipes.json` |
+| "Hide" (swipe left, or ⋯ on the detail screen) | This device | `UserDefaults`, via `HiddenOnlineRecipeStoring` |
+
+**When testing finds a broken recipe:** open it, copy the "Spoonacular recipe
+ID" shown at the bottom of the detail screen, and add an entry with a
+specific reason:
+
+```json
+{ "recipes": [
+  { "id": 716429, "reason": "steps describe a different dish" }
+] }
+```
+
+A malformed file is ignored (empty list) rather than breaking Discover; a
+unit test checks the shipped file is valid JSON. "Show hidden recipes again"
+restores only the user's own hidden recipes, never blocklisted ones.
 
 ## How it fits the existing architecture
 
