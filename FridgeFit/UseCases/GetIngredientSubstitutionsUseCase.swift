@@ -23,6 +23,15 @@ nonisolated struct GetIngredientSubstitutionsUseCase {
         self.cache = cache
     }
 
+    /// Whether substitutions can be generated right now.
+    ///
+    /// Passed straight through from the provider so the UI can show an
+    /// explained unavailable state instead of a button that always fails -
+    /// the same passthrough `ScanReceiptUseCase.availability` does.
+    var availability: AppleIntelligenceAvailability {
+        substitutionService.availability
+    }
+
     /// - Parameters:
     ///   - targetIngredient: the recipe ingredient the user needs a
     ///     substitute for.
@@ -41,6 +50,10 @@ nonisolated struct GetIngredientSubstitutionsUseCase {
             ingredientName: targetIngredient.ingredient.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
             pantrySnapshotHash: SubstitutionCache.pantrySnapshotHash(pantryItems)
         )
+        // A cache hit is served even when the provider has since become
+        // unavailable: these suggestions were really generated for this
+        // pantry, so showing them again is honest, and it means toggling
+        // Apple Intelligence off doesn't blank a screen the user is reading.
         if let cached = cache.suggestions(for: cacheKey) {
             return cached
         }
@@ -58,21 +71,39 @@ nonisolated struct GetIngredientSubstitutionsUseCase {
         )
 
         let rawSuggestions = try await substitutionService.suggestSubstitutions(for: request)
-        let result = Self.validateAndRank(rawSuggestions, pantryItems: pantryItems, dietaryRestrictions: dietaryRestrictions)
+        let result = Self.validateAndRank(
+            rawSuggestions,
+            pantryItems: pantryItems,
+            dietaryRestrictions: dietaryRestrictions,
+            targetIngredientName: targetIngredient.ingredient.name
+        )
 
         cache.store(result, for: cacheKey)
         return result
     }
 
-    /// Validates every raw candidate, drops rejected/invalid ones,
-    /// deduplicates by normalized ingredient name (first occurrence wins),
-    /// sorts pantry-backed suggestions first, and caps to 3 - "a small
-    /// list", not everything the provider returned.
+    /// Validates every raw candidate, drops rejected/invalid/irrelevant
+    /// ones, deduplicates by normalized ingredient name (first occurrence
+    /// wins), sorts pantry-backed suggestions first, and caps to 3 - "a
+    /// small list", not everything the provider returned.
+    ///
+    /// Every rule here is deterministic and applied after the fact, which is
+    /// the point: the prompt asks the model for the same things, but what
+    /// reaches the UI is decided by this function, not by whether the model
+    /// complied. That mattered with a hosted model and matters just as much
+    /// with an on-device one.
+    ///
+    /// - Parameter targetIngredientName: the ingredient a substitute was
+    ///   asked for. Used to drop the model suggesting it back as its own
+    ///   substitute - a small model's most likely irrelevant answer, and one
+    ///   that looks like a bug on screen.
     static func validateAndRank(
         _ rawSuggestions: [RawSubstitutionSuggestion],
         pantryItems: [PantryItem],
-        dietaryRestrictions: [String]
+        dietaryRestrictions: [String],
+        targetIngredientName: String
     ) -> [SubstitutionSuggestion] {
+        let normalizedTarget = normalized(targetIngredientName)
         var seenNames = Set<String>()
         var validated: [SubstitutionSuggestion] = []
 
@@ -82,7 +113,9 @@ nonisolated struct GetIngredientSubstitutionsUseCase {
             }
             guard suggestion.validationStatus != .rejected else { continue }
 
-            let normalizedName = suggestion.ingredientName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let normalizedName = normalized(suggestion.ingredientName)
+            // "Instead of cream, use cream" is not a substitution.
+            guard normalizedName != normalizedTarget else { continue }
             guard !seenNames.contains(normalizedName) else { continue }
             seenNames.insert(normalizedName)
             validated.append(suggestion)
@@ -90,6 +123,10 @@ nonisolated struct GetIngredientSubstitutionsUseCase {
 
         let sorted = validated.sorted { priority(for: $0.validationStatus) < priority(for: $1.validationStatus) }
         return Array(sorted.prefix(3))
+    }
+
+    private static func normalized(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
     private static func priority(for status: SubstitutionValidationStatus) -> Int {

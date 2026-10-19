@@ -25,7 +25,7 @@ import Foundation
 /// TURN stays optional and environment-configurable - no paid service is
 /// required to run this prototype, and nothing is deployed. Supply one by
 /// adding these to the gitignored `Secrets.xcconfig` (see
-/// `Secrets.xcconfig.example`), exactly like `OPENROUTER_API_KEY`:
+/// `Secrets.xcconfig.example`), exactly like `SPOONACULAR_API_KEY`:
 ///
 /// ```
 /// TURN_URL = turn:turn.example.com:3478
@@ -53,7 +53,7 @@ nonisolated struct WebRTCConfiguration: Equatable, Sendable {
         "stun:stun1.l.google.com:19302",
     ]
 
-    /// Loaded once at first use, like `OpenRouterConfiguration`.
+    /// Loaded once at first use, like `SpoonacularConfiguration`.
     static let current = load()
 
     static func load(bundle: Bundle = .main) -> WebRTCConfiguration {

@@ -129,15 +129,135 @@ final class GetIngredientSubstitutionsUseCaseTests: XCTestCase {
 
     func test_execute_providerFailure_propagatesError() async {
         let recipe = creamRecipe()
-        let mockService = MockSubstitutionService(result: .failure(SubstitutionServiceError.network))
+        let mockService = MockSubstitutionService(result: .failure(SubstitutionServiceError.suggestionFailed))
         let useCase = GetIngredientSubstitutionsUseCase(substitutionService: mockService, pantryRepository: InMemoryPantryRepository(), cache: SubstitutionCache())
 
         do {
             _ = try await useCase.execute(recipe: recipe, targetIngredient: recipe.ingredients[0], feasibility: feasibility(for: recipe))
-            XCTFail("Expected network error to propagate")
+            XCTFail("Expected provider error to propagate")
         } catch {
-            XCTAssertEqual(error as? SubstitutionServiceError, .network)
+            XCTAssertEqual(error as? SubstitutionServiceError, .suggestionFailed)
         }
+    }
+
+    func test_execute_modelUnavailable_propagatesUnavailableReason() async {
+        let recipe = creamRecipe()
+        let mockService = MockSubstitutionService(
+            result: .failure(SubstitutionServiceError.substitutionUnavailable(.deviceNotSupported)),
+            availability: .deviceNotSupported
+        )
+        let useCase = GetIngredientSubstitutionsUseCase(substitutionService: mockService, pantryRepository: InMemoryPantryRepository(), cache: SubstitutionCache())
+
+        XCTAssertEqual(useCase.availability, .deviceNotSupported)
+
+        do {
+            _ = try await useCase.execute(recipe: recipe, targetIngredient: recipe.ingredients[0], feasibility: feasibility(for: recipe))
+            XCTFail("Expected substitutionUnavailable to propagate")
+        } catch {
+            XCTAssertEqual(error as? SubstitutionServiceError, .substitutionUnavailable(.deviceNotSupported))
+        }
+    }
+
+    /// `async` even though nothing is awaited - see the note in
+    /// `RecommendationViewModelTests`: a synchronous test method on a
+    /// `@MainActor` class aborts under this project's
+    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` setting.
+    func test_availability_isReadFromTheProvider() async {
+        let mockService = MockSubstitutionService(availability: .modelNotReady)
+        let useCase = GetIngredientSubstitutionsUseCase(substitutionService: mockService, pantryRepository: InMemoryPantryRepository(), cache: SubstitutionCache())
+
+        XCTAssertEqual(useCase.availability, .modelNotReady)
+
+        // Read fresh every time: the user can turn Apple Intelligence on
+        // while the recipe screen is open.
+        mockService.availability = .available
+        XCTAssertEqual(useCase.availability, .available)
+    }
+
+    func test_execute_cancelledProvider_propagatesCancellation() async {
+        let recipe = creamRecipe()
+        let mockService = MockSubstitutionService(result: .failure(CancellationError()))
+        let useCase = GetIngredientSubstitutionsUseCase(substitutionService: mockService, pantryRepository: InMemoryPantryRepository(), cache: SubstitutionCache())
+
+        do {
+            _ = try await useCase.execute(recipe: recipe, targetIngredient: recipe.ingredients[0], feasibility: feasibility(for: recipe))
+            XCTFail("Expected cancellation to propagate")
+        } catch is CancellationError {
+            // Expected - the use case must not convert this into a result.
+        } catch {
+            XCTFail("Expected CancellationError, got \(error)")
+        }
+    }
+
+    // MARK: - Irrelevant output
+
+    /// The most likely irrelevant answer from a small on-device model, and
+    /// one that looks like a bug on screen: "instead of cream, use cream".
+    /// Dropped deterministically rather than trusted to the prompt.
+    func test_execute_suggestionEchoingTheOriginalIngredient_isDropped() async throws {
+        let recipe = creamRecipe()
+        let rawSuggestions = [
+            RawSubstitutionSuggestion(ingredientName: "  CREAM ", suggestedQuantity: nil, suggestedUnit: nil, confidence: nil, explanation: "Use cream.", limitations: nil),
+            RawSubstitutionSuggestion(ingredientName: "Greek Yogurt", suggestedQuantity: nil, suggestedUnit: nil, confidence: nil, explanation: "Creamy enough.", limitations: nil),
+        ]
+        let mockService = MockSubstitutionService(result: .success(rawSuggestions))
+        let useCase = GetIngredientSubstitutionsUseCase(substitutionService: mockService, pantryRepository: InMemoryPantryRepository(), cache: SubstitutionCache())
+
+        let result = try await useCase.execute(recipe: recipe, targetIngredient: recipe.ingredients[0], feasibility: feasibility(for: recipe))
+
+        XCTAssertEqual(result.map(\.ingredientName), ["Greek Yogurt"])
+    }
+
+    /// A substitute that merely *contains* the original's name is still a
+    /// different ingredient - "sour cream" for "cream" is a real answer.
+    func test_execute_suggestionContainingTheOriginalName_isKept() async throws {
+        let recipe = creamRecipe()
+        let raw = RawSubstitutionSuggestion(ingredientName: "Sour cream", suggestedQuantity: nil, suggestedUnit: nil, confidence: nil, explanation: "Tangier, similar body.", limitations: nil)
+        let mockService = MockSubstitutionService(result: .success([raw]))
+        let useCase = GetIngredientSubstitutionsUseCase(substitutionService: mockService, pantryRepository: InMemoryPantryRepository(), cache: SubstitutionCache())
+
+        let result = try await useCase.execute(recipe: recipe, targetIngredient: recipe.ingredients[0], feasibility: feasibility(for: recipe))
+
+        XCTAssertEqual(result.map(\.ingredientName), ["Sour cream"])
+    }
+
+    // MARK: - Dietary exclusions are enforced in code, not by the prompt
+
+    /// The prompt asks the model to respect restrictions; this is what makes
+    /// it true. A model that ignores the instruction still can't put the
+    /// excluded ingredient on screen.
+    func test_execute_excludedIngredient_isRejectedEvenWhenTheModelReturnsIt() async throws {
+        let recipe = creamRecipe()
+        let rawSuggestions = [
+            RawSubstitutionSuggestion(ingredientName: "Peanut cream", suggestedQuantity: nil, suggestedUnit: nil, confidence: nil, explanation: "Rich and creamy.", limitations: nil),
+            RawSubstitutionSuggestion(ingredientName: "Oat cream", suggestedQuantity: nil, suggestedUnit: nil, confidence: nil, explanation: "Neutral and creamy.", limitations: nil),
+        ]
+        let mockService = MockSubstitutionService(result: .success(rawSuggestions))
+        let useCase = GetIngredientSubstitutionsUseCase(substitutionService: mockService, pantryRepository: InMemoryPantryRepository(), cache: SubstitutionCache())
+
+        let result = try await useCase.execute(
+            recipe: recipe,
+            targetIngredient: recipe.ingredients[0],
+            feasibility: feasibility(for: recipe),
+            dietaryRestrictions: ["Peanut"]
+        )
+
+        XCTAssertEqual(result.map(\.ingredientName), ["Oat cream"])
+    }
+
+    func test_execute_restrictionsArePassedToTheProvider_asWellAsEnforcedAfterwards() async throws {
+        let recipe = creamRecipe()
+        let mockService = MockSubstitutionService(result: .success([]))
+        let useCase = GetIngredientSubstitutionsUseCase(substitutionService: mockService, pantryRepository: InMemoryPantryRepository(), cache: SubstitutionCache())
+
+        _ = try await useCase.execute(
+            recipe: recipe,
+            targetIngredient: recipe.ingredients[0],
+            feasibility: feasibility(for: recipe),
+            dietaryRestrictions: ["peanut"]
+        )
+
+        XCTAssertEqual(try XCTUnwrap(mockService.lastRequest).dietaryRestrictions, ["peanut"])
     }
 
     // MARK: - Caching

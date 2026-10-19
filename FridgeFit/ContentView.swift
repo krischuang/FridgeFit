@@ -116,11 +116,13 @@ struct ContentView: View {
             )
         )
 
-        let substitutionService: SubstitutionService = OpenRouterConfiguration.loadFromInfoPlist()
-            .map { OpenRouterSubstitutionService(configuration: $0) }
-            ?? UnconfiguredSubstitutionService()
+        // Ingredient substitutions are the third on-device feature, and are
+        // wired the same unconditional way for the same reason: an
+        // unavailable model is an explained UI state, not a failed launch.
+        // There is no API key to read any more - the recipe, the ingredient
+        // and the pantry list never leave the device.
         let substitutionUseCase = GetIngredientSubstitutionsUseCase(
-            substitutionService: substitutionService,
+            substitutionService: AppleSubstitutionService(),
             pantryRepository: pantryRepository,
             cache: SubstitutionCache()
         )
