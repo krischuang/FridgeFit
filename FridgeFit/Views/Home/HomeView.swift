@@ -38,8 +38,7 @@ struct HomeView: View {
                 } else {
                     HomeHeroSection()
                     HomeInventorySummary(
-                        freshCount: freshItems.count,
-                        expiringItems: expiringItems,
+                        summary: inventory.expirySummary(),
                         onSeeItems: onOpenMyFridge
                     )
                     HomeLifestyleSection(
@@ -110,20 +109,6 @@ struct HomeView: View {
         }
     }
 
-    private var expiringItems: [PantryItem] {
-        inventory.items.filter { item in
-            guard let state = item.expiryState else { return false }
-            return state.shouldPrioritise && (state.daysUntilExpiry ?? 0) >= 0
-        }
-    }
-
-    private var freshItems: [PantryItem] {
-        inventory.items.filter { item in
-            guard let state = item.expiryState else { return true }
-            return !state.shouldPrioritise && (state.daysUntilExpiry ?? 0) >= 0
-        }
-    }
-
     private func refresh() async {
         await inventory.load()
         guard !inventory.items.isEmpty else { return }
@@ -186,24 +171,27 @@ private struct HomeHeroSection: View {
 }
 
 private struct HomeInventorySummary: View {
-    let freshCount: Int
-    let expiringItems: [PantryItem]
+    let summary: InventoryExpirySummary
     let onSeeItems: () -> Void
 
     var body: some View {
         VStack(spacing: FridgeFitTheme.Spacing.medium) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: FridgeFitTheme.Spacing.medium) {
-                    metricCard(value: freshCount, title: "Fresh ingredients", systemImage: "cabinet.fill", tone: .fresh)
-                    metricCard(value: expiringItems.count, title: "Expiring soon", systemImage: "clock.fill", tone: .expiring)
+                    metricCard(value: summary.freshItems.count, title: "Fresh ingredients", systemImage: "cabinet.fill", tone: .fresh)
+                    metricCard(value: summary.expiringItems.count, title: "Expiring soon", systemImage: "clock.fill", tone: .expiring)
+                    metricCard(value: summary.expiredItems.count, title: "Expired", systemImage: "exclamationmark.triangle.fill", tone: .expired)
                 }
                 VStack(spacing: FridgeFitTheme.Spacing.medium) {
-                    metricCard(value: freshCount, title: "Fresh ingredients", systemImage: "cabinet.fill", tone: .fresh)
-                    metricCard(value: expiringItems.count, title: "Expiring soon", systemImage: "clock.fill", tone: .expiring)
+                    metricCard(value: summary.freshItems.count, title: "Fresh ingredients", systemImage: "cabinet.fill", tone: .fresh)
+                    metricCard(value: summary.expiringItems.count, title: "Expiring soon", systemImage: "clock.fill", tone: .expiring)
+                    metricCard(value: summary.expiredItems.count, title: "Expired", systemImage: "exclamationmark.triangle.fill", tone: .expired)
                 }
             }
 
-            if !expiringItems.isEmpty {
+            expiredStatus
+
+            if !summary.expiringItems.isEmpty {
                 HStack(spacing: FridgeFitTheme.Spacing.small) {
                     Circle()
                         .fill(FridgeFitTheme.ColorToken.accent)
@@ -211,11 +199,11 @@ private struct HomeInventorySummary: View {
                         .accessibilityHidden(true)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(expiringItems.prefix(3).map(\.name).formatted())
+                        Text(summary.expiringItems.prefix(3).map(\.name).formatted())
                             .font(FridgeFitTheme.Typography.cardTitle)
                             .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
                             .lineLimit(2)
-                        Text(expiringItems.first?.expiryState?.title ?? "Use soon")
+                        Text(summary.expiringItems.first?.expiryState?.title ?? "Use soon")
                             .font(FridgeFitTheme.Typography.caption)
                             .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     }
@@ -233,6 +221,44 @@ private struct HomeInventorySummary: View {
         }
     }
 
+    private var expiredStatus: some View {
+        HStack(spacing: FridgeFitTheme.Spacing.small) {
+            Image(systemName: summary.expiredItems.isEmpty ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(summary.expiredItems.isEmpty ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.danger)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(summary.expiredItems.isEmpty ? "No expired ingredients" : "Expired ingredients need attention")
+                    .font(FridgeFitTheme.Typography.cardTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                if !summary.expiredItems.isEmpty {
+                    Text(summary.expiredItems.prefix(3).map(\.name).formatted())
+                        .font(FridgeFitTheme.Typography.caption)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer(minLength: FridgeFitTheme.Spacing.small)
+
+            if !summary.expiredItems.isEmpty {
+                Button("Review", action: onSeeItems)
+                    .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+                    .frame(minHeight: 44)
+                    .accessibilityHint("Opens My Fridge, where expired items appear first")
+            }
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .background(
+            summary.expiredItems.isEmpty
+                ? FridgeFitTheme.ColorToken.successBackground
+                : FridgeFitTheme.ColorToken.accent.opacity(0.14),
+            in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous)
+        )
+        .accessibilityElement(children: .contain)
+    }
+
     private func metricCard(
         value: Int,
         title: LocalizedStringKey,
@@ -247,6 +273,7 @@ private struct HomeMetricCard: View {
     enum Tone {
         case fresh
         case expiring
+        case expired
     }
 
     let value: Int
@@ -283,15 +310,27 @@ private struct HomeMetricCard: View {
     }
 
     private var background: Color {
-        tone == .fresh ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.warningBackground
+        switch tone {
+        case .fresh: FridgeFitTheme.ColorToken.card
+        case .expiring: FridgeFitTheme.ColorToken.warningBackground
+        case .expired: FridgeFitTheme.ColorToken.accent.opacity(0.14)
+        }
     }
 
     private var foreground: Color {
-        tone == .fresh ? FridgeFitTheme.ColorToken.textPrimary : FridgeFitTheme.ColorToken.warningText
+        switch tone {
+        case .fresh: FridgeFitTheme.ColorToken.textPrimary
+        case .expiring: FridgeFitTheme.ColorToken.warningText
+        case .expired: FridgeFitTheme.ColorToken.danger
+        }
     }
 
     private var secondaryForeground: Color {
-        tone == .fresh ? FridgeFitTheme.ColorToken.textSecondary : FridgeFitTheme.ColorToken.warningText
+        switch tone {
+        case .fresh: FridgeFitTheme.ColorToken.textSecondary
+        case .expiring: FridgeFitTheme.ColorToken.warningText
+        case .expired: FridgeFitTheme.ColorToken.danger
+        }
     }
 
     private var iconBackground: Color {
