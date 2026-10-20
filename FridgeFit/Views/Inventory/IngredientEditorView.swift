@@ -286,7 +286,7 @@ struct IngredientEditorView: View {
                 DatePicker("Use by", selection: $expiryDate, displayedComponents: .date)
                     .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
                 if let state = ExpiryService.state(for: expiryDate), state.shouldPrioritise {
-                    Label("This item is (state.title.lowercased()) and will be prioritised in recipe recommendations.", systemImage: "clock.fill")
+                    Label("This item is \(state.title.lowercased()) and will be prioritised in recipe recommendations.", systemImage: "clock.fill")
                         .font(FridgeFitTheme.Typography.caption)
                         .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
                         .padding(FridgeFitTheme.Spacing.small)
