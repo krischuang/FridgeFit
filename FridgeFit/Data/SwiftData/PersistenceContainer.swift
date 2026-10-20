@@ -61,6 +61,8 @@ final class PersistenceContainer {
     static let schema = Schema([
         PantryItemEntity.self,
         InventoryEventEntity.self,
+        SavedRecipeEntity.self,
+        SavedRecipeIngredientEntity.self,
     ])
 
     let modelContainer: ModelContainer

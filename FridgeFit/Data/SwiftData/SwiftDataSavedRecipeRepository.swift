@@ -1,0 +1,137 @@
+//
+//  SwiftDataSavedRecipeRepository.swift
+//  FridgeFit
+//
+
+import Foundation
+import SwiftData
+
+/// SwiftData-backed `SavedRecipeRepository`: recipes saved from Discover live
+/// in the user's on-device store, scoped by `ownerID` like the pantry.
+///
+/// ## Why two types
+///
+/// `SavedRecipeRepository` (and `RecipeRepository`, which
+/// `CompositeRecipeRepository` calls through) are `nonisolated`, but the
+/// store is the container's `mainContext`, which is not `Sendable` and must
+/// stay on the main actor - see `PersistenceContainer`. So the context lives
+/// in `SwiftDataSavedRecipeStore` (`@MainActor`), and this nonisolated
+/// wrapper forwards to it; each `await` hops to the main actor. Same one
+/// context as the pantry and event repositories.
+nonisolated final class SwiftDataSavedRecipeRepository: SavedRecipeRepository {
+    private let store: SwiftDataSavedRecipeStore
+
+    init(store: SwiftDataSavedRecipeStore) {
+        self.store = store
+    }
+
+    func fetchAll() async throws -> [Recipe] {
+        try await store.fetchAll()
+    }
+
+    func save(_ recipe: Recipe, sourceRecipeID: Int) async throws {
+        try await store.save(recipe, sourceRecipeID: sourceRecipeID)
+    }
+
+    func remove(id: UUID) async throws {
+        try await store.remove(id: id)
+    }
+}
+
+/// The main-actor half of `SwiftDataSavedRecipeRepository`.
+///
+/// Rules:
+/// - No signed-in user → `SaveOnlineRecipeError.notAuthenticated`; nothing
+///   is read or written without an owner.
+/// - Saving an already-saved recipe updates that row in place and replaces
+///   its ingredient lines, so there is never a duplicate.
+/// - Newest save first.
+/// - Removing a recipe that isn't saved is not an error.
+/// - Store failures surface as `SaveOnlineRecipeError` (`loadFailed` /
+///   `saveFailed` / `removeFailed`), never a raw SwiftData error.
+@MainActor
+final class SwiftDataSavedRecipeStore {
+    private let context: ModelContext
+    private let ownerIDProvider: () -> String?
+    private let now: () -> Date
+
+    init(context: ModelContext, ownerIDProvider: @escaping () -> String?, now: @escaping () -> Date = { Date() }) {
+        self.context = context
+        self.ownerIDProvider = ownerIDProvider
+        self.now = now
+    }
+
+    func fetchAll() throws -> [Recipe] {
+        let ownerID = try requireOwnerID()
+        let descriptor = FetchDescriptor<SavedRecipeEntity>(
+            predicate: #Predicate { $0.ownerID == ownerID },
+            sortBy: [SortDescriptor(\.savedAt, order: .reverse)]
+        )
+        do {
+            return try context.fetch(descriptor).map(SavedRecipeMapper.toDomain)
+        } catch {
+            throw SaveOnlineRecipeError.loadFailed
+        }
+    }
+
+    func save(_ recipe: Recipe, sourceRecipeID: Int) throws {
+        let ownerID = try requireOwnerID()
+        do {
+            let target: SavedRecipeEntity
+            if let existing = try entity(id: recipe.id, ownerID: ownerID) {
+                SavedRecipeMapper.apply(recipe, sourceRecipeID: sourceRecipeID, to: existing)
+                existing.savedAt = now()
+                for line in existing.ingredients {
+                    context.delete(line)
+                }
+                existing.ingredients = []
+                target = existing
+            } else {
+                target = SavedRecipeMapper.makeEntity(recipe, ownerID: ownerID, sourceRecipeID: sourceRecipeID, savedAt: now())
+                context.insert(target)
+            }
+
+            let lines = SavedRecipeMapper.makeLines(for: recipe)
+            for line in lines {
+                context.insert(line)
+            }
+            target.ingredients = lines
+            try context.save()
+        } catch let error as SaveOnlineRecipeError {
+            context.rollback()
+            throw error
+        } catch {
+            context.rollback()
+            throw SaveOnlineRecipeError.saveFailed
+        }
+    }
+
+    func remove(id: UUID) throws {
+        let ownerID = try requireOwnerID()
+        do {
+            guard let existing = try entity(id: id, ownerID: ownerID) else { return }
+            context.delete(existing)
+            try context.save()
+        } catch {
+            context.rollback()
+            throw SaveOnlineRecipeError.removeFailed
+        }
+    }
+
+    // MARK: - Plumbing
+
+    private func requireOwnerID() throws -> String {
+        guard let ownerID = ownerIDProvider(), !ownerID.isEmpty else {
+            throw SaveOnlineRecipeError.notAuthenticated
+        }
+        return ownerID
+    }
+
+    private func entity(id: UUID, ownerID: String) throws -> SavedRecipeEntity? {
+        var descriptor = FetchDescriptor<SavedRecipeEntity>(
+            predicate: #Predicate { $0.recipeID == id && $0.ownerID == ownerID }
+        )
+        descriptor.fetchLimit = 1
+        return try context.fetch(descriptor).first
+    }
+}
