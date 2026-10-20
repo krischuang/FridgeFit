@@ -13,8 +13,8 @@ The app builds, launches and is fully usable with no Spoonacular API key.
 |---|---|---|
 | Browse the Discover tab | On | — |
 | Online recipe search | **On** (needs `SPOONACULAR_API_KEY` in `Secrets.xcconfig`) | `OnlineRecipeFeature.provider` |
-| Save a recipe to the Recipes tab | **Off** | `OnlineRecipeFeature.savedRecipeStorage` |
-| Saved recipes in context-aware recommendations | Wired, inert while saving is off | `CompositeRecipeRepository` |
+| Save a recipe to the Recipes tab | **On** in SwiftData mode (on-device store); Off in Firebase mode | `AppDependencies` / `OnlineRecipeFeature.savedRecipeStorage` (Firebase only) |
+| Saved recipes in context-aware recommendations | On with saving | `CompositeRecipeRepository` |
 | Apple Intelligence Pantry Ideas | On, unchanged | — |
 
 While the provider is off, no `SpoonacularRecipeService` is ever
@@ -79,7 +79,21 @@ updated deliberately when step 2 was done.
   ("Recipe data powered by Spoonacular") is present on Discover, the recipe
   detail screen, and every saved recipe's summary.
 
-## Enabling saved recipes later
+## Saved recipes (SwiftData mode)
+
+Saving copies the recipe into the user's on-device store
+(`SavedRecipeEntity` + `SavedRecipeIngredientEntity`, in the same
+`PersistenceContainer` as the pantry), scoped by `ownerID`. Opening,
+ranking or cooking a saved recipe reads that store only - **no provider
+call and no quota is spent**. Saving the same recipe again updates the one
+row; removing it deletes its ingredient lines too.
+
+Licensing note: Spoonacular's free-plan terms limit caching of API data
+(see "Before enabling, settle these" above). Storing user-saved recipes on
+the device is a deliberate product decision for this project and should be
+revisited before any public release.
+
+## Enabling saved recipes later (Firebase mode)
 
 Separate switch, separate prerequisite.
 

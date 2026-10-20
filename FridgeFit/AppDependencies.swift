@@ -43,6 +43,12 @@ final class AppDependencies {
 
     let pantryRepository: any PantryRepository
     let eventRepository: any InventoryEventRepository
+    /// Recipes saved from Discover. In SwiftData mode they live in the same
+    /// on-device store as the pantry, so a saved recipe is read back without
+    /// calling the recipe provider. In Firebase mode this follows
+    /// `OnlineRecipeFeature.savedRecipeStorage` and is `nil` until the
+    /// Firestore rules are deployed. `nil` means saving isn't offered.
+    let savedRecipeRepository: (any SavedRecipeRepository)?
 
     /// Retained for the lifetime of the app in SwiftData mode, `nil` in
     /// Firebase mode.
@@ -85,11 +91,18 @@ final class AppDependencies {
                 context: container.mainContext,
                 ownerIDProvider: ownerIDProvider
             )
+            savedRecipeRepository = SwiftDataSavedRecipeRepository(
+                store: SwiftDataSavedRecipeStore(
+                    context: container.mainContext,
+                    ownerIDProvider: ownerIDProvider
+                )
+            )
 
         case .firebase:
             persistenceContainer = nil
             pantryRepository = FirestorePantryRepository()
             eventRepository = FirestoreInventoryEventRepository()
+            savedRecipeRepository = OnlineRecipeFeature.makeSavedRecipeRepository()
         }
     }
 
@@ -97,11 +110,13 @@ final class AppDependencies {
     init(
         backend: PersistenceBackend,
         pantryRepository: any PantryRepository,
-        eventRepository: any InventoryEventRepository
+        eventRepository: any InventoryEventRepository,
+        savedRecipeRepository: (any SavedRecipeRepository)? = nil
     ) {
         self.backend = backend
         self.pantryRepository = pantryRepository
         self.eventRepository = eventRepository
+        self.savedRecipeRepository = savedRecipeRepository
         self.persistenceContainer = nil
     }
 }

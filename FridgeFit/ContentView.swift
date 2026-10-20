@@ -52,12 +52,12 @@ struct ContentView: View {
         self.pantryRepository = pantryRepository
         let bundledRecipeRepository = BundledRecipeRepository()
 
-        // `nil` while `OnlineRecipeFeature.savedRecipeStorage` is gated off,
-        // which is the state until the saved-recipe Firestore rules are
-        // deployed. A `nil` store means `canSaveRecipes` is false, so the
-        // save action is never offered - rather than offered and then
-        // failing with permission-denied.
-        let savedRecipeRepository = OnlineRecipeFeature.makeSavedRecipeRepository()
+        // Chosen by `AppDependencies` with the rest of the persistence graph:
+        // the on-device SwiftData store in SwiftData mode, or the gated
+        // Firestore store in Firebase mode. `nil` means `canSaveRecipes` is
+        // false, so the save action is never offered rather than offered
+        // and then failing.
+        let savedRecipeRepository = dependencies.savedRecipeRepository
 
         // One catalogue for browsing and for ranking. With saving gated off
         // this behaves exactly like `bundledRecipeRepository` alone; once
