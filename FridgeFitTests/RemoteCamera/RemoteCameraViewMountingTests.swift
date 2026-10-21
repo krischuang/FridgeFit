@@ -151,7 +151,19 @@ final class RemoteCameraViewMountingTests: XCTestCase {
     }
 
     func test_profileViewMountsWithTheConnectedDevicesLink() async throws {
-        try await mount(NavigationStack { ProfileView().environmentObject(AuthViewModel()) })
+        // Profile is handed the kitchen's store, the way `ContentView` hands
+        // it the one `AppDependencies` built. In-memory here so mounting the
+        // screen does not touch the device's real store.
+        let inventory = InventoryStore(
+            pantryRepository: InMemoryPantryRepository(),
+            eventRepository: InMemoryInventoryEventRepository()
+        )
+
+        try await mount(
+            NavigationStack {
+                ProfileView(inventory: inventory).environmentObject(AuthViewModel())
+            }
+        )
 
         // Reaching here means the entry point into the prototype builds; the
         // link's destination is constructed lazily when tapped.

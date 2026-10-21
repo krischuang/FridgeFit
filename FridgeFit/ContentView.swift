@@ -249,17 +249,26 @@ struct ContentView: View {
             .tabItem { Label("Discover", systemImage: "globe") }
             .tag(AppTab.discover)
 
+            // Handed the same `inventoryStore` as Home and My Fridge, so
+            // Profile's Kitchen Impact counts the activity log those two
+            // screens write to. It used to build its own Firestore event
+            // repository, which meant it read a different store from the
+            // rest of the app as soon as `AppDependencies` selected
+            // SwiftData.
             NavigationStack {
-                ProfileView()
+                ProfileView(inventory: inventoryStore)
             }
             .tabItem { Label("Profile", systemImage: "person.crop.circle") }
             .tag(AppTab.profile)
         }
         // Reaches the remote-camera review sheet, four levels down, without
-        // adding a pantry parameter to ProfileView, ConnectedDevicesView and
-        // RemoteCameraView - none of which have anything to do with the
-        // pantry. Same repository instance as every other tab, so a confirmed
-        // ingredient lands in the same place and under the same auth.
+        // adding a pantry parameter to ConnectedDevicesView and
+        // RemoteCameraView - neither of which writes to the pantry itself,
+        // and neither of which should gain a parameter to serve one leaf.
+        // (Profile takes `inventoryStore` for its own Kitchen Impact
+        // section, not to pass anything through.) Same repository instance
+        // as every other tab, so a confirmed ingredient lands in the same
+        // place and under the same auth.
         .environment(\.pantryRepository, pantryRepository)
     }
 }
