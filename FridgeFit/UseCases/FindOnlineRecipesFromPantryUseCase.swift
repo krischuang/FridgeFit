@@ -84,6 +84,54 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
             throw OnlineRecipeSearchError.providerUnavailable
         }
 
+        return try evaluate(
+            providerMatches: providerMatches,
+            pantry: pantry,
+            preferences: effectivePreferences,
+            excluding: excludedRecipeIDs
+        )
+    }
+
+    /// Re-applies the pantry to results already fetched - **no network
+    /// call, no API quota**. Used when the user returns to Discover after
+    /// changing their pantry, so "matched" / "missing", the safety filter
+    /// and the expiry ranking reflect the pantry as it is now.
+    ///
+    /// - Parameter providerMatches: the provider's original results
+    ///   (`OnlineRecipeSearchResult.providerMatches`), not the already
+    ///   reconciled ones, so an item removed from the pantry is counted as
+    ///   missing again.
+    func reevaluate(
+        providerMatches: [OnlineRecipeMatch],
+        preferences: OnlineRecipePreferences,
+        excluding excludedRecipeIDs: Set<Int> = []
+    ) async throws -> OnlineRecipeSearchResult {
+        let pantry: [PantryItem]
+        do {
+            pantry = try await pantryRepository.fetchAll()
+        } catch {
+            throw OnlineRecipeSearchError.pantryUnavailable
+        }
+        return try evaluate(
+            providerMatches: providerMatches,
+            pantry: pantry,
+            preferences: preferences.sanitized(),
+            excluding: excludedRecipeIDs
+        )
+    }
+
+    /// Everything after the network: reconcile with the pantry, drop hidden
+    /// and unsafe recipes, rank. Shared by `execute` and `reevaluate` so the
+    /// two can never disagree.
+    private func evaluate(
+        providerMatches: [OnlineRecipeMatch],
+        pantry: [PantryItem],
+        preferences effectivePreferences: OnlineRecipePreferences,
+        excluding excludedRecipeIDs: Set<Int>
+    ) throws -> OnlineRecipeSearchResult {
+        let currentDate = now()
+        let urgentItems = OnlineRecipeExpiryRanking.urgentPantryItems(in: pantry, now: currentDate, calendar: calendar)
+
         // Have/missing comes from the user's real pantry, not from the
         // provider's "not missing" (it assumes staples like sugar are owned).
         // Done before ranking so counts, order and badges all agree.
@@ -105,7 +153,8 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
             excludedForSafetyCount: visible.count - safe.count,
             excludedAsHiddenCount: matches.count - visible.count,
             expiryUse: expiryUse,
-            urgentPantryIngredients: urgentItems
+            urgentPantryIngredients: urgentItems,
+            providerMatches: providerMatches
         )
     }
 

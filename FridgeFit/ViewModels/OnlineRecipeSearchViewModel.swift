@@ -39,6 +39,9 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
     /// Team blocklist shipped in the bundle (`OnlineRecipeBlocklist`).
     private let blockedRecipeIDs: Set<Int>
     private var currentToken = 0
+    /// The provider's raw results from the last successful search, so the
+    /// pantry can be re-applied without another API call.
+    private var providerMatches: [OnlineRecipeMatch] = []
 
     init(
         useCase: FindOnlineRecipesFromPantryUseCase,
@@ -88,17 +91,14 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
                 excluding: blockedRecipeIDs.union(hiddenRecipeIDs)
             )
             guard token == currentToken else { return }
-            matches = result.matches
-            excludedForSafetyCount = result.excludedForSafetyCount
-            excludedAsHiddenCount = result.excludedAsHiddenCount
-            isShowingCachedResults = result.isFromCache
-            expiryUseByRecipeID = result.expiryUse
-            urgentPantryIngredients = result.urgentPantryIngredients
+            providerMatches = result.providerMatches
+            apply(result)
             hasSearched = true
         } catch is CancellationError {
             return
         } catch {
             guard token == currentToken else { return }
+            providerMatches = []
             matches = []
             excludedForSafetyCount = 0
             excludedAsHiddenCount = 0
@@ -128,6 +128,37 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
         urgentPantryIngredients = []
         hasSearched = false
         errorMessage = nil
+    }
+
+    /// Re-checks the current results against the pantry as it is now -
+    /// **no API call**. Call when Discover reappears (e.g. after the user
+    /// added food in My Fridge) so "matched" / "missing", the expiry badges
+    /// and the order are up to date without pressing refresh.
+    func refreshPantryMatch() async {
+        guard !isLoading, !providerMatches.isEmpty else { return }
+        let token = currentToken
+        do {
+            let result = try await useCase.reevaluate(
+                providerMatches: providerMatches,
+                preferences: preferences,
+                excluding: blockedRecipeIDs.union(hiddenRecipeIDs)
+            )
+            // A real search started meanwhile - its results win.
+            guard token == currentToken, !isLoading else { return }
+            apply(result)
+        } catch {
+            // Keep what is on screen; a failed local re-check is not worth
+            // replacing the list with an error.
+        }
+    }
+
+    private func apply(_ result: OnlineRecipeSearchResult) {
+        matches = result.matches
+        excludedForSafetyCount = result.excludedForSafetyCount
+        excludedAsHiddenCount = result.excludedAsHiddenCount
+        isShowingCachedResults = result.isFromCache
+        expiryUseByRecipeID = result.expiryUse
+        urgentPantryIngredients = result.urgentPantryIngredients
     }
 
     /// Persists supported filters and immediately requests results that match

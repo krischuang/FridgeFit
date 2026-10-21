@@ -59,13 +59,20 @@ struct DiscoverRecipesView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .task { await recipeViewModel.loadRecipesIfNeeded() }
-        .navigationDestination(for: OnlineRecipeMatch.self) { match in
+        // Coming back from My Fridge: re-check have/missing against the
+        // current pantry locally (no API call, no quota).
+        .onAppear { Task { await viewModel.refreshPantryMatch() } }
+        .navigationDestination(for: OnlineRecipeMatch.self) { pushed in
+            // The pushed value is a snapshot; show the latest version of the
+            // same recipe so an open detail screen follows pantry changes.
+            let match = viewModel.matches.first { $0.id == pushed.id } ?? pushed
             OnlineRecipeDetailView(
                 match: match,
                 intolerances: viewModel.preferences.intolerances,
                 expiryUse: viewModel.expiryUse(for: match),
                 recipeViewModel: recipeViewModel
             )
+            .onAppear { Task { await viewModel.refreshPantryMatch() } }
         }
         .sheet(isPresented: $isShowingFilters) {
             NavigationStack {
