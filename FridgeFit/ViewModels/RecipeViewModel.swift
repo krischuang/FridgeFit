@@ -28,6 +28,10 @@ final class RecipeViewModel: ObservableObject {
     @Published private(set) var savedRecipeIDs: Set<UUID> = []
     /// Online recipe ids currently being saved, for per-button spinners.
     @Published private(set) var savingOnlineRecipeIDs: Set<Int> = []
+    /// A saved-collection fetch failure remains available to the inline retry
+    /// UI until a later fetch succeeds. It is intentionally separate from
+    /// save/remove errors, whose alert can be dismissed without losing retry.
+    @Published private(set) var savedRecipeLoadErrorMessage: String?
     /// Last save/remove failure. Separate from `errorMessage` so it never
     /// shows up as "Couldn't Load Recipes".
     @Published var savedRecipeErrorMessage: String?
@@ -93,11 +97,14 @@ final class RecipeViewModel: ObservableObject {
             if let savedRecipeRepository {
                 do {
                     saved = try await savedRecipeRepository.fetchAll()
+                    savedRecipeLoadErrorMessage = nil
                 } catch {
-                    savedRecipeErrorMessage = (error as? SaveOnlineRecipeError)?.errorDescription
+                    savedRecipeLoadErrorMessage = (error as? SaveOnlineRecipeError)?.errorDescription
                         ?? SaveOnlineRecipeError.loadFailed.errorDescription
                     saved = savedRecipes
                 }
+            } else {
+                savedRecipeLoadErrorMessage = nil
             }
 
             let savedIDs = Set(saved.map(\.id))

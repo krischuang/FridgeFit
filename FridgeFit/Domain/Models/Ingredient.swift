@@ -31,7 +31,13 @@ struct Ingredient: Identifiable, Hashable, Codable {
 }
 
 /// A rough grouping for organizing the pantry and picking an icon.
-enum IngredientCategory: String, Codable, CaseIterable, Identifiable {
+///
+/// `nonisolated` because it is a plain value with no state: this lets
+/// nonisolated summary types (`AtRiskIngredient`) carry a category without
+/// their `Equatable`/`Identifiable` conformances crossing into main
+/// actor-isolated code. Its `tint` lives in a main-actor extension in
+/// `PantryPresentation` and is unaffected.
+nonisolated enum IngredientCategory: String, Codable, CaseIterable, Identifiable {
     case produce = "Produce"
     case dairy = "Dairy"
     case meat = "Meat"

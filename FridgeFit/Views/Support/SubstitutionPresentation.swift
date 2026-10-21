@@ -32,14 +32,14 @@ struct SubstitutionSectionView: View {
                 HStack(spacing: 8) {
                     ProgressView()
                     Text("Finding substitutes\u{2026}")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(FridgeFitTheme.Typography.metadata)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                 }
             } else if let suggestions = viewModel.suggestions(for: recipeIngredient), !suggestions.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Suggestions")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     ForEach(suggestions) { suggestion in
                         SubstitutionSuggestionCard(suggestion: suggestion)
                     }
@@ -49,20 +49,17 @@ struct SubstitutionSectionView: View {
                     Task { await viewModel.findSubstitutes(for: recipeIngredient, recipe: recipe, feasibility: feasibility) }
                 } label: {
                     Label("Find Substitute", systemImage: "arrow.triangle.2.circlepath")
-                        .font(.caption.weight(.medium))
+                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+                .buttonStyle(FridgeFitSecondaryButtonStyle())
 
                 if let errorMessage = viewModel.errorMessage(for: recipeIngredient) {
                     Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                        .font(FridgeFitTheme.Typography.caption)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.danger)
                 }
             }
         }
-        .padding(.leading, 44)
-        .padding(.vertical, 2)
     }
 }
 
@@ -74,31 +71,40 @@ struct SubstitutionSuggestionCard: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(suggestion.ingredientName)
-                    .font(.subheadline.weight(.semibold))
+                    .font(FridgeFitTheme.Typography.cardTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
                 Spacer()
                 Label(suggestion.validationStatus.displayName, systemImage: suggestion.validationStatus.symbolName)
-                    .font(.caption2.weight(.semibold))
+                    .font(FridgeFitTheme.Typography.caption.weight(.semibold))
                     .foregroundStyle(suggestion.validationStatus.tint)
             }
 
             if let statusDetail {
                 Text(statusDetail)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
             }
 
             Text(suggestion.explanation)
-                .font(.caption)
+                .font(FridgeFitTheme.Typography.metadata)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
 
             if let limitations = suggestion.limitations, !limitations.isEmpty {
                 Text(limitations)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
             }
         }
-        .padding(10)
+        .padding(FridgeFitTheme.Spacing.medium)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(
+            FridgeFitTheme.ColorToken.card,
+            in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                .stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1)
+        }
     }
 
     private var statusDetail: String? {
