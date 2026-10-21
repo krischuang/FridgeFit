@@ -19,9 +19,12 @@ final class AuthViewModel: ObservableObject {
 
     private var authStateHandle: AuthStateDidChangeListenerHandle?
 
-    init() {
-        user = Auth.auth().currentUser
-        authStateHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
+    init(observesAuthState: Bool = true) {
+        guard observesAuthState else { return }
+
+        let auth = Auth.auth()
+        user = auth.currentUser
+        authStateHandle = auth.addStateDidChangeListener { [weak self] _, user in
             self?.user = user
         }
     }
