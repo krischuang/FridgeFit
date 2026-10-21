@@ -18,11 +18,11 @@ struct HomeView: View {
 
     let onOpenMyFridge: () -> Void
     let onOpenSmartScan: () -> Void
+    let onFindRecipes: () -> Void
     let onBrowseRecipes: () -> Void
 
     @State private var isPresentingPreferences = false
     @State private var isShowingPantry = false
-    @State private var isShowingRecommendations = false
 
     var body: some View {
         ScrollView {
@@ -47,7 +47,7 @@ struct HomeView: View {
                     )
 
                     Button {
-                        isShowingRecommendations = true
+                        onFindRecipes()
                     } label: {
                         Label(
                             recommendationViewModel.recommendations.isEmpty
@@ -61,7 +61,7 @@ struct HomeView: View {
                     if let featuredRecommendation = recommendationViewModel.recommendations.first {
                         HomeFeaturedRecipeSection(
                             recommendation: featuredRecommendation,
-                            onOpen: { isShowingRecommendations = true }
+                            onOpen: onFindRecipes
                         )
                     } else if recommendationViewModel.isLoading {
                         HomeRecommendationLoadingCard()
@@ -91,15 +91,6 @@ struct HomeView: View {
         .task { await refresh() }
         .navigationDestination(isPresented: $isShowingPantry) {
             PantryView(viewModel: pantryViewModel, scannerViewModel: scannerViewModel)
-        }
-        .navigationDestination(isPresented: $isShowingRecommendations) {
-            RecipeRecommendationsView(
-                viewModel: recommendationViewModel,
-                recipeViewModel: recipeViewModel,
-                substitutionViewModel: substitutionViewModel,
-                suggestionViewModel: suggestionViewModel
-            )
-            .toolbar(.visible, for: .navigationBar)
         }
         .sheet(isPresented: $isPresentingPreferences) {
             CookingContextFormView(context: recommendationViewModel.draftContext) { updated in
@@ -739,6 +730,7 @@ private struct HomePreviewContainer: View {
                 scannerViewModel: scannerViewModel,
                 onOpenMyFridge: {},
                 onOpenSmartScan: {},
+                onFindRecipes: {},
                 onBrowseRecipes: {}
             )
         }
