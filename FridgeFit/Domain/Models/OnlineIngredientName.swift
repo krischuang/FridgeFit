@@ -11,13 +11,14 @@ import Foundation
 ///
 /// Online ingredient names and pantry item names come from two different
 /// vocabularies. `EvaluateRecipeFeasibilityUseCase` matches them with
-/// `Ingredient.matches(name:)` - trimmed, case-insensitive string equality -
-/// so "garlic cloves" does not match a pantry item called "Garlic", and a
+/// `Ingredient.matches(name:)` - case-, whitespace- and plural-insensitive
+/// equality (`IngredientNameMatching`), so "Eggs" matches "Egg" but
+/// "garlic cloves" does not match a pantry item called "Garlic", and a
 /// recipe saved from Discover will often read as missing an ingredient the
 /// user actually has.
 ///
-/// The tempting fix is a synonym table: singularise, strip preparation
-/// words, fold "garlic cloves" onto "garlic". That is **not** done here,
+/// The tempting fix is a synonym table: strip preparation words, fold
+/// "garlic cloves" onto "garlic". That is **not** done here,
 /// because every such rule is a guess about ingredient identity, and the
 /// failure mode points the wrong way. Folding "coconut milk" onto "milk",
 /// or "green onion" onto "onion", would make the feasibility engine report
