@@ -593,3 +593,44 @@ describe("default deny", () => {
     await assertFails(setDoc(doc(asUser(ALICE), `users/${ALICE}/secrets/doc-1`), { a: 1 }));
   });
 });
+
+// FridgeFunds (Profile → Impact & Budget): budget, spends, valued waste, item
+// prices and the price book all sit under the user next to the pantry, under
+// the same own-data-only rule.
+describe("FridgeFunds", () => {
+  const fundsDocs = [
+    ["fundsBudget", "current", { limitAmount: "120", currency: "AUD", cadence: "weekly" }],
+    ["fundsSpends", "spend-1", { amount: "35", currency: "AUD", store: "Coles" }],
+    ["fundsWaste", "waste-1", { lostAmount: "2.25", currency: "AUD", reason: "expired" }],
+    ["fundsItemPrices", "pantry-item-1", { unitCost: "0.5", currency: "AUD" }],
+    ["fundsPriceBook", "chicken%20breast", { displayName: "Chicken Breast", unitCost: "0.017", currency: "AUD", unit: "g" }],
+  ];
+
+  for (const [col, id, data] of fundsDocs) {
+    it(`lets a user write and read their own ${col}`, async () => {
+      const db = asUser(ALICE);
+      await assertSucceeds(setDoc(doc(db, `users/${ALICE}/${col}/${id}`), data));
+      await assertSucceeds(getDoc(doc(db, `users/${ALICE}/${col}/${id}`)));
+      await assertSucceeds(getDocs(collection(db, `users/${ALICE}/${col}`)));
+    });
+
+    it(`denies another user's ${col}`, async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), `users/${ALICE}/${col}/${id}`), data);
+      });
+      const db = asUser(BOB);
+      await assertFails(getDoc(doc(db, `users/${ALICE}/${col}/${id}`)));
+      await assertFails(setDoc(doc(db, `users/${ALICE}/${col}/${id}`), data));
+    });
+
+    it(`denies signed-out access to ${col}`, async () => {
+      await assertFails(getDoc(doc(asAnonymous(), `users/${ALICE}/${col}/${id}`)));
+    });
+  }
+
+  // The rule lists the five names on purpose - it is not a free-for-all
+  // under users/{uid}.
+  it("denies a collection name FridgeFunds doesn't use", async () => {
+    await assertFails(setDoc(doc(asUser(ALICE), `users/${ALICE}/fundsAnythingElse/x`), { a: 1 }));
+  });
+});
