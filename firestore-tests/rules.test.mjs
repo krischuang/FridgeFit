@@ -473,6 +473,21 @@ describe("saved recipes", () => {
     );
   });
 
+  it("lets a user update their own saved recipe metadata", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), savedRecipePath(ALICE, RECIPE_ID)),
+        { ...sampleSavedRecipe, savedAt: new Date() }
+      );
+    });
+
+    await assertSucceeds(
+      updateDoc(doc(asUser(ALICE), savedRecipePath(ALICE, RECIPE_ID)), {
+        title: "Updated Tomato Pasta",
+      })
+    );
+  });
+
   it("lets a user read back a saved recipe", async () => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
       await setDoc(
