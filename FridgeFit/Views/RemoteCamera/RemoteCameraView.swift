@@ -496,7 +496,10 @@ struct RemoteCameraView: View {
     @ViewBuilder
     private var analyseButton: some View {
         Button {
-            Task { await viewModel.captureAndAnalyse() }
+            Task {
+                await viewModel.captureAndAnalyse()
+                presentReviewIfCurrentAnalysis()
+            }
         } label: {
             HStack(spacing: 8) {
                 if viewModel.isAnalyzingSnapshot {
@@ -538,6 +541,14 @@ struct RemoteCameraView: View {
                 .font(FridgeFitTheme.Typography.caption)
                 .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
         }
+    }
+
+    /// Opens review only after the awaited analysis still belongs to the
+    /// snapshot on screen. A failed or superseded capture therefore leaves
+    /// the sheet closed.
+    private func presentReviewIfCurrentAnalysis() {
+        guard viewModel.currentAnalysis != nil, viewModel.snapshot != nil else { return }
+        isReviewingIngredients = true
     }
 
     /// Food-detection toggle, status, and what it found.
