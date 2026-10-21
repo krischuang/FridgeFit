@@ -14,7 +14,7 @@ import Foundation
 /// decide, never the provider. `suggestedUnit` stays a raw string (not
 /// `MeasurementUnit`) because the provider can't be trusted to only emit
 /// one of our known unit symbols.
-struct RawSubstitutionSuggestion: Codable, Equatable {
+nonisolated struct RawSubstitutionSuggestion: Codable, Equatable {
     let ingredientName: String
     let suggestedQuantity: Double?
     let suggestedUnit: String?

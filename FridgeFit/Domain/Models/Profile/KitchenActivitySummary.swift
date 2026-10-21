@@ -29,7 +29,11 @@ nonisolated struct FinishedStaple: Equatable, Sendable, Identifiable {
     var id: String { name.lowercased() }
 }
 
-/// What FridgeFit's own activity log can honestly say about the kitchen.
+/// What FridgeFit's own activity log can honestly say about the kitchen,
+/// for Profile → Impact & Budget.
+///
+/// Distinct from `KitchenImpactSummary`, which is the Preferences tab's
+/// smaller loading/empty/counted/unavailable reading of the same log.
 ///
 /// ## What is derived, and from what
 ///
@@ -47,7 +51,7 @@ nonisolated struct FinishedStaple: Equatable, Sendable, Identifiable {
 /// needs expiry-at-use), cannot put a dollar figure on anything (that needs
 /// price - see `FundsEnvironment`, which owns the money side), and cannot
 /// state CO₂e. Those stay `nil` rather than being estimated.
-nonisolated struct KitchenImpactSummary: Equatable, Sendable {
+nonisolated struct KitchenActivitySummary: Equatable, Sendable {
     let monthStart: Date
     let finishedThisMonth: Int
     let discardedThisMonth: Int
@@ -86,13 +90,13 @@ nonisolated struct KitchenImpactSummary: Equatable, Sendable {
         events: [InventoryEvent],
         now: Date = .now,
         calendar: Calendar = .current
-    ) -> KitchenImpactSummary {
+    ) -> KitchenActivitySummary {
         let start = calendar.dateInterval(of: .month, for: now)?.start ?? now
         let thisMonth = events.filter { $0.date >= start && $0.date <= now }
         let finished = thisMonth.filter { $0.kind == .finished }
         let discarded = thisMonth.filter { $0.kind == .discarded }
 
-        return KitchenImpactSummary(
+        return KitchenActivitySummary(
             monthStart: start,
             finishedThisMonth: finished.count,
             discardedThisMonth: discarded.count,

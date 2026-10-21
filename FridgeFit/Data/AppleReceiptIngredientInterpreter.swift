@@ -34,7 +34,7 @@ import OSLog
 /// fresh session, so one batch's answers cannot bleed into the next.
 ///
 /// Nothing leaves the device.
-struct AppleReceiptIngredientInterpreter: ReceiptIngredientInterpreter {
+nonisolated struct AppleReceiptIngredientInterpreter: ReceiptIngredientInterpreter {
     /// Lines per model request. Small enough that the model reliably
     /// returns one entry per line in order.
     private static let batchSize = 12
@@ -145,7 +145,7 @@ struct AppleReceiptIngredientInterpreter: ReceiptIngredientInterpreter {
 
 extension Array {
     /// Splits into consecutive batches of at most `size`, keeping order.
-    func chunked(into size: Int) -> [[Element]] {
+    nonisolated func chunked(into size: Int) -> [[Element]] {
         guard size > 0 else { return isEmpty ? [] : [self] }
         return stride(from: 0, to: count, by: size).map {
             Array(self[$0 ..< Swift.min($0 + size, count)])

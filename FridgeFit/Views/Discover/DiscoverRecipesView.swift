@@ -29,6 +29,10 @@ struct DiscoverRecipesView: View {
                     preferences: viewModel.preferences,
                     onOpenFilters: { isShowingFilters = true }
                 )
+                // The pantry items this search was ranked around. Shown
+                // above the results rather than on each card, because it is
+                // a property of the search, not of any one recipe.
+                DiscoverUrgentPantryStrip(uses: viewModel.urgentPantryIngredients)
                 DiscoverContent(
                     matches: viewModel.matches,
                     isLoading: viewModel.isLoading,
@@ -37,7 +41,11 @@ struct DiscoverRecipesView: View {
                     providerUnavailableExplanation: providerUnavailableExplanation,
                     isShowingCachedResults: viewModel.isShowingCachedResults,
                     excludedForSafetyCount: viewModel.excludedForSafetyCount,
+                    hiddenRecipeCount: viewModel.hiddenRecipeIDs.count,
                     recipeViewModel: recipeViewModel,
+                    expiryUse: { viewModel.expiryUse(for: $0) },
+                    onHide: { viewModel.hide($0) },
+                    onUnhideAll: { viewModel.unhideAll() },
                     onRetry: refresh,
                     onOpenFilters: { isShowingFilters = true }
                 )
@@ -55,6 +63,7 @@ struct DiscoverRecipesView: View {
             OnlineRecipeDetailView(
                 match: match,
                 intolerances: viewModel.preferences.intolerances,
+                expiryUse: viewModel.expiryUse(for: match),
                 recipeViewModel: recipeViewModel
             )
         }
@@ -206,7 +215,11 @@ private struct DiscoverContent: View {
     let providerUnavailableExplanation: String?
     let isShowingCachedResults: Bool
     let excludedForSafetyCount: Int
+    let hiddenRecipeCount: Int
     @ObservedObject var recipeViewModel: RecipeViewModel
+    let expiryUse: (OnlineRecipeMatch) -> OnlineRecipeExpiryUse
+    let onHide: (OnlineRecipeMatch) -> Void
+    let onUnhideAll: () -> Void
     let onRetry: () -> Void
     let onOpenFilters: () -> Void
 
@@ -236,7 +249,9 @@ private struct DiscoverContent: View {
                 ForEach(matches) { match in
                     DiscoverRecipeCard(
                         match: match,
-                        isSaved: recipeViewModel.isSaved(onlineRecipeID: match.id)
+                        isSaved: recipeViewModel.isSaved(onlineRecipeID: match.id),
+                        expiryUse: expiryUse(match),
+                        onHide: { onHide(match) }
                     )
                 }
                 if excludedForSafetyCount > 0 {
@@ -244,6 +259,9 @@ private struct DiscoverContent: View {
                         .font(FridgeFitTheme.Typography.caption)
                         .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                         .padding(.horizontal, FridgeFitTheme.Spacing.xSmall)
+                }
+                if hiddenRecipeCount > 0 {
+                    DiscoverHiddenRecipesFooter(count: hiddenRecipeCount, onUnhideAll: onUnhideAll)
                 }
             }
         }
@@ -284,6 +302,10 @@ private struct DiscoverResultsHeader: View {
 private struct DiscoverRecipeCard: View {
     let match: OnlineRecipeMatch
     let isSaved: Bool
+    /// Which near-expiry pantry items this recipe would use up. `.none`
+    /// renders nothing, so a card about long-life ingredients stays quiet.
+    let expiryUse: OnlineRecipeExpiryUse
+    let onHide: () -> Void
 
     private var pantryMatchPresentation: DiscoverPantryMatchPresentation {
         DiscoverPantryMatchPresentation(
@@ -313,6 +335,7 @@ private struct DiscoverRecipeCard: View {
                         }
                     }
                     DiscoverRecipeMetadata(recipe: match.recipe)
+                    DiscoverExpiryNote(use: expiryUse)
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: FridgeFitTheme.Spacing.small) {
                             readinessBadge
@@ -349,6 +372,12 @@ private struct DiscoverRecipeCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens recipe details and saving options")
+        .contextMenu {
+            Button(role: .destructive, action: onHide) {
+                Label("Hide this recipe", systemImage: "eye.slash")
+            }
+        }
+        .accessibilityAction(named: "Hide this recipe", onHide)
     }
 
     private var readinessBadge: some View {
@@ -415,6 +444,87 @@ struct DiscoverPantryMatchPresentation: Equatable {
             return "questionmark.circle"
         case .noMatches, .matched:
             return "refrigerator.fill"
+        }
+    }
+}
+
+/// The pantry items this search was ranked around, above the results.
+///
+/// Carried over from the List-based Discover when the screen was redesigned:
+/// the ranking still puts recipes that use these first, and without the
+/// strip the ordering would look arbitrary.
+private struct DiscoverUrgentPantryStrip: View {
+    let uses: [UrgentIngredientUse]
+
+    var body: some View {
+        if !uses.isEmpty {
+            Label(
+                "Using up first: \(OnlineRecipeExpiryPresentation.list(uses))",
+                systemImage: "clock.badge.exclamationmark"
+            )
+            .font(FridgeFitTheme.Typography.metadata)
+            .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(FridgeFitTheme.Spacing.medium)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                FridgeFitTheme.ColorToken.warningBackground,
+                in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous)
+            )
+            .accessibilityElement(children: .combine)
+        }
+    }
+}
+
+/// Why a card is ranked where it is: which near-expiry items it uses, and
+/// whether any of them have already gone off.
+///
+/// Expired is deliberately a separate, louder state than urgent. "Uses up
+/// your spinach" and "uses spinach that has expired" are different claims,
+/// and only one of them is an invitation to cook.
+private struct DiscoverExpiryNote: View {
+    let use: OnlineRecipeExpiryUse
+
+    var body: some View {
+        if use.usesExpiredIngredient {
+            Label(
+                "Uses \(use.expired.formattedList), which has expired - check it before cooking",
+                systemImage: "exclamationmark.triangle.fill"
+            )
+            .font(FridgeFitTheme.Typography.caption)
+            .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+            .fixedSize(horizontal: false, vertical: true)
+        } else if use.usesUrgentIngredient {
+            Label(
+                "Uses up \(OnlineRecipeExpiryPresentation.list(use.urgent))",
+                systemImage: "clock.badge.exclamationmark"
+            )
+            .font(FridgeFitTheme.Typography.caption)
+            .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+            .lineLimit(2)
+        }
+    }
+}
+
+/// The way back from hiding a recipe. Without it, hiding would be a one-way
+/// door with no visible record that anything was hidden at all.
+private struct DiscoverHiddenRecipesFooter: View {
+    let count: Int
+    let onUnhideAll: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+            Button(action: onUnhideAll) {
+                Label(
+                    count == 1 ? "Show 1 hidden recipe again" : "Show \(count) hidden recipes again",
+                    systemImage: "eye"
+                )
+            }
+            .buttonStyle(FridgeFitSecondaryButtonStyle())
+            Text("Hidden recipes come back on your next search.")
+                .font(FridgeFitTheme.Typography.caption)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .padding(.horizontal, FridgeFitTheme.Spacing.xSmall)
         }
     }
 }
@@ -602,6 +712,7 @@ struct OnlineRecipeImage: View {
         DiscoverRecipesView(
             viewModel: OnlineRecipeSearchViewModel(useCase: useCase, preferencesStore: InMemoryOnlineRecipePreferencesStore()),
             recipeViewModel: RecipeViewModel(
+                recipeRepository: BundledRecipeRepository(),
                 pantryRepository: pantry,
                 savedRecipeUnavailableExplanation: OnlineRecipeFeature.savedRecipeUnavailableExplanation(
                     state: .disabledPendingRulesDeployment
@@ -669,6 +780,7 @@ private struct DiscoverResultsPreview: View {
         )
         _recipeViewModel = StateObject(
             wrappedValue: RecipeViewModel(
+                recipeRepository: BundledRecipeRepository(),
                 pantryRepository: pantry,
                 savedRecipeRepository: InMemorySavedRecipeRepository()
             )

@@ -51,7 +51,7 @@ final class ImpactBudgetViewModel: ObservableObject {
 
         guard let funds else {
             summary = ImpactBudgetSummary(
-                kitchen: KitchenImpactSummary.calculate(events: events, now: now, calendar: calendar),
+                kitchen: KitchenActivitySummary.calculate(events: events, now: now, calendar: calendar),
                 currency: .aud,
                 budget: nil,
                 valuation: nil,

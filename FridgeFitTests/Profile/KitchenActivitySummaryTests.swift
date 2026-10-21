@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import FridgeFit
 
-final class KitchenImpactSummaryTests: XCTestCase {
+final class KitchenActivitySummaryTests: XCTestCase {
     private var calendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
@@ -21,7 +21,7 @@ final class KitchenImpactSummaryTests: XCTestCase {
             event(itemID, "Spinach", .added, date(2026, 10, 4)),
         ]
 
-        let summary = KitchenImpactSummary.calculate(events: events, now: now, calendar: calendar)
+        let summary = KitchenActivitySummary.calculate(events: events, now: now, calendar: calendar)
 
         XCTAssertEqual(summary.finishedThisMonth, 1)
         XCTAssertEqual(summary.discardedThisMonth, 1)
@@ -35,8 +35,8 @@ final class KitchenImpactSummaryTests: XCTestCase {
             event(UUID(), "Milk", .discarded, date(2026, 10, 31)),
         ]
 
-        let october = KitchenImpactSummary.calculate(events: events, now: date(2026, 10, 31), calendar: calendar)
-        let november = KitchenImpactSummary.calculate(events: events, now: date(2026, 11, 1), calendar: calendar)
+        let october = KitchenActivitySummary.calculate(events: events, now: date(2026, 10, 31), calendar: calendar)
+        let november = KitchenActivitySummary.calculate(events: events, now: date(2026, 11, 1), calendar: calendar)
 
         XCTAssertEqual(october.finishedThisMonth, 1)
         XCTAssertEqual(october.discardedThisMonth, 1)
@@ -48,7 +48,7 @@ final class KitchenImpactSummaryTests: XCTestCase {
     // MARK: - What stays unavailable
 
     func test_calculate_doesNotMisrepresentActivityAsRescueSavingsOrEmissions() {
-        let summary = KitchenImpactSummary.calculate(
+        let summary = KitchenActivitySummary.calculate(
             events: [event(UUID(), "Mushrooms", .finished, date(2026, 10, 10))],
             now: date(2026, 10, 19),
             calendar: calendar
@@ -66,13 +66,13 @@ final class KitchenImpactSummaryTests: XCTestCase {
         let events = (0..<3).map { event(UUID(), "Item \($0)", .finished, date(2026, 10, 5)) }
             + [event(UUID(), "Binned", .discarded, date(2026, 10, 6))]
 
-        let summary = KitchenImpactSummary.calculate(events: events, now: now, calendar: calendar)
+        let summary = KitchenActivitySummary.calculate(events: events, now: now, calendar: calendar)
 
         XCTAssertEqual(summary.pantryEfficiencyPercent ?? 0, 75, accuracy: 0.0001)
     }
 
     func test_pantryEfficiency_isUnavailableRatherThanZero_whenNothingLeftTheKitchen() {
-        let summary = KitchenImpactSummary.calculate(
+        let summary = KitchenActivitySummary.calculate(
             events: [event(UUID(), "Spinach", .added, date(2026, 10, 5))],
             now: date(2026, 10, 19),
             calendar: calendar
@@ -82,7 +82,7 @@ final class KitchenImpactSummaryTests: XCTestCase {
     }
 
     func test_pantryEfficiency_isZero_whenEverythingRecordedWasBinned() {
-        let summary = KitchenImpactSummary.calculate(
+        let summary = KitchenActivitySummary.calculate(
             events: [event(UUID(), "Spinach", .discarded, date(2026, 10, 5))],
             now: date(2026, 10, 19),
             calendar: calendar
@@ -94,7 +94,7 @@ final class KitchenImpactSummaryTests: XCTestCase {
     // MARK: - Weekly recovery
 
     func test_weeklyRecovery_coversFourWeeksOldestFirst() {
-        let summary = KitchenImpactSummary.calculate(events: [], now: date(2026, 10, 19), calendar: calendar)
+        let summary = KitchenActivitySummary.calculate(events: [], now: date(2026, 10, 19), calendar: calendar)
 
         XCTAssertEqual(summary.weeklyRecovery.map(\.label), ["W1", "W2", "W3", "W4"])
         XCTAssertTrue(summary.weeklyRecovery.allSatisfy { $0.percent == nil })
@@ -115,7 +115,7 @@ final class KitchenImpactSummaryTests: XCTestCase {
             event(UUID(), "D", .discarded, lastWeek),
         ]
 
-        let summary = KitchenImpactSummary.calculate(events: events, now: now, calendar: calendar)
+        let summary = KitchenActivitySummary.calculate(events: events, now: now, calendar: calendar)
         let weeks = summary.weeklyRecovery
 
         XCTAssertEqual(weeks.count, 4)
@@ -128,12 +128,12 @@ final class KitchenImpactSummaryTests: XCTestCase {
     // MARK: - Zero-waste streak
 
     func test_zeroWasteStreak_isUnavailableWithNoHistory() {
-        let summary = KitchenImpactSummary.calculate(events: [], now: date(2026, 10, 19), calendar: calendar)
+        let summary = KitchenActivitySummary.calculate(events: [], now: date(2026, 10, 19), calendar: calendar)
         XCTAssertNil(summary.zeroWasteStreakWeeks)
     }
 
     func test_zeroWasteStreak_isNotCreditedForWeeksBeforeTheFirstRecordedOutcome() {
-        let summary = KitchenImpactSummary.calculate(
+        let summary = KitchenActivitySummary.calculate(
             events: [event(UUID(), "Spinach", .finished, date(2026, 10, 19))],
             now: date(2026, 10, 19),
             calendar: calendar
@@ -157,7 +157,7 @@ final class KitchenImpactSummaryTests: XCTestCase {
                 event(UUID(), "Binned", .discarded, discardedOn),
                 event(UUID(), "Eaten", .finished, now),
             ]
-            return KitchenImpactSummary.calculate(events: events, now: now, calendar: calendar).zeroWasteStreakWeeks
+            return KitchenActivitySummary.calculate(events: events, now: now, calendar: calendar).zeroWasteStreakWeeks
         }
 
         XCTAssertEqual(streak(withDiscardWeeksBack: 1), 1, "Only this week is clean.")
@@ -166,7 +166,7 @@ final class KitchenImpactSummaryTests: XCTestCase {
     }
 
     func test_zeroWasteStreak_isZero_whenSomethingWasBinnedThisWeek() {
-        let summary = KitchenImpactSummary.calculate(
+        let summary = KitchenActivitySummary.calculate(
             events: [event(UUID(), "Binned", .discarded, date(2026, 10, 19))],
             now: date(2026, 10, 19),
             calendar: calendar
@@ -187,7 +187,7 @@ final class KitchenImpactSummaryTests: XCTestCase {
             event(UUID(), "Milk", .added, date(2026, 10, 8)),
         ]
 
-        let staples = KitchenImpactSummary.calculate(events: events, now: now, calendar: calendar).mostFinishedStaples
+        let staples = KitchenActivitySummary.calculate(events: events, now: now, calendar: calendar).mostFinishedStaples
 
         XCTAssertEqual(staples.map(\.name), ["spinach", "Eggs"], "Case-insensitive grouping, most recent spelling wins.")
         XCTAssertEqual(staples.map(\.timesFinished), [2, 1])
@@ -196,10 +196,10 @@ final class KitchenImpactSummaryTests: XCTestCase {
     func test_mostFinishedStaples_areCappedAtTheDisplayLimit() {
         let events = (0..<10).map { event(UUID(), "Item \($0)", .finished, date(2026, 10, 5)) }
 
-        let staples = KitchenImpactSummary.calculate(events: events, now: date(2026, 10, 19), calendar: calendar)
+        let staples = KitchenActivitySummary.calculate(events: events, now: date(2026, 10, 19), calendar: calendar)
             .mostFinishedStaples
 
-        XCTAssertEqual(staples.count, KitchenImpactSummary.stapleLimit)
+        XCTAssertEqual(staples.count, KitchenActivitySummary.stapleLimit)
     }
 
     // MARK: - Helpers

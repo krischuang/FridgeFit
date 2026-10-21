@@ -1,0 +1,4 @@
+{
+  "_comment": "Spoonacular recipe ids FridgeFit never recommends. Add an entry when testing finds a broken recipe; the id is shown at the bottom of every Discover detail screen. Keep the reason specific so the entry can be reviewed later.",
+  "recipes": []
+}

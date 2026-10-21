@@ -40,7 +40,7 @@ struct BuildImpactBudgetSummaryUseCase {
         now: Date = .now,
         calendar: Calendar = .current
     ) -> ImpactBudgetSummary {
-        let kitchen = KitchenImpactSummary.calculate(events: events, now: now, calendar: calendar)
+        let kitchen = KitchenActivitySummary.calculate(events: events, now: now, calendar: calendar)
         let budget = try? evaluateBudget.execute(now: now)
 
         // Totalled in the budget's own currency when there is a budget, so a

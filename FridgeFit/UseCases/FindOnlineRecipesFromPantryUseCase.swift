@@ -18,8 +18,14 @@ import Foundation
 ///   a recipe is dropped if it contains one, *or* if its ingredients
 ///   couldn't be verified (`containsIntolerances == nil`). The provider's
 ///   own `intolerances` filter is trusted as a first pass only.
-/// - Results are sorted by fewest missing ingredients, then most pantry
-///   ingredients used.
+/// - **Use it up first**: recipes that use pantry items close to expiry
+///   rank first (most urgent first), and recipes that would use an expired
+///   item sink - see `OnlineRecipeExpiryRanking`. Near-expiry names are also
+///   sent first in the request. Otherwise results are sorted by fewest
+///   missing ingredients, then most pantry ingredients used.
+/// - **Hidden recipes never come back**: ids on the team blocklist
+///   (`OnlineRecipeBlocklist`) or hidden by the user are removed before
+///   anything else is considered, cached results included.
 /// - Nothing left after filtering is `.noResults`, so the UI can explain it.
 ///
 /// This use case is independent of the bundled-recipe feasibility engine
@@ -30,8 +36,16 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
     let recipeService: OnlineRecipeService
     let pantryRepository: PantryRepository
     var resultLimit: Int = 30
+    /// Injected so expiry boundaries are testable.
+    var now: () -> Date = { Date() }
+    var calendar: Calendar = .current
 
-    func execute(preferences: OnlineRecipePreferences) async throws -> OnlineRecipeSearchResult {
+    /// - Parameter excludedRecipeIDs: provider recipe ids that must never
+    ///   be shown (team blocklist plus the user's hidden recipes).
+    func execute(
+        preferences: OnlineRecipePreferences,
+        excluding excludedRecipeIDs: Set<Int> = []
+    ) async throws -> OnlineRecipeSearchResult {
         // Sanitise before anything else: the filter that gets sent and the
         // filter that gets enforced must be the same one, and neither may
         // name an intolerance the app cannot assess.
@@ -44,7 +58,9 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
             throw OnlineRecipeSearchError.pantryUnavailable
         }
 
-        let names = Self.uniqueNames(from: pantry)
+        let currentDate = now()
+        let urgentItems = OnlineRecipeExpiryRanking.urgentPantryItems(in: pantry, now: currentDate, calendar: calendar)
+        let names = OnlineRecipeExpiryRanking.requestOrder(names: Self.uniqueNames(from: pantry), urgent: urgentItems)
         guard !names.isEmpty else { throw OnlineRecipeSearchError.emptyPantry }
 
         let criteria = OnlineRecipeSearchCriteria(
@@ -64,16 +80,24 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
             throw OnlineRecipeSearchError.providerUnavailable
         }
 
-        let safe = matches.filter { Self.isSafe($0.recipe, for: effectivePreferences.intolerances) }
+        let visible = matches.filter { !excludedRecipeIDs.contains($0.id) }
+        let safe = visible.filter { Self.isSafe($0.recipe, for: effectivePreferences.intolerances) }
         guard !safe.isEmpty else { throw OnlineRecipeSearchError.noResults }
 
-        let sorted = safe.sorted { lhs, rhs in
-            if lhs.missedIngredients.count != rhs.missedIngredients.count {
-                return lhs.missedIngredients.count < rhs.missedIngredients.count
-            }
-            return lhs.usedIngredientNames.count > rhs.usedIngredientNames.count
+        var expiryUse: [Int: OnlineRecipeExpiryUse] = [:]
+        for match in safe {
+            let use = OnlineRecipeExpiryRanking.expiryUse(of: match, pantry: pantry, now: currentDate, calendar: calendar)
+            if use != .none { expiryUse[match.id] = use }
         }
-        return OnlineRecipeSearchResult(matches: sorted, excludedForSafetyCount: matches.count - safe.count)
+        let sorted = OnlineRecipeExpiryRanking.ranked(safe, expiryUse: expiryUse)
+
+        return OnlineRecipeSearchResult(
+            matches: sorted,
+            excludedForSafetyCount: visible.count - safe.count,
+            excludedAsHiddenCount: matches.count - visible.count,
+            expiryUse: expiryUse,
+            urgentPantryIngredients: urgentItems
+        )
     }
 
     /// Whether `recipe` may be shown to someone avoiding `intolerances`.

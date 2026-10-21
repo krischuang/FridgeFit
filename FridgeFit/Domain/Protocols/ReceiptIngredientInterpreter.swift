@@ -17,7 +17,7 @@ import Foundation
 /// `IngredientCanonicalizer` do that deterministically, downstream, the same
 /// way `SubstitutionService` output goes through validation before the UI
 /// sees it.
-protocol ReceiptIngredientInterpreter {
+nonisolated protocol ReceiptIngredientInterpreter {
     /// Whether this interpreter can run right now, in FridgeFit's terms.
     ///
     /// Read fresh on every access - the user can turn Apple Intelligence on

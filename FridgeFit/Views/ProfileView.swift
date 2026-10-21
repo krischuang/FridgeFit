@@ -6,17 +6,51 @@
 import FirebaseAuth
 import SwiftUI
 
-/// The signed-in user's account and connected-device entry point.
+/// The signed-in user's account, recipe preferences, kitchen impact and
+/// connected-device entry point.
 ///
-/// This screen intentionally presents only account data FridgeFit currently
-/// has. Profile preferences, kitchen-impact totals, and saved recipe counts
-/// will be added when their corresponding product state exists.
+/// ## Where Kitchen Impact's numbers come from
+///
+/// The same `InventoryStore` that Home and My Fridge use, handed down from
+/// `ContentView` - so the same `InventoryEventRepository` that
+/// `AppDependencies` selected, reading the same records. This screen
+/// performs no storage decision of its own.
+///
+/// It used to: `loadProfileData()` built a `FirestoreInventoryEventRepository()`
+/// inline. That was correct while Firestore was the only backend and became
+/// wrong the moment `PersistenceConfiguration` could choose - with SwiftData
+/// selected, Kitchen Impact counted cloud events while My Fridge counted
+/// local ones, and neither screen had any way to notice it disagreed with
+/// the other.
+///
+/// Sharing the store rather than re-fetching also means the counts follow
+/// the user: finishing an item in My Fridge reloads that one store, and
+/// Profile re-renders from it with no refresh of its own.
+///
+/// ## What this does not do
+///
+/// It does not copy anything. Kitchen Impact previously counted events in
+/// Firestore; it now counts events in whichever store `AppDependencies`
+/// opened, which under the shipped configuration is the local one. Any
+/// outcomes a user logged before this change are still in Firestore,
+/// untouched and still readable by launching with `-persistence firebase` -
+/// they are simply not counted in SwiftData mode, because that mode has
+/// never claimed to contain them. This is the project's existing rule, not
+/// a new exception: see `PersistenceConfiguration` and
+/// `FIREBASE_COMPATIBILITY_AND_ROLLBACK.md` §4, which specify one source of
+/// truth per mode and no automatic import. Closing that gap is a deliberate
+/// product decision (§4.1 sketches the safe one-way shape) and is out of
+/// scope here.
 struct ProfileView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @Environment(\.fundsEnvironment) private var funds
+    /// The kitchen's items and activity log. Constructor-injected, not
+    /// defaulted, for the reason `InventoryStore` and `RecipeViewModel`
+    /// already record: the only possible default is an in-memory store, and
+    /// a screen that silently reports sample data as the user's own is a
+    /// worse failure than a compile error.
     @ObservedObject private var inventory: InventoryStore
     @State private var onlineRecipePreferences = OnlineRecipePreferences.default
-    @State private var kitchenImpact = KitchenImpact()
     @State private var selectedSection: ProfileSection = .preferences
     @State private var isShowingNotificationNotice = false
     private let onFindRecipes: () -> Void
@@ -293,18 +327,38 @@ struct ProfileView: View {
 
             HStack(spacing: FridgeFitTheme.Spacing.small) {
                 impactMetric(
-                    value: kitchenImpact.isAvailable ? "\(kitchenImpact.finishedCount)" : "—",
+                    value: impactValue(kitchenImpact.finishedCount),
                     title: "Finished",
-                    detail: kitchenImpact.isAvailable ? "items logged" : "No activity yet",
+                    detail: impactDetail,
                     systemImage: "checkmark.circle"
                 )
                 impactMetric(
-                    value: kitchenImpact.isAvailable ? "\(kitchenImpact.discardedCount)" : "—",
+                    value: impactValue(kitchenImpact.discardedCount),
                     title: "Discarded",
-                    detail: kitchenImpact.isAvailable ? "items logged" : "No activity yet",
+                    detail: impactDetail,
                     systemImage: "trash"
                 )
             }
+        }
+    }
+
+    /// Reads straight off the shared store, so this section is never a
+    /// separate snapshot of the activity log.
+    private var kitchenImpact: KitchenImpactSummary { inventory.kitchenImpact }
+
+    private func impactValue(_ count: Int?) -> String {
+        count.map(String.init) ?? "—"
+    }
+
+    /// One line per state. The previous wording said "No activity yet" both
+    /// when the log was empty and when it had failed to load, which told a
+    /// user with a broken read that they had never cooked.
+    private var impactDetail: String {
+        switch kitchenImpact.state {
+        case .loading: return "Loading activity…"
+        case .empty: return "No activity yet"
+        case .counted: return "items logged"
+        case .unavailable: return "Activity unavailable"
         }
     }
 
@@ -569,14 +623,18 @@ struct ProfileView: View {
         return "Version \(version) (\(build))"
     }
 
+    /// Reads preferences, then asks the shared store to refresh itself.
+    ///
+    /// `inventory.load()` rather than a fetch of our own, so Profile cannot
+    /// end up holding a different view of the log from My Fridge. It is the
+    /// same call My Fridge makes in its own `.task`, and it is safe to
+    /// repeat: the store reloads and publishes, and every screen observing
+    /// it re-renders. Opening Profile first is therefore enough to populate
+    /// Kitchen Impact, and both its loading and its failure state come from
+    /// that one load.
     private func loadProfileData() async {
         onlineRecipePreferences = UserDefaultsOnlineRecipePreferencesStore().load()
-        kitchenImpact.isLoading = true
-        defer { kitchenImpact.isLoading = false }
         await inventory.load()
-        kitchenImpact.finishedCount = inventory.events.filter { $0.kind == .finished }.count
-        kitchenImpact.discardedCount = inventory.events.filter { $0.kind == .discarded }.count
-        kitchenImpact.isAvailable = inventory.errorMessage == nil
     }
 }
 
@@ -659,13 +717,6 @@ private struct ProfileSectionButton: View {
     }
 }
 
-private struct KitchenImpact {
-    var finishedCount = 0
-    var discardedCount = 0
-    var isLoading = false
-    var isAvailable = false
-}
-
 private extension OnlineRecipePreferences {
     var isConfigured: Bool {
         diet != .none || !intolerances.isEmpty || maxReadyTimeMinutes != nil
@@ -681,6 +732,6 @@ private extension OnlineRecipePreferences {
             ),
             onFindRecipes: {}
         )
-            .environmentObject(AuthViewModel())
+        .environmentObject(AuthViewModel())
     }
 }

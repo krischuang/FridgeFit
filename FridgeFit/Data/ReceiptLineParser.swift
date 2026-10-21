@@ -28,7 +28,7 @@ import Foundation
 /// `originalText` is never modified - only `productDescription` is cleaned,
 /// so the interpreter and the UI can both still see exactly what was
 /// printed.
-struct ReceiptLineParser {
+nonisolated struct ReceiptLineParser {
     /// Hard cap on lines considered, so a photo of a wall of text can't
     /// turn into an enormous model prompt.
     private static let maximumLineCount = 200

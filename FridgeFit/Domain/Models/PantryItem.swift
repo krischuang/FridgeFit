@@ -22,7 +22,7 @@ import Foundation
 /// and the receipt scanner all read them directly, so the kitchen UI writes
 /// through them (see `inventoryQuantity`) instead of storing a second,
 /// competing amount beside them.
-struct PantryItem: Identifiable, Hashable, Codable {
+nonisolated struct PantryItem: Identifiable, Hashable, Codable {
     let id: UUID
     var ingredient: Ingredient
     var quantity: Double

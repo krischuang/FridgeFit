@@ -237,7 +237,7 @@ final class RecommendationViewRenderingTests: XCTestCase {
                 NavigationStack {
                     RecipeRecommendationsView(
                         viewModel: viewModel,
-                        recipeViewModel: RecipeViewModel(pantryRepository: pantry),
+                        recipeViewModel: RecipeViewModel(recipeRepository: InMemoryRecipeRepository(), pantryRepository: pantry),
                         substitutionViewModel: Self.substitutionViewModel(pantry: pantry)
                     )
                 }
@@ -264,7 +264,7 @@ final class RecommendationViewRenderingTests: XCTestCase {
             NavigationStack {
                 RecipeRecommendationsView(
                     viewModel: viewModel,
-                    recipeViewModel: RecipeViewModel(pantryRepository: pantry),
+                    recipeViewModel: RecipeViewModel(recipeRepository: InMemoryRecipeRepository(), pantryRepository: pantry),
                     substitutionViewModel: Self.substitutionViewModel(pantry: pantry)
                 )
             }

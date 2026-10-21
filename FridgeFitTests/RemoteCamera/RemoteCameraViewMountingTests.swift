@@ -59,10 +59,21 @@ final class RemoteCameraViewMountingTests: XCTestCase {
     }
 
     /// Hosts `view`, lays it out, and lets `.task` run to completion.
-    private func mount<V: View>(_ view: V) async {
+    ///
+    /// Built against the host app's window scene rather than
+    /// `UIWindow(frame:)`, which is deprecated in iOS 26. The scene is
+    /// unwrapped rather than defaulted: without one there is no window to
+    /// lay out in, and a silently unmounted view would make every assertion
+    /// below pass for the wrong reason.
+    private func mount<V: View>(_ view: V) async throws {
         let bounds = CGRect(x: 0, y: 0, width: 393, height: 852)
         let host = UIHostingController(rootView: view)
-        let window = UIWindow(frame: bounds)
+        let scene = try XCTUnwrap(
+            UIApplication.shared.connectedScenes.first as? UIWindowScene,
+            "Mounting needs the test host app's window scene"
+        )
+        let window = UIWindow(windowScene: scene)
+        window.frame = bounds
         window.rootViewController = host
         window.makeKeyAndVisible()
         self.window = window
@@ -96,10 +107,10 @@ final class RemoteCameraViewMountingTests: XCTestCase {
         return condition()
     }
 
-    func test_connectedDevicesViewMountsAndDiscoversTheCamera() async {
+    func test_connectedDevicesViewMountsAndDiscoversTheCamera() async throws {
         let viewModel = ConnectedDevicesViewModel(identity: identity, registry: seededRegistry())
 
-        await mount(NavigationStack { ConnectedDevicesView(viewModel: viewModel) })
+        try await mount(NavigationStack { ConnectedDevicesView(viewModel: viewModel) })
 
         // Proves `.task` actually ran, not just that the body compiled.
         XCTAssertEqual(viewModel.availableCameras.map(\.deviceName), ["Kitchen iPhone"])
@@ -109,14 +120,14 @@ final class RemoteCameraViewMountingTests: XCTestCase {
 
     /// In the Simulator there is no capture device, so Camera Mode must
     /// explain itself rather than sit on a black preview.
-    func test_cameraModeViewMountsAndReportsNoCamera() async {
+    func test_cameraModeViewMountsAndReportsNoCamera() async throws {
         let viewModel = CameraModeViewModel(
             identity: identity,
             registry: InMemoryDeviceRegistry(),
             transport: InMemorySignalingTransport()
         )
 
-        await mount(NavigationStack { CameraModeView(viewModel: viewModel) })
+        try await mount(NavigationStack { CameraModeView(viewModel: viewModel) })
 
         XCTAssertFalse(viewModel.isActive)
         XCTAssertFalse(viewModel.isReceivingFrames)
@@ -124,14 +135,14 @@ final class RemoteCameraViewMountingTests: XCTestCase {
         await viewModel.deactivate()
     }
 
-    func test_remoteCameraViewMountsAndListsCameras() async {
+    func test_remoteCameraViewMountsAndListsCameras() async throws {
         let viewModel = RemoteCameraViewModel(
             identity: identity,
             registry: seededRegistry(),
             transport: InMemorySignalingTransport()
         )
 
-        await mount(NavigationStack { RemoteCameraView(viewModel: viewModel) })
+        try await mount(NavigationStack { RemoteCameraView(viewModel: viewModel) })
 
         XCTAssertEqual(viewModel.availableCameras.map(\.deviceName), ["Kitchen iPhone"])
         XCTAssertFalse(viewModel.isConnected)
@@ -144,7 +155,7 @@ final class RemoteCameraViewMountingTests: XCTestCase {
 
     /// The snapshot branch of the body - captured image, share sheet, and the
     /// mock-data badge - which the empty state never builds.
-    func test_remoteCameraViewMountsWithASnapshotAndMockRecognition() async {
+    func test_remoteCameraViewMountsWithASnapshotAndMockRecognition() async throws {
         let viewModel = RemoteCameraViewModel(
             identity: identity,
             registry: seededRegistry(),
@@ -155,14 +166,17 @@ final class RemoteCameraViewMountingTests: XCTestCase {
         viewModel.presentSnapshotForPreview(TestImage.makeUIImage(size: CGSize(width: 600, height: 450)))
         await viewModel.recognizeSnapshot()
 
-        await mount(NavigationStack { RemoteCameraView(viewModel: viewModel) })
+        try await mount(NavigationStack { RemoteCameraView(viewModel: viewModel) })
 
         XCTAssertNotNil(viewModel.snapshot)
         XCTAssertEqual(viewModel.recognition?.isMockData, true)
         await viewModel.stop()
     }
 
-    func test_profileViewMountsWithTheConnectedDevicesLink() async {
+    func test_profileViewMountsWithTheConnectedDevicesLink() async throws {
+        // Profile is handed the kitchen's store, the way `ContentView` hands
+        // it the one the app built. In-memory here so mounting the screen
+        // does not touch the device's real store.
         let seededEvent = InventoryEvent(
             pantryItemID: UUID(),
             itemName: "Mount-test spinach",
@@ -175,7 +189,7 @@ final class RemoteCameraViewMountingTests: XCTestCase {
         let authViewModel = AuthViewModel(observesAuthState: false)
         retainedAuthViewModel = authViewModel
 
-        await mount(
+        try await mount(
             NavigationStack {
                 ProfileView(inventory: inventory, onFindRecipes: {})
                     .environmentObject(authViewModel)

@@ -60,12 +60,12 @@ struct WasteCostReading: Equatable, Sendable {
 /// Everything the Profile → Impact & Budget screen renders.
 ///
 /// Assembled by `BuildImpactBudgetSummaryUseCase` from two sources that stay
-/// separate: FridgeFit's own activity log (`KitchenImpactSummary`) and the
+/// separate: FridgeFit's own activity log (`KitchenActivitySummary`) and the
 /// FridgeFunds money stores. Each field below is either a recorded fact or
 /// an explicit `nil`; nothing here is estimated to fill a gap in the design.
 struct ImpactBudgetSummary: Equatable, Sendable {
     /// Counts, efficiency, streak and trend, from the activity log alone.
-    let kitchen: KitchenImpactSummary
+    let kitchen: KitchenActivitySummary
     /// The currency every `Money` on this screen is expressed in.
     let currency: Currency
     /// `nil` when the user has not set a food budget.
@@ -96,7 +96,7 @@ struct ImpactBudgetSummary: Equatable, Sendable {
     /// An empty screen for a brand new account: nothing recorded anywhere.
     static func empty(currency: Currency = .aud, now: Date = .now) -> ImpactBudgetSummary {
         ImpactBudgetSummary(
-            kitchen: KitchenImpactSummary.calculate(events: [], now: now),
+            kitchen: KitchenActivitySummary.calculate(events: [], now: now),
             currency: currency,
             budget: nil,
             valuation: nil,
