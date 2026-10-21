@@ -67,8 +67,18 @@ struct ContentView: View {
     /// so a confirmed ingredient reaches the same pantry as everything else.
     private let pantryRepository: PantryRepository
 
-    init() {
-        let pantryRepository = FirestorePantryRepository()
+    /// Takes its repositories from the composition root rather than building
+    /// them.
+    ///
+    /// This initializer used to construct `FirestorePantryRepository()` and
+    /// `FirestoreInventoryEventRepository()` itself, which put the choice of
+    /// backend inside a `View`. Everything below is unchanged: each view model
+    /// is still handed `pantryRepository` by constructor injection, so the
+    /// recipe catalogue, the receipt scanner, substitutions, recommendations
+    /// and Discover all read the one pantry they always did - it is now just
+    /// whichever pantry `AppDependencies` selected.
+    init(dependencies: AppDependencies) {
+        let pantryRepository = dependencies.pantryRepository
         self.pantryRepository = pantryRepository
         let bundledRecipeRepository = BundledRecipeRepository()
 
@@ -109,7 +119,7 @@ struct ContentView: View {
         _inventoryStore = StateObject(
             wrappedValue: InventoryStore(
                 pantryRepository: pantryRepository,
-                eventRepository: FirestoreInventoryEventRepository()
+                eventRepository: dependencies.eventRepository
             )
         )
 
@@ -136,11 +146,13 @@ struct ContentView: View {
             )
         )
 
-        let substitutionService: SubstitutionService = OpenRouterConfiguration.loadFromInfoPlist()
-            .map { OpenRouterSubstitutionService(configuration: $0) }
-            ?? UnconfiguredSubstitutionService()
+        // Ingredient substitutions are the third on-device feature, and are
+        // wired the same unconditional way for the same reason: an
+        // unavailable model is an explained UI state, not a failed launch.
+        // There is no API key to read any more - the recipe, the ingredient
+        // and the pantry list never leave the device.
         let substitutionUseCase = GetIngredientSubstitutionsUseCase(
-            substitutionService: substitutionService,
+            substitutionService: AppleSubstitutionService(),
             pantryRepository: pantryRepository,
             cache: SubstitutionCache()
         )
@@ -157,7 +169,9 @@ struct ContentView: View {
                     recipeService: OnlineRecipeFeature.makeOnlineRecipeService(),
                     pantryRepository: pantryRepository
                 ),
-                preferencesStore: UserDefaultsOnlineRecipePreferencesStore()
+                preferencesStore: UserDefaultsOnlineRecipePreferencesStore(),
+                hiddenRecipeStore: UserDefaultsHiddenOnlineRecipeStore(),
+                blockedRecipeIDs: OnlineRecipeBlocklist.bundledIDs()
             )
         )
     }
@@ -251,6 +265,12 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
-        .environmentObject(AuthViewModel())
+    ContentView(
+        dependencies: AppDependencies(
+            backend: .swiftData,
+            pantryRepository: InMemoryPantryRepository(),
+            eventRepository: InMemoryInventoryEventRepository()
+        )
+    )
+    .environmentObject(AuthViewModel())
 }

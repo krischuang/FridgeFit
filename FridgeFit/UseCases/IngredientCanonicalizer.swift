@@ -6,7 +6,7 @@
 import Foundation
 
 /// An ingredient name resolved to a stable internal identity.
-struct CanonicalizedIngredient: Equatable {
+nonisolated struct CanonicalizedIngredient: Equatable {
     /// Stable, lowercase, snake_case identity used for deduplication and
     /// pantry matching. Never shown to the user.
     let canonicalName: String
@@ -57,7 +57,7 @@ struct CanonicalizedIngredient: Equatable {
 /// multi-word food that descriptor removal would damage). The table is
 /// deliberately a short list of genuine synonyms and dialect differences -
 /// it is not, and must not become, a catalogue of supermarket products.
-struct IngredientCanonicalizer {
+nonisolated struct IngredientCanonicalizer {
     /// Genuine synonyms and dialect differences, folded form on the left.
     ///
     /// `pepper veggie` is here because Apple's Vision classifier emits

@@ -115,6 +115,14 @@ struct IngredientEditorView: View {
             }
             .buttonStyle(FridgeFitPrimaryButtonStyle())
             .disabled(isSaveDisabled)
+            // While saving, the label is a bare ProgressView, so the button
+            // would be announced with no name at all at exactly the moment
+            // the user wants to know whether it took.
+            .accessibilityLabel(
+                isSaving
+                    ? "Saving"
+                    : (isAdding ? "Add to Pantry" : "Save Changes")
+            )
             .padding(.horizontal, FridgeFitTheme.Spacing.large)
             .padding(.top, FridgeFitTheme.Spacing.small)
             .padding(.bottom, FridgeFitTheme.Spacing.xSmall)
@@ -150,6 +158,7 @@ struct IngredientEditorView: View {
                     .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                 TextField("Search or enter ingredient…", text: $name)
                     .font(FridgeFitTheme.Typography.body.weight(.medium))
+                    .accessibilityLabel("Ingredient name")
                 if !name.isEmpty {
                     Button { name = "" } label: {
                         Image(systemName: "xmark.circle.fill")
@@ -269,6 +278,7 @@ struct IngredientEditorView: View {
                 Spacer()
                 Toggle("Track expiry date", isOn: $hasExpiry.animation(.snappy))
                     .labelsHidden()
+                    .accessibilityLabel("Track an expiry date")
             }
 
             if hasExpiry {

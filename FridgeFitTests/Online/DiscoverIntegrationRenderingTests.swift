@@ -63,6 +63,7 @@ final class DiscoverIntegrationRenderingTests: XCTestCase {
                 DiscoverRecipesView(
                     viewModel: searchViewModel(),
                     recipeViewModel: RecipeViewModel(
+                        recipeRepository: InMemoryRecipeRepository(),
                         pantryRepository: InMemoryPantryRepository(),
                         savedRecipeUnavailableExplanation: OnlineRecipeFeature.savedRecipeUnavailableExplanation(
                             state: .disabledPendingRulesDeployment
@@ -86,6 +87,7 @@ final class DiscoverIntegrationRenderingTests: XCTestCase {
                 DiscoverRecipesView(
                     viewModel: viewModel,
                     recipeViewModel: RecipeViewModel(
+                        recipeRepository: InMemoryRecipeRepository(),
                         pantryRepository: InMemoryPantryRepository(),
                         savedRecipeRepository: InMemorySavedRecipeRepository()
                     ),
@@ -102,6 +104,7 @@ final class DiscoverIntegrationRenderingTests: XCTestCase {
                     match: OnlineRecipeFixtures.match(id: 1, title: "Mock Pasta"),
                     intolerances: [.dairy],
                     recipeViewModel: RecipeViewModel(
+                        recipeRepository: InMemoryRecipeRepository(),
                         pantryRepository: InMemoryPantryRepository(),
                         savedRecipeUnavailableExplanation: OnlineRecipeFeature.savedRecipeUnavailableExplanation(
                             state: .disabledPendingRulesDeployment
@@ -120,6 +123,7 @@ final class DiscoverIntegrationRenderingTests: XCTestCase {
                     match: OnlineRecipeFixtures.match(id: 3, title: "Unscreened", intolerances: nil),
                     intolerances: [.dairy],
                     recipeViewModel: RecipeViewModel(
+                        recipeRepository: InMemoryRecipeRepository(),
                         pantryRepository: InMemoryPantryRepository(),
                         savedRecipeRepository: InMemorySavedRecipeRepository()
                     )

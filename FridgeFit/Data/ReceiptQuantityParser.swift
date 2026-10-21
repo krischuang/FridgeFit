@@ -27,7 +27,7 @@ import Foundation
 /// UI shows as "quantity not detected" and asks the user to fill in. The
 /// previous fridge-scan flow defaulted to `1 pcs`, which looks like
 /// information but is a guess the user has to notice to correct.
-struct ReceiptQuantityParser {
+nonisolated struct ReceiptQuantityParser {
     /// Unit suffixes as they appear on receipts, mapped onto the pantry's
     /// fixed unit set. Uppercased keys; lookups uppercase the input.
     private static let unitsBySuffix: [String: MeasurementUnit] = [

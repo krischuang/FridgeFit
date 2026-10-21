@@ -22,6 +22,11 @@ struct OnlineRecipeDetailView: View {
     let match: OnlineRecipeMatch
     let intolerances: Set<FoodIntolerance>
     @ObservedObject var recipeViewModel: RecipeViewModel
+    /// Near-expiry / expired pantry items this recipe would use.
+    var expiryUse: OnlineRecipeExpiryUse = .none
+    /// Hides this recipe from future searches. `nil` hides the action.
+    var onHide: (() -> Void)? = nil
+    @Environment(\.dismiss) private var dismiss
 
     private var recipe: OnlineRecipe { match.recipe }
 
@@ -61,6 +66,28 @@ struct OnlineRecipeDetailView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+            }
+
+            if expiryUse != .none {
+                Section("Use It Up") {
+                    if expiryUse.usesUrgentIngredient {
+                        ForEach(expiryUse.urgent, id: \.ingredientName) { use in
+                            Label(
+                                "\(use.ingredientName) expires \(OnlineRecipeExpiryPresentation.whenText(for: use))",
+                                systemImage: "clock.badge.exclamationmark"
+                            )
+                            .foregroundStyle(OnlineRecipeExpiryPresentation.tint(for: use.urgency))
+                        }
+                    }
+                    if expiryUse.usesExpiredIngredient {
+                        Label(
+                            "\(expiryUse.expired.joined(separator: ", ")) in your pantry has expired - check it before cooking.",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .foregroundStyle(.red)
+                    }
+                }
+                .font(.subheadline)
             }
 
             saveSection
@@ -121,6 +148,29 @@ struct OnlineRecipeDetailView: View {
                 Link(destination: URL(string: "https://spoonacular.com/food-api")!) {
                     Text("Recipe data powered by Spoonacular")
                         .font(.footnote)
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            Text("Spoonacular recipe ID \(String(recipe.id))")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .padding(.bottom, 4)
+        }
+        .toolbar {
+            if let onHide {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button(role: .destructive) {
+                            onHide()
+                            dismiss()
+                        } label: {
+                            Label("Don't Show This Recipe Again", systemImage: "eye.slash")
+                        }
+                    } label: {
+                        Label("More", systemImage: "ellipsis.circle")
+                    }
                 }
             }
         }

@@ -13,10 +13,11 @@ final class OnlineRecipeFeatureTests: XCTestCase {
 
     // MARK: - Shipped state
 
-    func test_shippedProviderState_isDisabled() {
-        // The whole point of the gate. If this ever flips without the three
-        // activation steps being done deliberately, this test is the alarm.
-        XCTAssertEqual(OnlineRecipeFeature.provider, .disabled)
+    func test_shippedProviderState_isEnabled() {
+        // Flipped deliberately once the Spoonacular account owner configured
+        // a key via Secrets.xcconfig (see docs/spoonacular-online-recipes.md).
+        // If this changes again, it should be just as deliberate.
+        XCTAssertEqual(OnlineRecipeFeature.provider, .enabled)
     }
 
     func test_shippedSavedRecipeStorageState_isDisabledPendingRulesDeployment() {
@@ -145,6 +146,7 @@ final class OnlineRecipeFeatureTests: XCTestCase {
         // The requirement is specifically that no save action exists that
         // would fail with permission-denied against undeployed rules.
         let viewModel = RecipeViewModel(
+            recipeRepository: InMemoryRecipeRepository(),
             pantryRepository: InMemoryPantryRepository(),
             savedRecipeRepository: OnlineRecipeFeature.makeSavedRecipeRepository(
                 state: .disabledPendingRulesDeployment,
@@ -162,7 +164,10 @@ final class OnlineRecipeFeatureTests: XCTestCase {
     }
 
     func test_savingIsANoOpWhenNoRepositoryIsWired() async {
-        let viewModel = RecipeViewModel(pantryRepository: InMemoryPantryRepository())
+        let viewModel = RecipeViewModel(
+            recipeRepository: InMemoryRecipeRepository(),
+            pantryRepository: InMemoryPantryRepository()
+        )
         await viewModel.saveOnlineRecipe(OnlineRecipeFixtures.recipe())
 
         XCTAssertTrue(viewModel.savedRecipes.isEmpty)

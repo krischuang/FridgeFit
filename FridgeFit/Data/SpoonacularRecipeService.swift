@@ -112,14 +112,10 @@ nonisolated final class SpoonacularRecipeService: OnlineRecipeService {
         return decoded.results.map(\.asMatch)
     }
 
-    /// Spoonacular summaries are HTML; the app shows plain text.
+    /// Spoonacular text is HTML; the app shows plain text. See
+    /// `SpoonacularContentCleaner` for every cleaning rule.
     static func plainText(fromHTML html: String) -> String {
-        var text = html.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-        let entities = ["&amp;": "&", "&quot;": "\"", "&#39;": "'", "&apos;": "'", "&lt;": "<", "&gt;": ">", "&nbsp;": " "]
-        for (entity, replacement) in entities {
-            text = text.replacingOccurrences(of: entity, with: replacement)
-        }
-        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        SpoonacularContentCleaner.plainText(fromHTML: html)
     }
 }
 
@@ -136,11 +132,11 @@ nonisolated final class UnconfiguredOnlineRecipeService: OnlineRecipeService {
 
 // MARK: - Wire types
 
-private struct SpoonacularSearchResponse: Decodable {
+private nonisolated struct SpoonacularSearchResponse: Decodable {
     let results: [SpoonacularRecipe]
 }
 
-private struct SpoonacularIngredient: Decodable {
+private nonisolated struct SpoonacularIngredient: Decodable {
     let id: Int?
     let name: String?
     let nameClean: String?
@@ -169,10 +165,11 @@ private struct SpoonacularIngredient: Decodable {
     }
 }
 
-private struct SpoonacularRecipe: Decodable {
+private nonisolated struct SpoonacularRecipe: Decodable {
     let id: Int
     let title: String
     let image: String?
+    let imageType: String?
     let readyInMinutes: Int?
     let servings: Int?
     let sourceUrl: String?
@@ -182,6 +179,9 @@ private struct SpoonacularRecipe: Decodable {
     let diets: [String]?
     let extendedIngredients: [SpoonacularIngredient]?
     let analyzedInstructions: [AnalyzedInstruction]?
+    /// HTML method text. Many recipes have this but no
+    /// `analyzedInstructions`, so it is the fallback source of steps.
+    let instructions: String?
     let usedIngredients: [SpoonacularIngredient]?
     let missedIngredients: [SpoonacularIngredient]?
 
@@ -204,10 +204,10 @@ private struct SpoonacularRecipe: Decodable {
 
     var asRecipe: OnlineRecipe {
         let ingredientLines = extendedIngredients ?? []
-        let steps = (analyzedInstructions ?? [])
-            .flatMap(\.steps)
-            .map { $0.step.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        let steps = SpoonacularContentCleaner.steps(
+            analyzed: (analyzedInstructions ?? []).flatMap(\.steps).map(\.step),
+            instructionsHTML: instructions
+        )
 
         let intolerances = RecipeIntoleranceAnalysis.intolerances(
             inIngredientNames: ingredientLines.map(\.resolvedName)
@@ -215,11 +215,11 @@ private struct SpoonacularRecipe: Decodable {
 
         return OnlineRecipe(
             id: id,
-            title: title,
-            imageURL: image.flatMap(URL.init(string:)),
+            title: SpoonacularContentCleaner.title(title),
+            imageURL: SpoonacularContentCleaner.imageURL(image: image, imageType: imageType, recipeID: id),
             readyInMinutes: readyInMinutes,
             servings: servings,
-            summary: summary.map(SpoonacularRecipeService.plainText(fromHTML:)),
+            summary: summary.flatMap(SpoonacularContentCleaner.summary(fromHTML:)),
             sourceName: sourceName,
             sourceURL: sourceUrl.flatMap(URL.init(string:)),
             healthScore: healthScore,

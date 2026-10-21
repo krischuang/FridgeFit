@@ -53,9 +53,17 @@ final class RecipeViewModel: ObservableObject {
     ///     Injected rather than read from `OnlineRecipeFeature` here so the
     ///     view model stays independent of the feature gate and tests can
     ///     assert either state.
+    ///
+    /// `recipeRepository` and `pantryRepository` are required rather than
+    /// defaulted, for the reason `InventoryStore` and `PantryViewModel`
+    /// already record: the only available defaults are a bundled catalogue
+    /// and an in-memory pantry, and a screen that silently shows sample data
+    /// instead of the user's own is a worse failure than a compile error.
+    /// It also keeps main-actor types out of default-argument expressions,
+    /// which `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` warns about.
     init(
-        recipeRepository: RecipeRepository = BundledRecipeRepository(),
-        pantryRepository: PantryRepository = InMemoryPantryRepository(),
+        recipeRepository: RecipeRepository,
+        pantryRepository: PantryRepository,
         savedRecipeRepository: SavedRecipeRepository? = nil,
         savedRecipeUnavailableExplanation: String? = nil
     ) {

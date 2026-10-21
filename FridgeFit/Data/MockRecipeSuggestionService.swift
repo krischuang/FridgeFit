@@ -9,7 +9,7 @@ import Foundation
 ///
 /// Records the pantry it was handed so tests can assert that the real pantry
 /// - and only the real pantry - is what gets sent to the model.
-final class MockRecipeSuggestionService: RecipeSuggestionService {
+nonisolated final class MockRecipeSuggestionService: RecipeSuggestionService {
     var result: Result<[RawRecipeSuggestion], Error>
     var availability: AppleIntelligenceAvailability
     private(set) var suggestCallCount = 0

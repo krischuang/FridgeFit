@@ -12,7 +12,7 @@ import Foundation
 /// and the honest representation of that is the absence of a value - not
 /// `1 pcs`, which is a number the user never saw and would have to notice
 /// and correct.
-struct ReceiptQuantity: Equatable {
+nonisolated struct ReceiptQuantity: Equatable {
     let value: Double
     let unit: MeasurementUnit
 

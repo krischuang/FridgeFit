@@ -17,12 +17,13 @@ substitutions.
   (have it / not enough / missing) computed against your real pantry.
 - **Recipe suggestions** — on-device Apple Intelligence proposes recipes
   built from what's actually in your pantry.
-- **Substitutions** — for any ingredient you're short on, get alternatives
-  via OpenRouter, validated against your pantry before being shown.
+- **Substitutions** — for any ingredient you're short on, on-device Apple
+  Intelligence proposes alternatives, validated against your pantry before
+  being shown.
 - **Accounts** — Firebase Authentication, including Google Sign-In.
 
 Architecture is layered: `Domain` (models, protocols, errors) → `UseCases`
-→ `Data` (Firestore, Vision, Foundation Models, OpenRouter) → `ViewModels`
+→ `Data` (Firestore, Vision, Foundation Models) → `ViewModels`
 → `Views`. 240 unit tests cover the domain, use-case and view-model layers.
 
 ---
@@ -54,12 +55,15 @@ Then press **⌘R**. That's it for the simulator — Firebase config is
 committed, Swift packages resolve automatically on first open, and no
 secrets file is required.
 
-Two optional steps, each only if you need it:
+One optional step, only if you need it:
 
 - Running **on a physical device** → set your team, see
   [Apple Development Team](#apple-development-team).
-- Using the **substitutions feature** → add an OpenRouter key, see
-  [OpenRouter API](#openrouter-api-key).
+
+The three Apple Intelligence features — receipt scanning, recipe
+suggestions and ingredient substitutions — need no configuration at all,
+but do need a physical device that supports Apple Intelligence with the
+feature enabled. See [Apple Intelligence](#apple-intelligence).
 
 ---
 
@@ -141,29 +145,50 @@ which produces `com.Fridge.FridgeFit.yourname`. Consequences:
 `FridgeFitApp.swift` wires `GIDSignIn` from the Firebase client ID at
 launch. Only revisit this if you swap in a different Firebase project.
 
-### OpenRouter API key
+### Apple Intelligence
 
-Needed only for the **ingredient substitutions** feature. Without it, the
-rest of the app is completely unaffected: `OpenRouterConfiguration`
-returns `nil` for a missing key and `ContentView` substitutes an
-`UnconfiguredSubstitutionService`, so tapping *Find Substitute* shows a
-"not configured" message instead of failing or crashing.
+**Nothing to configure.** Three features run on Apple's on-device
+Foundation Models — receipt scanning, pantry recipe suggestions, and
+ingredient substitutions. There is no API key, no account, and nothing
+leaves the device.
 
-```bash
-cp Secrets.xcconfig.example Secrets.xcconfig   # if you haven't already
-```
+What they do need is hardware. Each one reads
+`SystemLanguageModel.availability` fresh on every use and maps it onto
+`AppleIntelligenceAvailability`, so a device that can't run the model gets
+an explanation instead of a failure:
 
-Add your key from [openrouter.ai/keys](https://openrouter.ai/keys):
+| State | What the user sees |
+| --- | --- |
+| Available | The feature works |
+| Apple Intelligence off in Settings | "Apple Intelligence Is Off", with what to turn on |
+| Device not eligible | "Not Supported on This Device" |
+| Model still downloading | "Apple Intelligence Isn't Ready", try again shortly |
 
-```
-OPENROUTER_API_KEY = sk-or-v1-...
-```
+Substitutions in particular never fabricate a suggestion when the model
+can't run — *Find Substitute* is replaced by the explanation, and the rest
+of the recipe screen keeps working. Pantry, recipes, Discover and auth are
+unaffected on every device.
 
-The model defaults to `google/gemma-4-31b-it:free` and can be overridden
-with `OPENROUTER_MODEL`.
+**The simulator cannot actually run these features, but it does not say
+so.** On the iOS 26.1 simulator `SystemLanguageModel.availability` reports
+`.available`, yet no model assets exist and a generation request never
+returns. Substitutions survive this because
+`AppleSubstitutionService` bounds every generation with a 20-second timeout
+and surfaces "Finding substitutes took too long" — receipt scanning and
+recipe suggestions have no equivalent bound and will simply hang on the
+simulator. Use a real device to try any of the three.
 
-`Secrets.xcconfig` is **gitignored and must stay that way.** The key is
-injected via build settings into `Info.plist` at build time, so it never
+Everything above the provider is tested against mocks, which is why the
+suite itself runs on the simulator.
+
+### Spoonacular API key
+
+Optional, and only for the Discover tab's online recipes — see the
+commented `SPOONACULAR_API_KEY` block in `Secrets.xcconfig.example` for
+what it enables and how to turn it on.
+
+`Secrets.xcconfig` is **gitignored and must stay that way.** Any key there
+is injected via build settings into `Info.plist` at build time, so it never
 appears in source. Note that this means the key *is* readable inside the
 built app binary — fine for a class project, not a pattern for production.
 
@@ -218,15 +243,13 @@ failures** — in Xcode, **File → Packages → Reset Package Caches**, then
 **Resolve Package Versions**. `Package.resolved` is gitignored, so each
 machine resolves its own versions.
 
-**Receipt scanning or recipe suggestions say Apple Intelligence is
-unavailable** — expected on the simulator and on hardware that doesn't
-support Apple Intelligence. These features need a physical device with
-Apple Intelligence enabled in Settings, and the model assets downloaded.
-The app degrades gracefully with an explanation rather than failing; the
-pantry, recipes and auth are unaffected.
-
-**"Find Substitute" reports the feature isn't configured** — no OpenRouter
-key. See [OpenRouter API key](#openrouter-api-key).
+**Receipt scanning, recipe suggestions or substitutions say Apple
+Intelligence is unavailable** — expected on the simulator and on hardware
+that doesn't support Apple Intelligence. These features need a physical
+device with Apple Intelligence enabled in Settings, and the model assets
+downloaded. The app degrades gracefully with an explanation rather than
+failing; the pantry, recipes and auth are unaffected. See
+[Apple Intelligence](#apple-intelligence).
 
 **Project won't open / "unsupported project version"** — you're on an
 Xcode older than 26.1. Update Xcode.
@@ -239,7 +262,7 @@ Xcode older than 26.1. Update Xcode.
 FridgeFit/              App source (file-system-synchronized group)
   Domain/               Models, protocols, errors — no framework imports
   UseCases/             Business rules
-  Data/                 Firestore, Vision, Foundation Models, OpenRouter
+  Data/                 Firestore, Vision, Foundation Models, Spoonacular
   ViewModels/           Observable state for the views
   Views/                SwiftUI screens
   GoogleService-Info.plist   Firebase config (committed on purpose)
