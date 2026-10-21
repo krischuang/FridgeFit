@@ -16,6 +16,11 @@ rules_version = '2';
 //   users/{uid}/webrtcSessions/{sessionId}
 //   users/{uid}/webrtcSessions/{sessionId}/callerCandidates/{candidateId}
 //   users/{uid}/webrtcSessions/{sessionId}/calleeCandidates/{candidateId}
+//   users/{uid}/fundsBudget/current
+//   users/{uid}/fundsSpends/{spendId}
+//   users/{uid}/fundsWaste/{wasteId}
+//   users/{uid}/fundsItemPrices/{pantryItemId}
+//   users/{uid}/fundsPriceBook/{encodedIngredientName}
 //
 // Covered by FirestoreRulesTests (`npm test` in firestore-tests/), which runs
 // these rules against the Firestore emulator.
@@ -72,13 +77,10 @@ service cloud.firestore {
     // `write` covers saving (which overwrites by recipe id, so saving the
     // same recipe twice is idempotent) and removing.
     //
-    // NOTE: this block is not yet deployed. Until it is,
-    // `OnlineRecipeFeature.savedRecipeStorage` stays
-    // `.disabledPendingRulesDeployment`, which keeps the app from building a
-    // saved-recipe repository at all - so no write is attempted against the
-    // deployed default-deny rules and no user ever sees a save action fail.
-    // Deploying this file and running the firestore-tests suite against it
-    // are the two prerequisites for flipping that flag.
+    // Deployment state is external to this repository and must be verified in
+    // the Firebase project before release. Deployments must keep this rule in
+    // sync with the enabled client feature; denied writes surface through the
+    // existing save error.
     match /users/{uid}/savedRecipes/{recipeId} {
       allow read, write: if isOwner(uid);
     }
@@ -124,6 +126,21 @@ service cloud.firestore {
     match /users/{uid}/webrtcSessions/{sessionId}/{candidateCollection}/{candidateId} {
       allow read, write: if isOwner(uid)
         && candidateCollection in ['callerCandidates', 'calleeCandidates'];
+    }
+
+    // --- FridgeFunds (Profile → Impact & Budget) ---------------------------
+    //
+    // The active budget, logged grocery spends, valued waste, the price
+    // attached to each pantry item, and the per-ingredient price book - see
+    // FirestoreBudgetStore, FirestoreItemPriceStore and
+    // FirestorePriceBookStore. Same own-data-only boundary as the pantry.
+    //
+    // Restricted to the five collection names the module actually uses
+    // rather than a wildcard, for the same reason as the ICE candidate rule
+    // above.
+    match /users/{uid}/{fundsCollection}/{docId} {
+      allow read, write: if isOwner(uid)
+        && fundsCollection in ['fundsBudget', 'fundsSpends', 'fundsWaste', 'fundsItemPrices', 'fundsPriceBook'];
     }
 
     // --- Default deny -----------------------------------------------------

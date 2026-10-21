@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UIKit
 import XCTest
 @testable import FridgeFit
 
@@ -12,11 +13,11 @@ import XCTest
 ///
 /// ## What this does and does not prove
 ///
-/// `ImageRenderer` builds the view tree and rasterises it, so anything
-/// that traps while a body is being evaluated - a bad index, a nil unwrap,
-/// a layout that divides by zero - fails here. `FlowLayout` in particular
-/// is custom layout code doing its own arithmetic, and this is what
-/// exercises it.
+/// A hosting controller evaluates and lays out the view tree before it is
+/// rasterised, so anything that traps while a body is being evaluated - a bad
+/// index, a nil unwrap, or layout that divides by zero - fails here.
+/// `FlowLayout` in particular is custom layout code doing its own arithmetic,
+/// and this is what exercises it.
 ///
 /// It does **not** prove the interactive flow. Taps, swipe actions,
 /// sheet presentation, navigation pushes and the resulting navigation bar
@@ -34,11 +35,22 @@ final class RecommendationViewRenderingTests: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let renderer = ImageRenderer(content: view.frame(width: 390, height: 844))
-        renderer.scale = 1
-        guard let image = renderer.uiImage else {
-            return XCTFail("View produced no image.", file: file, line: line)
+        let size = CGSize(width: 390, height: 844)
+        let hostingController = UIHostingController(
+            rootView: view.frame(width: size.width, height: size.height)
+        )
+        hostingController.view.bounds = CGRect(origin: .zero, size: size)
+        hostingController.view.backgroundColor = .clear
+        hostingController.view.setNeedsLayout()
+        hostingController.view.layoutIfNeeded()
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        let image = renderer.image { context in
+            hostingController.view.layer.render(in: context.cgContext)
         }
+
         XCTAssertGreaterThan(image.size.width, 0, file: file, line: line)
         XCTAssertGreaterThan(image.size.height, 0, file: file, line: line)
     }

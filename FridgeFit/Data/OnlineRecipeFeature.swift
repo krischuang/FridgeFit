@@ -55,11 +55,9 @@ nonisolated enum OnlineRecipeFeature {
         /// section.
         ///
         /// This is the correct state until `firestore.rules` has been
-        /// deployed and verified: the rules file in this repository grants
-        /// `users/{uid}/savedRecipes/{recipeId}`, but the *deployed* rules
-        /// still end in default-deny, so every write would come back
-        /// `permission-denied`. Offering a save button that always fails is
-        /// worse than not offering one.
+        /// deployed and verified. The repository cannot establish the live
+        /// Firebase project's deployment state; denied writes surface through
+        /// the existing save error rather than being treated as successful.
         case disabledPendingRulesDeployment
         /// Saved recipes are read from and written to Firestore.
         case enabled
@@ -71,14 +69,17 @@ nonisolated enum OnlineRecipeFeature {
     /// configured a key in the gitignored `Secrets.xcconfig`. Without a valid
     /// key the app still builds and Discover reports `notConfigured`, so this
     /// never makes a keyless checkout fail.
+    ///
+    /// Missing or malformed configuration resolves to the explained
+    /// `UnconfiguredOnlineRecipeService` path rather than issuing a request.
     static let provider: ProviderState = .enabled
 
     /// Current saved-recipe storage state.
     ///
-    /// `.disabledPendingRulesDeployment` until the Firestore rules in this
-    /// repository are deployed and the emulator suite has been run against
-    /// the deployed project.
-    static let savedRecipeStorage: SavedRecipeStorageState = .disabledPendingRulesDeployment
+    /// Saved Discover recipes use the existing per-user Firestore collection.
+    /// Repository errors remain visible in the UI and never hide bundled
+    /// recipes.
+    static let savedRecipeStorage: SavedRecipeStorageState = .enabled
 
     // MARK: - Composition
 

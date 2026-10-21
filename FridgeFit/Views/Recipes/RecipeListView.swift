@@ -273,7 +273,7 @@ private struct RecipeCatalogueSection: View {
     }
 }
 
-private struct RecipeCatalogueCard: View {
+struct RecipeCatalogueCard: View {
     let recipe: Recipe
     let feasibility: RecipeFeasibilityResult?
     let isSaved: Bool
