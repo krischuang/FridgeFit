@@ -18,6 +18,10 @@ import Foundation
 ///   a recipe is dropped if it contains one, *or* if its ingredients
 ///   couldn't be verified (`containsIntolerances == nil`). The provider's
 ///   own `intolerances` filter is trusted as a first pass only.
+/// - **Have vs missing comes from the pantry**: each recipe's ingredient
+///   lines are re-checked against the real pantry
+///   (`OnlineRecipePantryReconciler`), so staples the provider assumes are
+///   owned (sugar, salt, flour) show as missing unless the user has them.
 /// - **Use it up first**: recipes that use pantry items close to expiry
 ///   rank first (most urgent first), and recipes that would use an expired
 ///   item sink - see `OnlineRecipeExpiryRanking`. Near-expiry names are also
@@ -69,9 +73,9 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
             resultLimit: resultLimit
         )
 
-        let matches: [OnlineRecipeMatch]
+        let providerMatches: [OnlineRecipeMatch]
         do {
-            matches = try await recipeService.searchRecipes(matching: criteria)
+            providerMatches = try await recipeService.searchRecipes(matching: criteria)
         } catch let error as OnlineRecipeSearchError {
             throw error
         } catch is CancellationError {
@@ -79,6 +83,11 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
         } catch {
             throw OnlineRecipeSearchError.providerUnavailable
         }
+
+        // Have/missing comes from the user's real pantry, not from the
+        // provider's "not missing" (it assumes staples like sugar are owned).
+        // Done before ranking so counts, order and badges all agree.
+        let matches = providerMatches.map { OnlineRecipePantryReconciler.reconciled($0, pantry: pantry) }
 
         let visible = matches.filter { !excludedRecipeIDs.contains($0.id) }
         let safe = visible.filter { Self.isSafe($0.recipe, for: effectivePreferences.intolerances) }
