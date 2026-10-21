@@ -260,12 +260,11 @@ struct ContentView: View {
                 NavigationStack {
                     ProfileView(
                         inventory: inventoryStore,
-                        onFindRecipes: { showRecipeRoute(.recommendations) }
+                        onFindRecipes: {
+                            showRecipeRoute(.recommendations)
+                        }
                     )
                 }
-                // Profile owns no presentation that should replace the root tabs.
-                // Make that contract explicit so toolbar state inherited from a
-                // previously pushed destination cannot leave this tab hidden.
                 .toolbar(.visible, for: .tabBar)
             }
         }
