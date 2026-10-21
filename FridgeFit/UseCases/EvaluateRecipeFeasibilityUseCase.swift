@@ -22,7 +22,8 @@ nonisolated struct EvaluateRecipeFeasibilityUseCase {
     /// user's pantry and returns the result.
     ///
     /// Matches ingredients by normalized name (`Ingredient.matches(name:)`
-    /// - trimmed, case-insensitive), the same rule Pantry itself uses, not
+    /// - case-, whitespace- and plural-insensitive, so "Egg" in the pantry
+    /// covers "Eggs" in a recipe), the same rule Pantry itself uses, not
     /// by id: pantry items and recipe ingredients are created separately,
     /// so id equality would never match.
     func execute(recipe: Recipe) async throws -> RecipeFeasibilityResult {

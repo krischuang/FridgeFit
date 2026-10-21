@@ -247,17 +247,10 @@ nonisolated struct IngredientCanonicalizer {
     }
 
     /// Enough English plural handling for food names.
+    /// Delegates to the app-wide rule so receipts and pantry matching
+    /// singularize identically.
     private static func singularized(_ word: String) -> String {
-        guard word.count > 3 else { return word }
-
-        if word.hasSuffix("ies") { return String(word.dropLast(3)) + "y" }
-        if word.hasSuffix("oes") { return String(word.dropLast(2)) }
-        for suffix in ["ses", "xes", "zes", "ches", "shes"] where word.hasSuffix(suffix) {
-            return String(word.dropLast(2))
-        }
-        if word.hasSuffix("ss") || word.hasSuffix("us") || word.hasSuffix("is") { return word }
-        if word.hasSuffix("s") { return String(word.dropLast()) }
-        return word
+        IngredientNameMatching.singularized(word)
     }
 
     private static func snakeCased(_ phrase: String) -> String {

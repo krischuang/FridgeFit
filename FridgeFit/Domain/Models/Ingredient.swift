@@ -19,14 +19,12 @@ nonisolated struct Ingredient: Identifiable, Hashable, Codable {
         self.category = category
     }
 
-    /// Whether this ingredient's name matches `otherName`, ignoring
-    /// case/whitespace - so "greek yogurt" matches "Greek Yogurt".
+    /// Whether this ingredient's name matches `otherName`, ignoring case,
+    /// whitespace and singular/plural - so "greek yogurt" matches
+    /// "Greek Yogurt" and "Egg" matches "Eggs". See `IngredientNameMatching`
+    /// for exactly what is (and isn't) treated as the same ingredient.
     func matches(name otherName: String) -> Bool {
-        Self.normalized(name) == Self.normalized(otherName)
-    }
-
-    private static func normalized(_ name: String) -> String {
-        name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        IngredientNameMatching.matches(name, otherName)
     }
 }
 
