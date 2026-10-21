@@ -10,6 +10,8 @@ import XCTest
 private final class FailingPantryRepository: PantryRepository {
     struct Failure: Error {}
     func fetchAll() async throws -> [PantryItem] { throw Failure() }
+    func fetch(id: UUID) async throws -> PantryItem? { throw Failure() }
+    func fetchExpiring(before date: Date) async throws -> [PantryItem] { throw Failure() }
     func add(_ item: PantryItem) async throws {}
     func update(_ item: PantryItem) async throws {}
     func remove(id: UUID) async throws {}

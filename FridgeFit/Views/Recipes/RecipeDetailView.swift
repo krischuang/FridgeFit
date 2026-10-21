@@ -65,6 +65,10 @@ struct RecipeDetailView: View {
             }
         }
         .task { await viewModel.evaluateIfNeeded(recipe) }
+        // Leaving the screen stops any on-device substitution generation
+        // still running. Suggestions already found stay in the view model,
+        // so coming back doesn't re-run the model.
+        .onDisappear { substitutionViewModel.cancelAll() }
     }
 }
 

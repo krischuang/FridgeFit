@@ -43,7 +43,7 @@ import Foundation
 /// from carried a hand-assigned `NutritionBalance` per recipe; main has no
 /// nutrition data for any recipe, and a "balanced meal" badge with nothing
 /// behind it is a health claim the app cannot support.
-struct Recipe: Identifiable, Hashable, Codable {
+nonisolated struct Recipe: Identifiable, Hashable, Codable {
     let id: UUID
     var title: String
     var summary: String

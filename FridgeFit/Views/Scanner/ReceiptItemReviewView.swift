@@ -311,10 +311,24 @@ private struct ReceiptReviewCard: View {
                     .background(FridgeFitTheme.ColorToken.warningBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
             }
 
-            HStack(spacing: FridgeFitTheme.Spacing.small) {
-                quantityField
-                unitPicker
-                categoryPicker
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: FridgeFitTheme.Spacing.small) {
+                    quantityField
+                        .frame(minWidth: 76, maxWidth: .infinity, alignment: .leading)
+                    unitPicker
+                        .frame(width: 60, alignment: .leading)
+                    categoryPicker
+                        .frame(minWidth: 112, maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
+                }
+
+                VStack(spacing: FridgeFitTheme.Spacing.small) {
+                    HStack(spacing: FridgeFitTheme.Spacing.small) {
+                        quantityField
+                        unitPicker
+                    }
+                    categoryPicker
+                }
             }
 
             if !draft.hasDetectedQuantity && draft.quantity == nil {
@@ -395,6 +409,8 @@ private struct ReceiptReviewCard: View {
             .labelsHidden()
             .pickerStyle(.menu)
             .tint(FridgeFitTheme.ColorToken.textPrimary)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             .padding(.horizontal, FridgeFitTheme.Spacing.xSmall)
             .background(FridgeFitTheme.ColorToken.disabledSurface.opacity(0.65), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
@@ -403,11 +419,51 @@ private struct ReceiptReviewCard: View {
     }
 }
 
-#Preview {
-    let viewModel = ReceiptScannerViewModel(
-        textRecognizer: MockReceiptTextRecognizer(lines: SampleReceiptPreviewData.lines),
-        interpreter: MockReceiptIngredientInterpreter(),
-        pantryRepository: InMemoryPantryRepository()
-    )
-    return ReceiptItemReviewView(viewModel: viewModel, onCompleted: { _ in })
+#if DEBUG
+private enum ReceiptReviewPreviewData {
+    static func draft(
+        _ name: String,
+        category: IngredientCategory,
+        quantity: ReceiptQuantity?,
+        isAlreadyInPantry: Bool = false
+    ) -> ReceiptItemDraft {
+        ReceiptItemDraft(
+            candidate: ReceiptIngredientCandidate(
+                displayName: name,
+                canonicalName: name.lowercased(),
+                classification: .ingredient,
+                category: category,
+                quantity: quantity,
+                sourceText: name.uppercased(),
+                order: 0,
+                isAlreadyInPantry: isAlreadyInPantry
+            )
+        )
+    }
+
+    static let normal = [
+        draft("Milk", category: .dairy, quantity: ReceiptQuantity(value: 2, unit: .liters)),
+        draft("Baby Spinach", category: .produce, quantity: ReceiptQuantity(value: 120, unit: .grams)),
+        draft("Free Range Eggs", category: .other, quantity: ReceiptQuantity(value: 12, unit: .pieces))
+    ]
+
+    static let duplicateAndMissingQuantity = [
+        draft("Milk", category: .dairy, quantity: ReceiptQuantity(value: 2, unit: .liters), isAlreadyInPantry: true),
+        draft("Truss Tomatoes", category: .produce, quantity: nil)
+    ]
 }
+
+#Preview("Receipt Review — Normal Results") {
+    ReceiptItemReviewView(
+        viewModel: ReceiptScannerViewModel(previewDrafts: ReceiptReviewPreviewData.normal),
+        onCompleted: { _ in }
+    )
+}
+
+#Preview("Receipt Review — Duplicate and Missing Quantity") {
+    ReceiptItemReviewView(
+        viewModel: ReceiptScannerViewModel(previewDrafts: ReceiptReviewPreviewData.duplicateAndMissingQuantity),
+        onCompleted: { _ in }
+    )
+}
+#endif

@@ -12,7 +12,7 @@ import Foundation
 /// The LLM is never trusted for any of that. This type doesn't call the
 /// provider or know about caching; `GetIngredientSubstitutionsUseCase`
 /// handles that.
-enum SubstitutionSuggestionValidator {
+nonisolated enum SubstitutionSuggestionValidator {
     /// Validates one candidate.
     ///
     /// - Returns: `nil` if the candidate is structurally invalid (blank

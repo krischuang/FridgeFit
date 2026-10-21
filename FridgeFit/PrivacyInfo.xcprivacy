@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  FridgeFit privacy manifest.
+
+	  Required for App Store submission. Describes what the app collects, and
+	  declares the reason for each "required reason" API it uses.
+
+	  Scope note: the declarations below cover FridgeFit's own code. Firebase
+	  and GoogleSignIn ship their own privacy manifests inside their
+	  XCFrameworks, which Xcode aggregates into the privacy report at archive
+	  time - they are deliberately not restated here.
+
+	  VERIFY BEFORE SUBMITTING: the collected-data entries must match what the
+	  shipping configuration actually does. In the SwiftData configuration the
+	  pantry never leaves the device, so "Other User Content" is collected only
+	  when the app is built against the Firebase backend. It is declared here
+	  because declaring collection that does not occur is safe, while omitting
+	  collection that does occur is not.
+	-->
+
+	<!-- No tracking. Nothing is shared with data brokers, and there is no
+	     advertising or cross-app identifier anywhere in the project. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array>
+		<!--
+		  Email address, via Firebase Authentication. Used only to identify
+		  the account that owns a pantry - it is the uid behind
+		  users/{uid} in Firestore and behind ownerID in the local store.
+		  Not used for tracking, not used for advertising.
+		-->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeEmailAddress</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!--
+		  The pantry itself - ingredient names, amounts, expiry dates and the
+		  kitchen activity log - when the app is configured against the
+		  Firebase backend. Stored under the signed-in user's own uid and
+		  readable by nobody else (see firestore.rules).
+		-->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!--
+		  Photos and camera video are deliberately NOT declared as collected.
+
+		  Fridge photos are analysed on-device by CoreML and Vision, and the
+		  receipt scanner's image never reaches a language model. In Camera
+		  Mode, video is streamed directly between two devices signed into the
+		  same account over WebRTC. None of it is uploaded to FridgeFit or
+		  retained by the developer, which is also what NSCameraUsageDescription
+		  tells the user.
+		-->
+	</array>
+
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<!--
+		  UserDefaults. Three uses, all of them this app's own settings:
+		  the Discover tab's search filters (OnlineRecipePreferencesStore),
+		  this device's remote-camera identity (DeviceIdentity), and the
+		  persistence backend launch argument (PersistenceConfiguration).
+		  Reason CA92.1 - access to the app's own defaults.
+		-->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

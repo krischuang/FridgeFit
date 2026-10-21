@@ -212,6 +212,14 @@ final class IngredientReviewViewModel: ObservableObject {
         if saveState.isRetryable || saveState.summary != nil { saveState = .idle }
     }
 
+    #if DEBUG
+    /// Preview-only state injection for visually checking partial and failed
+    /// save presentation without calling a repository.
+    func presentPreviewSaveState(_ state: PantrySaveState) {
+        saveState = state
+    }
+    #endif
+
     // MARK: - Pantry persistence
 
     /// Rows the user accepted that still need an amount before they can be

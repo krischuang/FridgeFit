@@ -29,6 +29,10 @@ final class IngredientReviewPantrySaveTests: XCTestCase {
         private(set) var addCallCount = 0
 
         func fetchAll() async throws -> [PantryItem] { added }
+        func fetch(id: UUID) async throws -> PantryItem? { added.first { $0.id == id } }
+        func fetchExpiring(before date: Date) async throws -> [PantryItem] {
+            added.filter { ($0.expiryDate ?? .distantFuture) <= date }
+        }
 
         func add(_ item: PantryItem) async throws {
             addCallCount += 1

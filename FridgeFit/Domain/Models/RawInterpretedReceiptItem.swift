@@ -18,7 +18,7 @@ import Foundation
 /// normalizer rejects any item whose echo does not correspond to a line that
 /// was actually sent - which is the main defence against the model inventing
 /// groceries that were never on the receipt.
-struct RawInterpretedReceiptItem: Equatable, Codable {
+nonisolated struct RawInterpretedReceiptItem: Equatable, Codable {
     let originalText: String
     let displayName: String
     let canonicalName: String
@@ -53,7 +53,7 @@ struct RawInterpretedReceiptItem: Equatable, Codable {
 /// Everything a `ReceiptIngredientInterpreter` returned for one receipt.
 ///
 /// Holds raw, unvalidated interpretations only.
-struct ReceiptInterpretationResult: Equatable {
+nonisolated struct ReceiptInterpretationResult: Equatable {
     let items: [RawInterpretedReceiptItem]
 
     init(items: [RawInterpretedReceiptItem]) {

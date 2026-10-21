@@ -65,8 +65,12 @@ nonisolated enum OnlineRecipeFeature {
 
     /// Current provider state.
     ///
-    /// Online search is available when a local Spoonacular key is configured.
-    /// Missing or malformed configuration still resolves to the explained
+    /// `.enabled`: the developer responsible for the Spoonacular account has
+    /// configured a key in the gitignored `Secrets.xcconfig`. Without a valid
+    /// key the app still builds and Discover reports `notConfigured`, so this
+    /// never makes a keyless checkout fail.
+    ///
+    /// Missing or malformed configuration resolves to the explained
     /// `UnconfiguredOnlineRecipeService` path rather than issuing a request.
     static let provider: ProviderState = .enabled
 

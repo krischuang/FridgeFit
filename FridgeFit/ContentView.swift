@@ -87,8 +87,18 @@ struct ContentView: View {
     /// review sheet.
     private let fundsEnvironment: FundsEnvironment
 
-    init() {
-        let pantryRepository = FirestorePantryRepository()
+    /// Takes its repositories from the composition root rather than building
+    /// them.
+    ///
+    /// This initializer used to construct `FirestorePantryRepository()` and
+    /// `FirestoreInventoryEventRepository()` itself, which put the choice of
+    /// backend inside a `View`. Everything below is unchanged: each view model
+    /// is still handed `pantryRepository` by constructor injection, so the
+    /// recipe catalogue, the receipt scanner, substitutions, recommendations
+    /// and Discover all read the one pantry they always did - it is now just
+    /// whichever pantry `AppDependencies` selected.
+    init(dependencies: AppDependencies) {
+        let pantryRepository = dependencies.pantryRepository
         self.pantryRepository = pantryRepository
         self.fundsEnvironment = .firestore(pantryRepository: pantryRepository)
         let bundledRecipeRepository = BundledRecipeRepository()
@@ -130,7 +140,7 @@ struct ContentView: View {
         _inventoryStore = StateObject(
             wrappedValue: InventoryStore(
                 pantryRepository: pantryRepository,
-                eventRepository: FirestoreInventoryEventRepository()
+                eventRepository: dependencies.eventRepository
             )
         )
 
@@ -157,11 +167,13 @@ struct ContentView: View {
             )
         )
 
-        let substitutionService: SubstitutionService = OpenRouterConfiguration.loadFromInfoPlist()
-            .map { OpenRouterSubstitutionService(configuration: $0) }
-            ?? UnconfiguredSubstitutionService()
+        // Ingredient substitutions are the third on-device feature, and are
+        // wired the same unconditional way for the same reason: an
+        // unavailable model is an explained UI state, not a failed launch.
+        // There is no API key to read any more - the recipe, the ingredient
+        // and the pantry list never leave the device.
         let substitutionUseCase = GetIngredientSubstitutionsUseCase(
-            substitutionService: substitutionService,
+            substitutionService: AppleSubstitutionService(),
             pantryRepository: pantryRepository,
             cache: SubstitutionCache()
         )
@@ -178,7 +190,9 @@ struct ContentView: View {
                     recipeService: OnlineRecipeFeature.makeOnlineRecipeService(),
                     pantryRepository: pantryRepository
                 ),
-                preferencesStore: UserDefaultsOnlineRecipePreferencesStore()
+                preferencesStore: UserDefaultsOnlineRecipePreferencesStore(),
+                hiddenRecipeStore: UserDefaultsHiddenOnlineRecipeStore(),
+                blockedRecipeIDs: OnlineRecipeBlocklist.bundledIDs()
             )
         )
     }
@@ -263,6 +277,11 @@ struct ContentView: View {
                 }
             }
 
+            // Handed the same `inventoryStore` as Home and My Fridge, so
+            // Profile's Kitchen Impact counts the activity log those two
+            // screens write to. It used to build its own Firestore event
+            // repository, which meant it read a different store from the
+            // rest of the app.
             Tab("Profile", systemImage: "person.crop.circle", value: AppTab.profile) {
                 NavigationStack {
                     ProfileView(
@@ -282,10 +301,13 @@ struct ContentView: View {
             navigation.isBrowsingRecipes = path.last == .catalogue
         }
         // Reaches the remote-camera review sheet, four levels down, without
-        // adding a pantry parameter to ProfileView, ConnectedDevicesView and
-        // RemoteCameraView - none of which have anything to do with the
-        // pantry. Same repository instance as every other tab, so a confirmed
-        // ingredient lands in the same place and under the same auth.
+        // adding a pantry parameter to ConnectedDevicesView and
+        // RemoteCameraView - neither of which writes to the pantry itself,
+        // and neither of which should gain a parameter to serve one leaf.
+        // (Profile takes `inventoryStore` for its own Kitchen Impact
+        // section, not to pass anything through.) Same repository instance
+        // as every other tab, so a confirmed ingredient lands in the same
+        // place and under the same auth.
         .environment(\.pantryRepository, pantryRepository)
         // Reaches Profile → Impact & Budget without giving that screen a
         // Firestore dependency of its own. `nil` in previews and tests, in
@@ -310,6 +332,12 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
-        .environmentObject(AuthViewModel())
+    ContentView(
+        dependencies: AppDependencies(
+            backend: .swiftData,
+            pantryRepository: InMemoryPantryRepository(),
+            eventRepository: InMemoryInventoryEventRepository()
+        )
+    )
+    .environmentObject(AuthViewModel())
 }

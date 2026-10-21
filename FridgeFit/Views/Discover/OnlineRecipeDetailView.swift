@@ -11,6 +11,10 @@ import SwiftUI
 struct OnlineRecipeDetailView: View {
     let match: OnlineRecipeMatch
     let intolerances: Set<FoodIntolerance>
+    /// Which near-expiry pantry items this recipe would use up. Defaulted so
+    /// previews and tests that do not care about expiry need not supply it;
+    /// `DiscoverRecipesView` always passes the live reading.
+    var expiryUse: OnlineRecipeExpiryUse = .none
     @ObservedObject var recipeViewModel: RecipeViewModel
 
     var body: some View {
@@ -18,6 +22,10 @@ struct OnlineRecipeDetailView: View {
             LazyVStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.section) {
                 OnlineRecipeDetailHero(match: match)
                 OnlineRecipeMatchCard(match: match)
+                // Above the save action on purpose: whether this recipe uses
+                // up food that is about to go off is the reason to cook it
+                // tonight rather than bookmark it for later.
+                OnlineRecipeUseItUpCard(use: expiryUse)
                 OnlineRecipeSaveCard(recipe: match.recipe, viewModel: recipeViewModel)
 
                 if let summary = match.recipe.summary, !summary.isEmpty {
@@ -178,6 +186,50 @@ private struct OnlineRecipeSaveCard: View {
         }
         .padding(FridgeFitTheme.Spacing.large)
         .fridgeFitCardSurface()
+    }
+}
+
+/// "Use It Up": the near-expiry pantry items this recipe would consume.
+///
+/// Carried over from the List-based detail screen when Discover was
+/// redesigned. Renders nothing when the recipe uses no urgent item, so it
+/// never pads the screen with an empty heading.
+private struct OnlineRecipeUseItUpCard: View {
+    let use: OnlineRecipeExpiryUse
+
+    var body: some View {
+        if use.usesUrgentIngredient || use.usesExpiredIngredient {
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+                Label("Use It Up", systemImage: "clock.badge.exclamationmark")
+                    .font(FridgeFitTheme.Typography.sectionTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+
+                ForEach(use.urgent, id: \.ingredientName) { urgent in
+                    Label(
+                        "\(urgent.ingredientName) expires \(OnlineRecipeExpiryPresentation.whenText(for: urgent))",
+                        systemImage: "circle.fill"
+                    )
+                    .font(FridgeFitTheme.Typography.supporting)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+                    .imageScale(.small)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if use.usesExpiredIngredient {
+                    Label(
+                        "\(use.expired.formattedList) in your pantry has expired - check it before cooking.",
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(FridgeFitTheme.Typography.supporting)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(FridgeFitTheme.Spacing.large)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fridgeFitCardSurface()
+            .accessibilityElement(children: .combine)
+        }
     }
 }
 
