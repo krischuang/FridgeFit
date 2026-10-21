@@ -172,8 +172,8 @@ final class SavedRecipePhotoTests: XCTestCase {
 
     // MARK: - View model
 
-    func test_viewModel_exposesStoredPhoto_afterSave_reload_andRemove() async throws {
-        let downloader = StubImageDownloader(result: Data([4, 2]))
+    func test_viewModel_exposesDecodedThumbnail_afterSave_reload_andRemove() async throws {
+        let downloader = StubImageDownloader(result: pngData(width: 40, height: 20))
         let viewModel = RecipeViewModel(
             recipeRepository: InMemoryRecipeRepository(recipes: []),
             pantryRepository: InMemoryPantryRepository(),
@@ -183,7 +183,7 @@ final class SavedRecipePhotoTests: XCTestCase {
         await viewModel.loadRecipes()
         await viewModel.saveOnlineRecipe(onlineRecipe(id: 5))
         let saved = try XCTUnwrap(viewModel.savedRecipes.first)
-        XCTAssertEqual(viewModel.imageData(for: saved), Data([4, 2]))
+        XCTAssertEqual(viewModel.thumbnail(for: saved)?.size, CGSize(width: 40, height: 20))
 
         // As after relaunch: a fresh view model reads the photo from the store only.
         let reloaded = RecipeViewModel(
@@ -192,10 +192,33 @@ final class SavedRecipePhotoTests: XCTestCase {
             savedRecipeRepository: makeRepository()
         )
         await reloaded.loadRecipes()
-        XCTAssertEqual(reloaded.imageData(for: saved), Data([4, 2]))
+        XCTAssertNotNil(reloaded.thumbnail(for: saved))
 
         await viewModel.removeSavedRecipe(saved)
-        XCTAssertNil(viewModel.imageData(for: saved))
+        XCTAssertNil(viewModel.thumbnail(for: saved))
+    }
+
+    // MARK: - Batch store read
+
+    func test_store_batchRead_returnsOnlyRequestedOwnedRecipesWithPhotos() async throws {
+        let withPhoto = recipe(id: 1)
+        let withoutPhoto = recipe(id: 2)
+        let notRequested = recipe(id: 3)
+        try await repository.save(withPhoto, sourceRecipeID: 1, imageData: Data([1]))
+        try await repository.save(withoutPhoto, sourceRecipeID: 2, imageData: nil)
+        try await repository.save(notRequested, sourceRecipeID: 3, imageData: Data([3]))
+        owner = "owner-b"
+        try await repository.save(recipe(id: 4), sourceRecipeID: 4, imageData: Data([4]))
+        owner = "owner-a"
+
+        let photos = try await repository.imageData(forRecipeIDs: [withPhoto.id, withoutPhoto.id, recipe(id: 4).id])
+
+        XCTAssertEqual(photos, [withPhoto.id: Data([1])])
+    }
+
+    func test_store_batchRead_emptyRequest_isEmpty() async throws {
+        let photos = try await repository.imageData(forRecipeIDs: [])
+        XCTAssertTrue(photos.isEmpty)
     }
 
     // MARK: - Downloader
