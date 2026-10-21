@@ -21,7 +21,8 @@ import Foundation
 final class RecipeViewModel: ObservableObject {
     @Published private(set) var recipes: [Recipe] = []
     @Published private(set) var isLoading = false
-    @Published var errorMessage: String?
+    @Published private(set) var errorMessage: String?
+    @Published private(set) var isLoadErrorAlertPresented = false
     @Published private(set) var feasibilityResults: [UUID: RecipeFeasibilityResult] = [:]
     /// Ids of recipes in `recipes` that the user saved from Discover.
     @Published private(set) var savedRecipeIDs: Set<UUID> = []
@@ -87,11 +88,13 @@ final class RecipeViewModel: ObservableObject {
     /// Loads (or reloads) recipes, then re-evaluates feasibility for all
     /// of them. Call whenever Recipes is opened.
     func loadRecipes() async {
+        guard !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
         do {
             let bundled = try await recipeRepository.fetchAll()
             errorMessage = nil
+            isLoadErrorAlertPresented = false
 
             // A saved-recipes failure must not hide the bundled list.
             var saved: [Recipe] = []
@@ -112,7 +115,15 @@ final class RecipeViewModel: ObservableObject {
             await refreshFeasibility()
         } catch {
             errorMessage = error.localizedDescription
+            isLoadErrorAlertPresented = true
         }
+    }
+
+    /// Hides the transient alert without discarding the failed-load state.
+    /// The catalogue continues to show its inline Retry action until a later
+    /// load succeeds.
+    func dismissLoadErrorAlert() {
+        isLoadErrorAlertPresented = false
     }
 
     /// Loads once if nothing has been loaded yet - used by Discover so its

@@ -17,26 +17,44 @@ struct RemoteCameraView: View {
     @StateObject private var viewModel: RemoteCameraViewModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedCamera: RegisteredDevice?
+    @State private var hasConnectedInitialCamera = false
     @State private var isReviewingIngredients = false
     @State private var confirmedIngredients: [ConfirmedIngredient] = []
     @Environment(\.pantryRepository) private var pantryRepository
     @State private var localPhotoItem: PhotosPickerItem?
 
-    init(identity: DeviceIdentity) {
+    private let initialCamera: RegisteredDevice?
+    private let onPresentationChange: ((Bool) -> Void)?
+
+    init(
+        identity: DeviceIdentity,
+        initialCamera: RegisteredDevice? = nil,
+        onPresentationChange: ((Bool) -> Void)? = nil
+    ) {
         _viewModel = StateObject(wrappedValue: RemoteCameraViewModel(identity: identity))
+        self.initialCamera = initialCamera
+        self.onPresentationChange = onPresentationChange
     }
 
-    init(viewModel: RemoteCameraViewModel) {
+    init(
+        viewModel: RemoteCameraViewModel,
+        initialCamera: RegisteredDevice? = nil,
+        onPresentationChange: ((Bool) -> Void)? = nil
+    ) {
         _viewModel = StateObject(wrappedValue: viewModel)
+        self.initialCamera = initialCamera
+        self.onPresentationChange = onPresentationChange
     }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                if viewModel.isConnected {
-                    liveSection
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.large) {
+                remoteCameraHeader
+
+                if viewModel.isConnected || selectedCamera != nil || initialCamera != nil {
+                    liveControlContent
                 } else {
-                    cameraPickerSection
+                    unselectedCameraContent
                 }
 
                 if let snapshot = viewModel.snapshot {
@@ -44,23 +62,26 @@ struct RemoteCameraView: View {
                 }
 
                 if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    connectionErrorCard(errorMessage)
                 }
 
-                Text(viewModel.connectivityCaveat)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                connectionRecommendation
             }
-            .padding()
+            .padding(.horizontal, FridgeFitTheme.Spacing.large)
+            .padding(.vertical, FridgeFitTheme.Spacing.medium)
         }
+        .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
         .navigationTitle("Remote Camera")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await viewModel.start() }
+        .toolbarBackground(FridgeFitTheme.ColorToken.canvas, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .task {
+            await viewModel.start()
+            connectInitialCameraIfNeeded()
+        }
+        .onAppear { onPresentationChange?(true) }
         .onDisappear {
+            onPresentationChange?(false)
             Task { await viewModel.stop() }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -96,17 +117,109 @@ struct RemoteCameraView: View {
         }
     }
 
+    @ViewBuilder
+    private var remoteCameraHeader: some View {
+        if let cameraName = viewModel.connectedCameraName ?? selectedCamera?.deviceName ?? initialCamera?.deviceName {
+            HStack(alignment: .center, spacing: FridgeFitTheme.Spacing.medium) {
+            Image(systemName: "video.fill")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 44, height: 44)
+                .background(
+                    FridgeFitTheme.ColorToken.successBackground,
+                    in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(cameraName)
+                    .font(FridgeFitTheme.Typography.sectionTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                    .lineLimit(1)
+                Text("Live kitchen view")
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            }
+
+            Spacer(minLength: FridgeFitTheme.Spacing.small)
+
+            FridgeFitStatusBadge(
+                title: LocalizedStringKey(viewModel.status.displayName),
+                systemImage: RemoteCameraPresentation.symbol(for: viewModel.status),
+                tone: statusTone
+            )
+            }
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private var unselectedCameraContent: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.large) {
+            unselectedCameraIntroduction
+            cameraPickerSection(includeLocalPhoto: false)
+            secondaryLocalPhotoSection
+        }
+    }
+
+    private var unselectedCameraIntroduction: some View {
+        HStack(alignment: .center, spacing: FridgeFitTheme.Spacing.medium) {
+            ZStack {
+                RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                    .fill(FridgeFitTheme.ColorToken.successBackground)
+                    .frame(width: 58, height: 52)
+                Image(systemName: "iphone.gen3.radiowaves.left.and.right")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                Image(systemName: "camera.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                    .padding(4)
+                    .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                    .offset(x: 22, y: 17)
+            }
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                Text("View your kitchen from another phone")
+                    .font(FridgeFitTheme.Typography.sectionTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                Text("Choose a kitchen camera to start viewing its live feed.")
+                    .font(FridgeFitTheme.Typography.supporting)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            }
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
+        .accessibilityElement(children: .combine)
+    }
+
     // MARK: - Choosing a camera
 
-    private var cameraPickerSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Available Cameras")
-                .font(.headline)
+    /// The role-selection flow forwards a real discovery result here. The
+    /// existing Remote Camera view model remains the sole owner of the actual
+    /// connection and this guard ensures a task restart cannot connect twice.
+    private func connectInitialCameraIfNeeded() {
+        guard let initialCamera, !hasConnectedInitialCamera else { return }
+        hasConnectedInitialCamera = true
+        selectedCamera = initialCamera
+        Task { await viewModel.connect(to: initialCamera) }
+    }
+
+    private func cameraPickerSection(includeLocalPhoto: Bool = true) -> some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            Text("Choose a kitchen camera")
+                .font(FridgeFitTheme.Typography.sectionTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
 
             if viewModel.availableCameras.isEmpty {
-                Text(RemoteCameraError.noCameraDevicesFound.message)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                Label(RemoteCameraError.noCameraDevicesFound.message, systemImage: "video.slash")
+                    .font(FridgeFitTheme.Typography.supporting)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .padding(FridgeFitTheme.Spacing.medium)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        FridgeFitTheme.ColorToken.disabledSurface,
+                        in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                    )
             } else {
                 ForEach(viewModel.availableCameras) { camera in
                     Button {
@@ -117,23 +230,24 @@ struct RemoteCameraView: View {
                             DeviceRow(device: camera, status: .available)
                             Image(systemName: "chevron.right")
                                 .font(.caption)
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                         }
                     }
                     .buttonStyle(.plain)
-                    .padding()
-                    .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 12))
+                    .padding(FridgeFitTheme.Spacing.medium)
+                    .fridgeFitCardSurface()
                 }
             }
 
             if viewModel.status == .connecting {
                 Label("Connecting…", systemImage: "ellipsis.circle")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(FridgeFitTheme.Typography.metadata)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
             }
 
-            Divider().padding(.vertical, 4)
-            localPhotoSection
+            if includeLocalPhoto {
+                localPhotoSection
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -146,15 +260,16 @@ struct RemoteCameraView: View {
     /// hardest to reach. This needs one device and no network.
     @ViewBuilder
     private var localPhotoSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
             Text("Analyse a photo from this iPhone")
-                .font(.subheadline.weight(.semibold))
+                .font(FridgeFitTheme.Typography.cardTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
             Text("""
             Same models, same review step - no second device needed. Useful \
             for checking recognition on real food.
             """)
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(FridgeFitTheme.Typography.caption)
+            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
 
             // Read on the main actor, before the label closure. `PhotosPicker`
             // takes its label as a nonisolated closure, so touching the
@@ -174,11 +289,26 @@ struct RemoteCameraView: View {
                 }
                 .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(FridgeFitSecondaryButtonStyle())
             .disabled(viewModel.isAnalyzingSnapshot)
             .accessibilityIdentifier("analyse-local-photo")
         }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var secondaryLocalPhotoSection: some View {
+        DisclosureGroup {
+            localPhotoSection
+                .padding(.top, FridgeFitTheme.Spacing.small)
+        } label: {
+            Label("Analyse a photo from this iPhone", systemImage: "photo.on.rectangle.angled")
+                .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
     }
 
     private func loadLocalPhoto(_ item: PhotosPickerItem) {
@@ -198,102 +328,163 @@ struct RemoteCameraView: View {
 
     // MARK: - Live session
 
-    private var liveSection: some View {
-        VStack(spacing: 16) {
-            VideoSurface(
-                track: viewModel.remoteVideoTrack,
-                // Gated on confirmed frames, not on ICE being connected - a
-                // connected session with no media shows the placeholder and
-                // the reason, never a black rectangle passed off as video.
-                isLive: viewModel.isReceivingVideo,
-                placeholder: placeholderText,
-                onStatusChange: { viewModel.recordRenderedVideo($0) }
-            )
-            // Boxes are drawn over the video, inside the same rounded shape,
-            // and never intercept touches.
-            .overlay {
-                if viewModel.isReceivingVideo && viewModel.isDetectionEnabled {
-                    YOLODetectionOverlay(detections: viewModel.ingredients)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                }
+    private var liveControlContent: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.large) {
+            livePreview
+            connectionCard
+
+            if viewModel.isConnected {
+                detectionControls
+                liveActions
+            } else {
+                disconnectedActions
             }
 
-            detectionControls
+            secondaryLocalPhotoSection
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    ConnectionStatusLabel(status: viewModel.status)
-                    Spacer()
-                    if viewModel.isReceivingVideo {
-                        Label("Video live", systemImage: "waveform")
-                            .font(.caption)
-                            .foregroundStyle(.green)
-                    }
+            if selectedCamera != nil {
+                DisclosureGroup("Choose a different camera") {
+                    cameraPickerSection(includeLocalPhoto: false)
+                        .padding(.top, FridgeFitTheme.Spacing.medium)
                 }
-                LabeledContent("Camera") {
-                    Text(viewModel.connectedCameraName ?? "Unknown")
-                }
-                if let progress = viewModel.transferProgress {
-                    Text(progress)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .font(.subheadline)
-            .padding()
-            .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 12))
-
-            VStack(spacing: 12) {
-                analyseButton
-
-                Button {
-                    viewModel.requestCapture()
-                } label: {
-                    Label(
-                        viewModel.isAwaitingSnapshot ? "Waiting for photo…" : "Capture Photo",
-                        systemImage: "camera.shutter.button"
-                    )
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .disabled(!viewModel.canRequestCapture || viewModel.isAnalyzingSnapshot)
-
-                Button {
-                    viewModel.requestCameraSwitch()
-                } label: {
-                    Label("Switch Remote Camera", systemImage: "arrow.triangle.2.circlepath.camera")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-
-                PhotosPicker(selection: $localPhotoItem, matching: .images, photoLibrary: .shared()) {
-                    Label("Analyse a Photo from This iPhone", systemImage: "photo.on.rectangle.angled")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .disabled(viewModel.isAnalyzingSnapshot)
-
-                HStack(spacing: 12) {
-                    Button {
-                        Task { await viewModel.disconnect() }
-                    } label: {
-                        Label("Disconnect", systemImage: "xmark.circle")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-
-                    if let selectedCamera {
-                        Button {
-                            Task { await viewModel.reconnect(to: selectedCamera) }
-                        } label: {
-                            Label("Reconnect", systemImage: "arrow.clockwise")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                }
+                .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .padding(FridgeFitTheme.Spacing.medium)
+                .fridgeFitCardSurface()
             }
         }
+    }
+
+    private var livePreview: some View {
+        VideoSurface(
+            track: viewModel.remoteVideoTrack,
+            // Gated on confirmed frames, not on ICE being connected - a
+            // connected session with no media shows the placeholder and
+            // the reason, never a black rectangle passed off as video.
+            isLive: viewModel.isReceivingVideo,
+            placeholder: placeholderText,
+            onStatusChange: { viewModel.recordRenderedVideo($0) }
+        )
+        .overlay(alignment: .topLeading) {
+            if viewModel.isReceivingVideo {
+                FridgeFitStatusBadge(title: "Live", systemImage: "dot.radiowaves.left.and.right", tone: .success)
+                    .padding(FridgeFitTheme.Spacing.medium)
+            }
+        }
+        // Boxes are drawn over the video, inside the same rounded shape,
+        // and never intercept touches.
+        .overlay {
+            if viewModel.isReceivingVideo && viewModel.isDetectionEnabled {
+                YOLODetectionOverlay(detections: viewModel.ingredients)
+                    .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card))
+                    .allowsHitTesting(false)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous)
+                .stroke(FridgeFitTheme.ColorToken.border.opacity(0.65), lineWidth: 1)
+        }
+    }
+
+    private var connectionCard: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            HStack(alignment: .firstTextBaseline) {
+                ConnectionStatusLabel(status: viewModel.status)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                Spacer()
+                if viewModel.isReceivingVideo {
+                    FridgeFitStatusBadge(title: "Video live", systemImage: "waveform", tone: .success)
+                }
+            }
+
+            LabeledContent("Camera") {
+                Text(viewModel.connectedCameraName ?? selectedCamera?.deviceName ?? initialCamera?.deviceName ?? "Unknown")
+                    .multilineTextAlignment(.trailing)
+            }
+            .font(FridgeFitTheme.Typography.supporting)
+            .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+
+            if let progress = viewModel.transferProgress {
+                Label(progress, systemImage: "arrow.down.circle")
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            }
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
+    }
+
+    private var liveActions: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.small) {
+            analyseButton
+
+            Button {
+                viewModel.requestCapture()
+            } label: {
+                Label(
+                    viewModel.isAwaitingSnapshot ? "Waiting for photo…" : "Capture Photo",
+                    systemImage: "camera.shutter.button"
+                )
+            }
+            .buttonStyle(FridgeFitSecondaryButtonStyle())
+            .disabled(!viewModel.canRequestCapture || viewModel.isAnalyzingSnapshot)
+
+            Button {
+                viewModel.requestCameraSwitch()
+            } label: {
+                Label("Switch Remote Camera", systemImage: "arrow.triangle.2.circlepath.camera")
+            }
+            .buttonStyle(FridgeFitSecondaryButtonStyle())
+
+            connectionActions
+        }
+    }
+
+    private var disconnectedActions: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.small) {
+            if let selectedCamera {
+                Button {
+                    Task { await viewModel.reconnect(to: selectedCamera) }
+                } label: {
+                    Label("Reconnect", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(FridgeFitPrimaryButtonStyle())
+            }
+
+            connectionActions
+        }
+    }
+
+    private var connectionActions: some View {
+        Button(role: .destructive) {
+            Task { await viewModel.disconnect() }
+        } label: {
+            Label("Disconnect", systemImage: "xmark.circle")
+        }
+        .buttonStyle(FridgeFitSecondaryButtonStyle())
+        .tint(FridgeFitTheme.ColorToken.danger)
+    }
+
+    private var connectionRecommendation: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            Label(
+                "For the most reliable connection, use the same Wi-Fi network on both phones. Some networks may prevent a connection.",
+                systemImage: "wifi"
+            )
+            .font(FridgeFitTheme.Typography.caption)
+            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+
+            DisclosureGroup("Connection details") {
+                Text(viewModel.connectivityCaveat)
+                    .font(.caption2)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .padding(.top, FridgeFitTheme.Spacing.xSmall)
+            }
+            .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+            .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// The headline action: capture a photo and run hybrid recognition on it.
@@ -317,26 +508,35 @@ struct RemoteCameraView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(FridgeFitPrimaryButtonStyle())
         .disabled(!viewModel.canRequestCapture || viewModel.isAnalyzingSnapshot)
         .accessibilityIdentifier("analyse-ingredients")
 
         if let failure = viewModel.analysisPhase.failureReason {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Image(systemName: "exclamationmark.triangle")
-                Text(failure)
-                Spacer()
-                Button("Dismiss") { viewModel.dismissAnalysisFailure() }
-                    .font(.caption)
+            HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.small) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+                VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                    Text(failure)
+                    Button("Dismiss") { viewModel.dismissAnalysisFailure() }
+                        .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                        .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                }
             }
-            .font(.caption)
-            .foregroundStyle(.orange)
+            .font(FridgeFitTheme.Typography.caption)
+            .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+            .padding(FridgeFitTheme.Spacing.medium)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                FridgeFitTheme.ColorToken.warningBackground,
+                in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+            )
         }
 
         if let explanation = viewModel.snapshotAnalysisUnavailable {
             Label(explanation, systemImage: "info.circle")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(FridgeFitTheme.Typography.caption)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
         }
     }
 
@@ -345,11 +545,17 @@ struct RemoteCameraView: View {
     /// Sits between the video and the connection details so the thing it
     /// describes is directly above it.
     private var detectionControls: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
             Toggle(isOn: $viewModel.isDetectionEnabled) {
-                Label("Food Detection", systemImage: "viewfinder")
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("Food Detection", systemImage: "viewfinder")
+                    Text("Show recognised ingredients over the live view.")
+                        .font(FridgeFitTheme.Typography.caption)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                }
             }
-            .font(.subheadline)
+            .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
+            .tint(FridgeFitTheme.ColorToken.primary)
 
             HStack(spacing: 6) {
                 Circle()
@@ -382,50 +588,13 @@ struct RemoteCameraView: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            .font(.caption)
+            .font(FridgeFitTheme.Typography.caption)
             .accessibilityElement(children: .combine)
 
             .accessibilityLabel(
                 "Detection \(viewModel.detectionStatus.displayName), "
                 + "\(viewModel.detectionCount) items, \(viewModel.reviewCount) to confirm"
             )
-
-            // Frames the tap has seen. A rising number with a blank preview
-            // means the track is delivering and the renderer is not drawing;
-            // a stuck zero means no frames are arriving at all. "Video live"
-            // cannot tell those apart - it latches on the first frame and is
-            // never revisited.
-            // What the filter withheld, so a demo can tell "the model found
-            // nothing" from "the model found something too weak to draw".
-            // Withheld candidates are not discarded - the snapshot analysis
-            // works from the same list the overlay filtered down from.
-            if viewModel.detectionStatus.isRunning, viewModel.withheldCandidateCount > 0 {
-                Text("\(viewModel.withheldCandidateCount) below the "
-                     + "\(Int(viewModel.detectionPolicy.displayThreshold * 100))% display "
-                     + "threshold - hidden here, still analysed on capture")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .accessibilityIdentifier("withheld-candidates")
-            }
-
-            if let statistics = viewModel.videoFrameStatistics {
-                Text("Frames received: \(statistics.total) (\(statistics.processed) analysed, \(statistics.dropped) skipped)")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .accessibilityIdentifier("frame-statistics")
-            }
-
-            // The other half of the blank-preview diagnostic: what the view
-            // on screen was actually handed, as opposed to what the tap saw.
-            if let rendered = viewModel.renderedVideoStatus {
-                Text("Drawn: \(rendered.framesRendered) frames · "
-                     + "\(Int(rendered.lastFrameSize.width))x\(Int(rendered.lastFrameSize.height))"
-                     + " rot \(rendered.lastRotationDegrees)° · "
-                     + "view \(Int(rendered.viewSize.width))x\(Int(rendered.viewSize.height))")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .accessibilityIdentifier("render-statistics")
-            }
 
             // Categories currently on screen, so the user can see the spread
             // at a glance without reading every box.
@@ -453,18 +622,83 @@ struct RemoteCameraView: View {
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
+
+            detectionDetails
         }
-        .padding()
-        .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 12))
+        .padding(FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
+    }
+
+    @ViewBuilder
+    private var detectionDetails: some View {
+        if viewModel.detectionStatus.isRunning,
+           viewModel.withheldCandidateCount > 0 || viewModel.videoFrameStatistics != nil || viewModel.renderedVideoStatus != nil {
+            DisclosureGroup("Detection details") {
+                VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                    if viewModel.withheldCandidateCount > 0 {
+                        Text("\(viewModel.withheldCandidateCount) lower-confidence candidates remain available when you analyse a photo.")
+                            .accessibilityIdentifier("withheld-candidates")
+                    }
+
+                    if let statistics = viewModel.videoFrameStatistics {
+                        Text("Frames received: \(statistics.total) (\(statistics.processed) analysed, \(statistics.dropped) skipped)")
+                            .accessibilityIdentifier("frame-statistics")
+                    }
+
+                    if let rendered = viewModel.renderedVideoStatus {
+                        Text("Preview: \(rendered.framesRendered) frames rendered")
+                            .accessibilityIdentifier("render-statistics")
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .padding(.top, FridgeFitTheme.Spacing.xSmall)
+            }
+            .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+            .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+        }
     }
 
     private var detectionIndicatorColour: Color {
         switch viewModel.detectionStatus {
-        case .running: return .green
-        case .waitingForVideo: return .orange
-        case .off: return .secondary
-        case .unavailable: return .red
+        case .running: return FridgeFitTheme.ColorToken.primary
+        case .waitingForVideo: return FridgeFitTheme.ColorToken.warningText
+        case .off: return FridgeFitTheme.ColorToken.textSecondary
+        case .unavailable: return FridgeFitTheme.ColorToken.danger
         }
+    }
+
+    private var statusTone: FridgeFitStatusTone {
+        switch viewModel.status {
+        case .connected:
+            return .success
+        case .connecting, .reconnecting:
+            return .warning
+        case .failed:
+            return .danger
+        case .available, .offline, .disconnected:
+            return .neutral
+        }
+    }
+
+    private func connectionErrorCard(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.small) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                Text("Connection issue")
+                    .font(FridgeFitTheme.Typography.cardTitle)
+                Text(message)
+                    .font(FridgeFitTheme.Typography.caption)
+            }
+        }
+        .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+        .padding(FridgeFitTheme.Spacing.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            FridgeFitTheme.ColorToken.warningBackground,
+            in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+        )
     }
 
     private var placeholderText: String {
@@ -658,28 +892,5 @@ struct RemoteCameraView: View {
                 .font(.caption)
             }
         }
-    }
-}
-
-#Preview {
-    let identity = DeviceIdentity(deviceId: "preview-controller", deviceName: "Preview iPhone")
-    let registry = InMemoryDeviceRegistry(seedDevices: [
-        RegisteredDevice(
-            deviceId: "kitchen-device",
-            deviceName: "Kitchen iPhone",
-            deviceRole: .camera,
-            connectionStatus: .available,
-            lastSeenAt: Date(),
-            createdAt: Date()
-        ),
-    ])
-    return NavigationStack {
-        RemoteCameraView(
-            viewModel: RemoteCameraViewModel(
-                identity: identity,
-                registry: registry,
-                transport: InMemorySignalingTransport()
-            )
-        )
     }
 }

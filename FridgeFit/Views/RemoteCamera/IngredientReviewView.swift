@@ -5,27 +5,19 @@
 
 import SwiftUI
 
-/// The review step: what recognition found, and what the user decides to keep.
-///
-/// Two lists, kept apart on purpose:
-///
-/// - **In the photo** - claims anchored to a measured region, shown with
-///   their box on the thumbnail.
-/// - **Suggested** - whole-image classifications, packaging text and manual
-///   additions, which have no location.
-///
-/// A whole-image classification knows *what* is present, not *where*. Showing
-/// it in the same list as a localised box, or drawing it on the thumbnail,
-/// would assert a position nothing measured.
+/// The human-confirmation step after a local ingredient scan. This view only
+/// renders and edits the existing review model; recognition and persistence
+/// remain in `RemoteCameraViewModel` and `AddDetectedIngredientsUseCase`.
 struct IngredientReviewView: View {
-
     @StateObject private var viewModel: IngredientReviewViewModel
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.pantryRepository) private var pantryRepository
 
     private let snapshot: UIImage
-    /// Called with what was stored, after a clean save.
     private let onConfirm: ([ConfirmedIngredient]) -> Void
+    /// Exposes the existing persisted save summary to the local Smart Scan
+    /// flow. The Remote Camera caller does not need a completion surface, so
+    /// it retains the no-op default.
+    private let onSaveCompleted: (AddDetectedIngredientsSummary) -> Void
 
     @State private var editingItem: IngredientReviewItem?
     @State private var isAddingManually = false
@@ -35,24 +27,28 @@ struct IngredientReviewView: View {
         analysis: SnapshotAnalysis,
         snapshot: UIImage,
         addIngredientsUseCase: AddDetectedIngredientsUseCase,
-        onConfirm: @escaping ([ConfirmedIngredient]) -> Void = { _ in }
+        onConfirm: @escaping ([ConfirmedIngredient]) -> Void = { _ in },
+        onSaveCompleted: @escaping (AddDetectedIngredientsSummary) -> Void = { _ in }
     ) {
         _viewModel = StateObject(wrappedValue: IngredientReviewViewModel(
-            analysis: analysis, addIngredientsUseCase: addIngredientsUseCase
+            analysis: analysis,
+            addIngredientsUseCase: addIngredientsUseCase
         ))
         self.snapshot = snapshot
         self.onConfirm = onConfirm
+        self.onSaveCompleted = onSaveCompleted
     }
 
-    /// For previews and tests.
     init(
         viewModel: IngredientReviewViewModel,
         snapshot: UIImage,
-        onConfirm: @escaping ([ConfirmedIngredient]) -> Void = { _ in }
+        onConfirm: @escaping ([ConfirmedIngredient]) -> Void = { _ in },
+        onSaveCompleted: @escaping (AddDetectedIngredientsSummary) -> Void = { _ in }
     ) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.snapshot = snapshot
         self.onConfirm = onConfirm
+        self.onSaveCompleted = onSaveCompleted
     }
 
     var body: some View {
@@ -61,26 +57,32 @@ struct IngredientReviewView: View {
                 if viewModel.isEmpty {
                     emptyState
                 } else {
-                    reviewList
+                    reviewContent
                 }
             }
-            .navigationTitle("Review Ingredients")
+            .background(FridgeFitTheme.ColorToken.canvas)
+            .navigationTitle("Smart Scan Review")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(FridgeFitTheme.ColorToken.canvas, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .disabled(viewModel.saveState.isSaving)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    if viewModel.saveState.isSaving {
-                        ProgressView()
-                    } else {
-                        Button("Save \(viewModel.acceptedCount)") {
-                            Task { await save() }
-                        }
-                        .disabled(!viewModel.canSaveToPantry)
-                        .accessibilityIdentifier("save-to-pantry")
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
                     }
+                    .disabled(viewModel.saveState.isSaving)
+                    .accessibilityLabel("Close ingredient review")
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Image(systemName: "person")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                        .frame(width: 36, height: 36)
+                        .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                        .accessibilityHidden(true)
                 }
             }
             .sheet(item: $editingItem) { item in
@@ -94,228 +96,137 @@ struct IngredientReviewView: View {
                     viewModel.addManualIngredient(name: name, category: category)
                 }
             }
-        }
-    }
-
-    /// Saves, then closes only on a clean success.
-    ///
-    /// A partial result or a failure keeps the sheet open with the rows
-    /// intact, so the user can read what happened and retry. Dismissing here
-    /// would throw away the only record of what they chose.
-    private func save() async {
-        await viewModel.saveToPantry()
-        if viewModel.saveState.allowsAutomaticDismissal {
-            onConfirm(viewModel.confirmed ?? [])
-            dismiss()
-        }
-    }
-
-    // MARK: - Save result
-
-    @ViewBuilder
-    private var saveResultSection: some View {
-        if let summary = viewModel.saveState.summary {
-            Section {
-                Text(summary.userMessage)
-                    .font(.callout)
-
-                if !summary.failures.isEmpty {
-                    ForEach(summary.failures, id: \.name) { failure in
-                        Label("\(failure.name): \(failure.message)", systemImage: "exclamationmark.triangle")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                    }
+            .safeAreaInset(edge: .bottom) {
+                if !viewModel.isEmpty {
+                    saveBar
                 }
-
-                if viewModel.saveState.isRetryable {
-                    Button {
-                        Task { await viewModel.retrySave() }
-                    } label: {
-                        Label("Retry the ones that didn't save", systemImage: "arrow.clockwise")
-                    }
-                    .accessibilityIdentifier("retry-save")
-                }
-
-                Button("Dismiss") { viewModel.dismissSaveResult() }
-                    .font(.caption)
-            } header: {
-                Text("Saved to pantry")
-            }
-        } else if let failure = viewModel.saveState.failureMessage {
-            Section {
-                Label(failure, systemImage: "exclamationmark.triangle.fill")
-                    .font(.callout)
-                    .foregroundStyle(.orange)
-                Button {
-                    Task { await viewModel.retrySave() }
-                } label: {
-                    Label("Try again", systemImage: "arrow.clockwise")
-                }
-                .accessibilityIdentifier("retry-save")
-                Button("Dismiss") { viewModel.dismissSaveResult() }
-                    .font(.caption)
-            } header: {
-                Text("Couldn't save")
             }
         }
     }
 
-    /// Explains a disabled Save button rather than leaving it inert.
+    private var reviewContent: some View {
+        ScrollView {
+            LazyVStack(spacing: FridgeFitTheme.Spacing.medium) {
+                scanSummaryCard
+                capabilityNotice
+
+                if !viewModel.localisedItems.isEmpty {
+                    reviewSectionHeader("In the photo", detail: "Detected at a measured location in your image")
+                    ForEach(viewModel.localisedItems) { item in
+                        card(for: item)
+                    }
+                }
+
+                if !viewModel.unlocalisedItems.isEmpty {
+                    reviewSectionHeader("Suggested", detail: "Whole-image, packaging, or manually added items")
+                    ForEach(viewModel.unlocalisedItems) { item in
+                        card(for: item)
+                    }
+                }
+
+                readinessNotice
+                saveResultCard
+                manualAddCard
+                packagingCard
+                diagnosticsCard
+            }
+            .padding(.horizontal, FridgeFitTheme.Spacing.large)
+            .padding(.top, FridgeFitTheme.Spacing.small)
+            .padding(.bottom, FridgeFitTheme.Spacing.large)
+        }
+        .background(FridgeFitTheme.ColorToken.canvas)
+    }
+
+    private var scanSummaryCard: some View {
+        HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.medium) {
+            scanSummaryThumbnail
+
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                Text("Here’s what we found")
+                    .font(FridgeFitTheme.Typography.screenTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+
+                Text("\(viewModel.items.count) \(viewModel.items.count == 1 ? "item" : "items") to review")
+                    .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                    .padding(.horizontal, FridgeFitTheme.Spacing.small)
+                    .padding(.vertical, 2)
+                    .background(FridgeFitTheme.ColorToken.successBackground, in: Capsule())
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("Check the items below. Adjust names, categories, and quantities before saving to My Fridge.")
+                    .font(FridgeFitTheme.Typography.supporting)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
+        .accessibilityElement(children: .combine)
+    }
+
     @ViewBuilder
-    private var readinessSection: some View {
-        let missing = viewModel.acceptedItemsMissingQuantity
-        if !missing.isEmpty {
-            Section {
-                Label(
-                    missing.count == 1
-                        ? "\(missing[0].displayName) needs an amount before it can be saved."
-                        : "\(missing.count) selected ingredients still need an amount.",
-                    systemImage: "number"
+    private var scanSummaryThumbnail: some View {
+        if snapshot.isSymbolImage {
+            Image(systemName: "camera.viewfinder")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 76, height: 76)
+                .background(
+                    FridgeFitTheme.ColorToken.successBackground,
+                    in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
                 )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            } footer: {
-                Text("""
-                Recognition can see that something is there, not how much of \
-                it. Nothing is stored with a quantity you didn't set.
-                """)
-            }
+                .accessibilityLabel("Ingredient scan placeholder")
+        } else {
+            Image(uiImage: snapshot)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 76, height: 76)
+                .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+                .accessibilityLabel("Scanned ingredient photo")
         }
     }
 
-    // MARK: - Empty
-
-    private var emptyState: some View {
-        ContentUnavailableView {
-            Label("No ingredients recognised", systemImage: "questionmark.circle")
-        } description: {
-            Text("""
-            Nothing in this photo matched an ingredient the models can \
-            recognise. Meat, fish, cheese and eggs are known weak spots.
-            """)
-        } actions: {
-            Button("Add One Manually") { isAddingManually = true }
-                .buttonStyle(.borderedProminent)
-        }
-    }
-
-    // MARK: - List
-
-    /// Says which recognisers actually ran.
-    ///
-    /// Without this, a YOLO-only run is indistinguishable from a full hybrid
-    /// run that happened to find no agreement - the rows look identical. The
-    /// user would be told "one method only" on every row with no explanation
-    /// of why the second method is missing.
     @ViewBuilder
-    private var capabilitySection: some View {
-        let outcome = viewModel.classification
-        if let message = outcome.userMessage {
-            Section {
-                Label {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(message)
-                            .font(.callout.weight(.medium))
-                        if outcome.isDetectorOnly {
-                            Text("""
-                            These results come from YOLO object detection only. \
-                            Nothing has been cross-checked by a second method, \
-                            so please review every row before saving.
-                            """)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        }
+    private var capabilityNotice: some View {
+        if let message = viewModel.classification.userMessage {
+            HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.small) {
+                Image(systemName: viewModel.classification.capability.isExpectedLimitation ? "info.circle" : "exclamationmark.triangle.fill")
+                    .foregroundStyle(viewModel.classification.capability.isExpectedLimitation ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.warningText)
+                VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                    Text(message)
+                        .font(FridgeFitTheme.Typography.cardTitle)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                    if viewModel.classification.isDetectorOnly {
+                        Text("These results use object detection only. Review each item before saving.")
+                            .font(FridgeFitTheme.Typography.metadata)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     }
-                } icon: {
-                    Image(systemName: outcome.capability.isExpectedLimitation
-                          ? "info.circle" : "exclamationmark.triangle.fill")
                 }
-                .foregroundStyle(outcome.capability.isExpectedLimitation ? Color.secondary : .orange)
-            } header: {
-                Text(outcome.isDetectorOnly ? "YOLO-only results" : "Recognition")
             }
+            .padding(FridgeFitTheme.Spacing.medium)
+            .background(FridgeFitTheme.ColorToken.warningBackground.opacity(0.58), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
             .accessibilityIdentifier("capability-notice")
         }
     }
 
-    private var reviewList: some View {
-        List {
-            capabilitySection
-            thumbnailSection
-
-            if !viewModel.localisedItems.isEmpty {
-                Section {
-                    ForEach(viewModel.localisedItems) { item in
-                        row(item)
-                    }
-                } header: {
-                    Text("In the photo")
-                } footer: {
-                    Text("Found at a specific place in the image, shown above.")
-                }
-            }
-
-            if !viewModel.unlocalisedItems.isEmpty {
-                Section {
-                    ForEach(viewModel.unlocalisedItems) { item in
-                        row(item)
-                    }
-                } header: {
-                    Text("Suggested")
-                } footer: {
-                    Text("""
-                    Recognised in the picture as a whole, or added by you. \
-                    These have no location, so they are not drawn on the photo.
-                    """)
-                }
-            }
-
-            readinessSection
-            saveResultSection
-            addSection
-            if !viewModel.packagingLines.isEmpty { packagingSection }
-            diagnosticsSection
+    private func reviewSectionHeader(_ title: String, detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(title)
+                .font(FridgeFitTheme.Typography.sectionTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+            Text(detail)
+                .font(FridgeFitTheme.Typography.caption)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
         }
-        .listStyle(.insetGrouped)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, FridgeFitTheme.Spacing.xSmall)
     }
 
-    private var thumbnailSection: some View {
-        Section {
-            ZStack {
-                Image(uiImage: snapshot)
-                    .resizable()
-                    .scaledToFit()
-                GeometryReader { proxy in
-                    ForEach(viewModel.localisedItems) { item in
-                        if let box = item.boundingBox,
-                           let rect = DetectionGeometry.rect(
-                               for: box,
-                               sourceSize: viewModel.sourceSize,
-                               viewSize: proxy.size,
-                               contentMode: .scaleAspectFit
-                           ) {
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(
-                                    colour(for: item),
-                                    lineWidth: highlightedItemId == item.id ? 4 : 2
-                                )
-                                .frame(width: rect.width, height: rect.height)
-                                .position(x: rect.midX, y: rect.midY)
-                                .opacity(item.isAccepted ? 1 : 0.35)
-                        }
-                    }
-                }
-            }
-            .frame(maxHeight: 260)
-            .listRowInsets(EdgeInsets())
-        } footer: {
-            Text("Dimmed boxes are ones you've rejected.")
-        }
-    }
-
-    private func row(_ item: IngredientReviewItem) -> some View {
-        IngredientReviewRow(
+    private func card(for item: IngredientReviewItem) -> some View {
+        IngredientScanReviewCard(
             item: item,
+            isHighlighted: highlightedItemId == item.id,
             onToggle: { viewModel.toggleAcceptance(item.id) },
             onEdit: { editingItem = item },
             onRemove: item.origin == .manual ? { viewModel.remove(item.id) } : nil,
@@ -325,202 +236,366 @@ struct IngredientReviewView: View {
         .onTapGesture { highlightedItemId = item.id }
     }
 
-    private var addSection: some View {
-        Section {
+    @ViewBuilder
+    private var readinessNotice: some View {
+        let missing = viewModel.acceptedItemsMissingQuantity
+        if !missing.isEmpty {
+            Label(
+                missing.count == 1
+                    ? "\(missing[0].displayName) needs an amount before it can be saved."
+                    : "\(missing.count) selected ingredients need an amount before they can be saved.",
+                systemImage: "number.circle"
+            )
+            .font(FridgeFitTheme.Typography.metadata)
+            .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+            .padding(FridgeFitTheme.Spacing.medium)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(FridgeFitTheme.ColorToken.warningBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+        }
+    }
+
+    @ViewBuilder
+    private var saveResultCard: some View {
+        if let summary = viewModel.saveState.summary {
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+                Label(summary.userMessage, systemImage: summary.isCompleteSuccess ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .font(FridgeFitTheme.Typography.supporting)
+                    .foregroundStyle(summary.isCompleteSuccess ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.warningText)
+
+                ForEach(summary.failures, id: \.name) { failure in
+                    Text("\(failure.name): \(failure.message)")
+                        .font(FridgeFitTheme.Typography.metadata)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+                }
+
+                if viewModel.saveState.isRetryable {
+                    Button {
+                        Task { await viewModel.retrySave() }
+                    } label: {
+                        Label("Retry the items that didn’t save", systemImage: "arrow.clockwise")
+                    }
+                    .buttonStyle(FridgeFitSecondaryButtonStyle())
+                    .accessibilityIdentifier("retry-save")
+                }
+
+                Button("Dismiss") { viewModel.dismissSaveResult() }
+                    .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                    .frame(minHeight: 44)
+            }
+            .padding(FridgeFitTheme.Spacing.medium)
+            .background(FridgeFitTheme.ColorToken.warningBackground.opacity(0.62), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
+        } else if let message = viewModel.saveState.failureMessage {
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .font(FridgeFitTheme.Typography.supporting)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+                Button {
+                    Task { await viewModel.retrySave() }
+                } label: {
+                    Label("Try again", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(FridgeFitSecondaryButtonStyle())
+                .accessibilityIdentifier("retry-save")
+                Button("Dismiss") { viewModel.dismissSaveResult() }
+                    .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                    .frame(minHeight: 44)
+            }
+            .padding(FridgeFitTheme.Spacing.medium)
+            .background(FridgeFitTheme.ColorToken.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
+        }
+    }
+
+    private var manualAddCard: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.small) {
             Button {
                 isAddingManually = true
             } label: {
-                Label("Add a missed ingredient", systemImage: "plus.circle")
+                Label("Add another item manually", systemImage: "plus.circle")
             }
+            .buttonStyle(FridgeFitSecondaryButtonStyle())
 
-            HStack {
+            HStack(spacing: FridgeFitTheme.Spacing.small) {
                 Button("Accept all") { viewModel.acceptAll() }
-                Spacer()
+                    .buttonStyle(FridgeFitSecondaryButtonStyle())
                 Button("Reject all", role: .destructive) { viewModel.rejectAll() }
+                    .buttonStyle(FridgeFitSecondaryButtonStyle())
             }
-            .font(.subheadline)
         }
     }
 
-    private var packagingSection: some View {
-        Section {
+    @ViewBuilder
+    private var packagingCard: some View {
+        if !viewModel.packagingLines.isEmpty {
             DisclosureGroup("Packaging text (\(viewModel.packagingLines.count) lines)") {
                 ForEach(Array(viewModel.packagingLines.enumerated()), id: \.offset) { _, line in
                     Text(line)
-                        .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .font(FridgeFitTheme.Typography.caption.monospaced())
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-        } footer: {
-            Text("""
-            Read from packaging in the photo. It isn't matched to ingredients \
-            automatically - that proved unreliable - so it's here for you to \
-            read\(viewModel.nonLatinPackagingLines.isEmpty ? "" :
-            ", and \(viewModel.nonLatinPackagingLines.count) line(s) aren't in a Latin script").
-            """)
+            .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
+            .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+            .padding(FridgeFitTheme.Spacing.medium)
+            .fridgeFitCardSurface()
         }
     }
 
-    private var diagnosticsSection: some View {
-        Section {
-            DisclosureGroup("Details") {
-                LabeledContent("Agreed", value: "\(viewModel.count(of: .agreed))")
-                LabeledContent("One method only", value: "\(viewModel.count(of: .singleSource))")
-                LabeledContent("Disagreed", value: "\(viewModel.count(of: .conflicting))")
-                LabeledContent("Analysis time",
-                               value: String(format: "%.2fs", viewModel.analysisDuration))
-                if !viewModel.rejectedFoodClaims.isEmpty {
-                    LabeledContent("Discarded guesses",
-                                   value: viewModel.rejectedFoodClaims.joined(separator: ", "))
-                    .font(.caption)
+    private var diagnosticsCard: some View {
+        DisclosureGroup("Recognition details") {
+            LabeledContent("Both methods agree", value: "\(viewModel.count(of: .agreed))")
+            LabeledContent("One method only", value: "\(viewModel.count(of: .singleSource))")
+            LabeledContent("Methods disagree", value: "\(viewModel.count(of: .conflicting))")
+            if !viewModel.rejectedFoodClaims.isEmpty {
+                LabeledContent("Discarded guesses", value: viewModel.rejectedFoodClaims.joined(separator: ", "))
+                    .font(FridgeFitTheme.Typography.caption)
+            }
+        }
+        .font(FridgeFitTheme.Typography.metadata)
+        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+        .padding(FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
+    }
+
+    private var saveBar: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.xSmall) {
+            Button {
+                Task { await save() }
+            } label: {
+                if viewModel.saveState.isSaving {
+                    ProgressView()
+                        .tint(FridgeFitTheme.ColorToken.card)
+                } else {
+                    Label(saveButtonTitle, systemImage: "checkmark")
                 }
             }
-        } footer: {
-            Text("Nothing is saved to your pantry. Confirming keeps these on this screen only.")
+            .buttonStyle(FridgeFitPrimaryButtonStyle())
+            .disabled(!viewModel.canSaveToPantry)
+            .accessibilityIdentifier("save-to-pantry")
+
+            Label("Only confirmed ingredients are added to My Fridge.", systemImage: "leaf")
+                .font(FridgeFitTheme.Typography.caption)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+        }
+        .padding(.horizontal, FridgeFitTheme.Spacing.large)
+        .padding(.top, FridgeFitTheme.Spacing.small)
+        .padding(.bottom, FridgeFitTheme.Spacing.small)
+        .background(FridgeFitTheme.ColorToken.canvas.opacity(0.97))
+        .overlay(alignment: .top) {
+            Rectangle().fill(FridgeFitTheme.ColorToken.border.opacity(0.65)).frame(height: 1)
         }
     }
 
-    private func colour(for item: IngredientReviewItem) -> Color {
-        switch item.tier {
-        case .agreed: return .green
-        case .conflicting: return .orange
-        default: return .yellow
+    private var saveButtonTitle: String {
+        let count = viewModel.acceptedCount
+        return count == 1 ? "Add 1 Item to My Fridge" : "Add \(count) Items to My Fridge"
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.large) {
+            Image(systemName: "questionmark.circle")
+                .font(.system(size: 42, weight: .medium))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 80, height: 80)
+                .background(FridgeFitTheme.ColorToken.successBackground, in: Circle())
+            Text("No ingredients recognised")
+                .font(FridgeFitTheme.Typography.screenTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+            Text("Nothing in this photo matched an ingredient we can recognise. You can add one manually instead.")
+                .font(FridgeFitTheme.Typography.supporting)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .multilineTextAlignment(.center)
+            Button("Add one manually") { isAddingManually = true }
+                .buttonStyle(FridgeFitPrimaryButtonStyle())
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(FridgeFitTheme.Spacing.section)
+        .background(FridgeFitTheme.ColorToken.canvas)
+    }
+
+    private func save() async {
+        await viewModel.saveToPantry()
+        if viewModel.saveState.allowsAutomaticDismissal {
+            if let summary = viewModel.saveState.summary {
+                onSaveCompleted(summary)
+            }
+            onConfirm(viewModel.confirmed ?? [])
+            dismiss()
         }
     }
 }
 
-// MARK: - Row
-
-struct IngredientReviewRow: View {
+private struct IngredientScanReviewCard: View {
     let item: IngredientReviewItem
+    let isHighlighted: Bool
     let onToggle: () -> Void
     let onEdit: () -> Void
     let onRemove: (() -> Void)?
     let onQuantityChange: (String) -> Void
     let onUnitChange: (MeasurementUnit) -> Void
 
-    /// Local mirror so typing stays responsive; pushed up on every change.
-    @State private var quantityText: String = ""
+    @State private var quantityText = ""
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Button(action: onToggle) {
-                Image(systemName: item.isAccepted ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(item.isAccepted ? Color.accentColor : .secondary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(item.isAccepted ? "Accepted" : "Rejected")
-            .accessibilityIdentifier("toggle-\(item.id.uuidString)")
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.small) {
+                Button(action: onToggle) {
+                    Image(systemName: item.isAccepted ? "checkmark" : "circle")
+                        .font(.body.weight(.bold))
+                        .foregroundStyle(item.isAccepted ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.textSecondary)
+                        .frame(width: 44, height: 44)
+                        .background(item.isAccepted ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.disabledSurface, in: Circle())
+                }
+                .accessibilityLabel(item.isAccepted ? "Accepted" : "Rejected")
+                .accessibilityIdentifier("toggle-\(item.id.uuidString)")
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
+                IngredientArtwork(category: item.resolvedPantryCategory, size: 38)
+
+                VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
                     Text(item.displayName)
-                        .font(.body.weight(.medium))
-                    if item.wasEdited {
-                        Text("edited")
-                            .font(.caption2)
-                            .padding(.horizontal, 5).padding(.vertical, 1)
-                            .background(.quaternary, in: Capsule())
+                        .font(FridgeFitTheme.Typography.cardTitle)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                        .lineLimit(2)
+                    provenanceBadge
+                }
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 0) {
+                    Button(action: onEdit) {
+                        Image(systemName: "pencil")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                            .frame(width: 44, height: 44)
                     }
-                }
+                    .accessibilityLabel("Edit \(item.displayName)")
 
-                HStack(spacing: 6) {
-                    Label(item.category.displayName, systemImage: item.category.symbolName)
-                    if let confidence = item.confidence {
-                        Text("· \(Int((confidence * 100).rounded()))%")
-                    }
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-                if let tier = item.tier {
-                    Label(tier.displayName, systemImage: tier.symbolName)
-                        .font(.caption2)
-                        .foregroundStyle(tierColour(tier))
-                } else if item.origin == .manual {
-                    Label("Added by you", systemImage: "hand.raised")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                if let other = item.conflictingClaim {
-                    Text("The other method said “\(other)”")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                }
-
-                if let reason = item.reviewReason {
-                    Text(reason.message)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                if !item.sources.displayNames.isEmpty {
-                    Text(item.sources.displayNames.joined(separator: " + "))
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-
-                // Only asked for once the user has said they want the item.
-                // An amount field on a row they are about to reject is noise.
-                if item.isAccepted {
-                    HStack(spacing: 8) {
-                        TextField("Amount", text: $quantityText)
-                            .keyboardType(.decimalPad)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 80)
-                            .accessibilityIdentifier("quantity-\(item.id.uuidString)")
-                            .onChange(of: quantityText) { _, new in onQuantityChange(new) }
-
-                        Picker("Unit", selection: Binding(
-                            get: { item.unit },
-                            set: onUnitChange
-                        )) {
-                            ForEach(MeasurementUnit.allCases) { unit in
-                                Text(unit.symbol).tag(unit)
-                            }
+                    if let onRemove {
+                        Button(action: onRemove) {
+                            Image(systemName: "trash")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+                                .frame(width: 44, height: 44)
                         }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-
-                        if !item.hasValidQuantity {
-                            Text("needed")
-                                .font(.caption2)
-                                .foregroundStyle(.orange)
-                        }
+                        .accessibilityLabel("Remove \(item.displayName)")
                     }
-                    .padding(.top, 2)
                 }
             }
-            .onAppear { quantityText = item.quantityText }
 
-            Spacer(minLength: 0)
-
-            Button(action: onEdit) {
-                Image(systemName: "pencil")
+            if item.wasEdited {
+                FridgeFitStatusBadge(title: "Edited", systemImage: "pencil", tone: .neutral)
             }
-            .buttonStyle(.borderless)
-            .accessibilityLabel("Edit \(item.displayName)")
+
+            if let other = item.conflictingClaim {
+                Label("Another recognition method suggested \(other). Please check this item.", systemImage: "exclamationmark.triangle")
+                    .font(FridgeFitTheme.Typography.metadata)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+                    .padding(FridgeFitTheme.Spacing.small)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(FridgeFitTheme.ColorToken.warningBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+            }
+
+            if let reason = item.reviewReason {
+                Label(reason.message, systemImage: "info.circle")
+                    .font(FridgeFitTheme.Typography.metadata)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .padding(FridgeFitTheme.Spacing.small)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(FridgeFitTheme.ColorToken.disabledSurface.opacity(0.68), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+            }
+
+            if item.isAccepted {
+                HStack(spacing: FridgeFitTheme.Spacing.small) {
+                    quantityControl
+                    unitControl
+                }
+
+                if !item.hasValidQuantity {
+                    Label("Enter a quantity before saving this item.", systemImage: "number.circle")
+                        .font(FridgeFitTheme.Typography.metadata)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+                }
+            }
         }
-        .padding(.vertical, 2)
-        .swipeActions(edge: .trailing) {
-            if let onRemove {
-                Button("Delete", systemImage: "trash", role: .destructive, action: onRemove)
-            }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .opacity(item.isAccepted ? 1 : 0.68)
+        .background(
+            FridgeFitTheme.ColorToken.card,
+            in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous)
+                .stroke(isHighlighted ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.border, lineWidth: isHighlighted ? 2 : 1)
+        }
+        .shadow(color: .black.opacity(0.035), radius: 3, y: 1)
+        .onAppear { quantityText = item.quantityText }
+        .onChange(of: item.quantityText) { _, newValue in
+            if quantityText != newValue { quantityText = newValue }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private var provenanceBadge: some View {
+        if let tier = item.tier {
+            FridgeFitStatusBadge(
+                title: LocalizedStringKey(tier.displayName),
+                systemImage: tier.symbolName,
+                tone: badgeTone(for: tier)
+            )
+        } else {
+            FridgeFitStatusBadge(title: "Added by you", systemImage: "hand.raised", tone: .neutral)
         }
     }
 
-    private func tierColour(_ tier: ConfidenceTier) -> Color {
+    private var quantityControl: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("QUANTITY")
+                .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            TextField("Required", text: $quantityText)
+                .keyboardType(.decimalPad)
+                .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                .padding(.horizontal, FridgeFitTheme.Spacing.small)
+                .frame(minHeight: 44)
+                .background(FridgeFitTheme.ColorToken.disabledSurface.opacity(0.65), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+                .onChange(of: quantityText) { _, newValue in onQuantityChange(newValue) }
+                .accessibilityIdentifier("quantity-\(item.id.uuidString)")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var unitControl: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("UNIT")
+                .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            Picker("Unit", selection: Binding(get: { item.unit }, set: onUnitChange)) {
+                ForEach(MeasurementUnit.allCases) { unit in
+                    Text(unit.symbol).tag(unit)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .tint(FridgeFitTheme.ColorToken.textPrimary)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .padding(.horizontal, FridgeFitTheme.Spacing.xSmall)
+            .background(FridgeFitTheme.ColorToken.disabledSurface.opacity(0.65), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func badgeTone(for tier: ConfidenceTier) -> FridgeFitStatusTone {
         switch tier {
-        case .agreed: return .green
-        case .singleSource: return .secondary
-        case .conflicting: return .orange
+        case .agreed: return .success
+        case .singleSource: return .neutral
+        case .conflicting: return .warning
         }
     }
 }
-
-// MARK: - Editing
 
 struct EditIngredientSheet: View {
     let item: IngredientReviewItem
@@ -618,8 +693,6 @@ struct AddIngredientSheet: View {
     }
 }
 
-/// Category chooser. `.decoy` is an internal vocabulary device and is never
-/// offered.
 struct CategoryPicker: View {
     @Binding var selection: IngredientGroup
 
@@ -633,3 +706,84 @@ struct CategoryPicker: View {
         .labelsHidden()
     }
 }
+
+#if DEBUG
+private enum IngredientReviewPreviewData {
+    private static func recognisedItem(
+        _ name: String,
+        category: IngredientGroup,
+        quantity: String,
+        boundingBox: CGRect?
+    ) -> IngredientReviewItem {
+        IngredientReviewItem(
+            origin: .recognised,
+            recognised: FusedIngredient(
+                ingredientId: name.lowercased(),
+                displayName: name,
+                category: category,
+                tier: .agreed,
+                sources: .detector,
+                boundingBox: boundingBox,
+                detectorConfidence: 0.91,
+                assertsIngredient: true
+            ),
+            displayName: name,
+            category: category,
+            isAccepted: true,
+            quantityText: quantity,
+            unit: .pieces
+        )
+    }
+
+    static func detectedAndSuggested() -> IngredientReviewViewModel {
+        var milk = IngredientReviewItem(manualName: "Milk", category: .dairy)
+        milk.quantityText = "1"
+        return IngredientReviewViewModel(items: [
+            recognisedItem(
+                "Tomatoes",
+                category: .vegetable,
+                quantity: "4",
+                boundingBox: CGRect(x: 0.1, y: 0.2, width: 0.25, height: 0.25)
+            ),
+            recognisedItem("Baby Spinach", category: .vegetable, quantity: "1", boundingBox: nil),
+            milk
+        ])
+    }
+
+    static func validationAndPartialFailure() -> IngredientReviewViewModel {
+        let viewModel = IngredientReviewViewModel(items: [
+            recognisedItem(
+                "Tomatoes",
+                category: .vegetable,
+                quantity: "",
+                boundingBox: CGRect(x: 0.1, y: 0.2, width: 0.25, height: 0.25)
+            ),
+            recognisedItem("Milk", category: .dairy, quantity: "1", boundingBox: nil)
+        ])
+        viewModel.presentPreviewSaveState(
+            .partial(
+                AddDetectedIngredientsSummary(
+                    addedNames: ["Milk"],
+                    duplicateNames: [],
+                    failures: [.init(name: "Tomatoes", message: "Enter an amount before saving.")]
+                )
+            )
+        )
+        return viewModel
+    }
+}
+
+#Preview("Ingredient Review — Detected and Suggested") {
+    IngredientReviewView(
+        viewModel: IngredientReviewPreviewData.detectedAndSuggested(),
+        snapshot: UIImage(systemName: "photo")!
+    )
+}
+
+#Preview("Ingredient Review — Validation and Partial Failure") {
+    IngredientReviewView(
+        viewModel: IngredientReviewPreviewData.validationAndPartialFailure(),
+        snapshot: UIImage(systemName: "photo")!
+    )
+}
+#endif

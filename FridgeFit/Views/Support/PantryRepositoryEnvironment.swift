@@ -9,9 +9,12 @@ import SwiftUI
 ///
 /// The review sheet lives four levels below the composition root
 /// (`ContentView` → `ProfileView` → `ConnectedDevicesView` →
-/// `RemoteCameraView` → review sheet), and none of the views in between have
-/// any business knowing about the pantry. Threading a repository through all
-/// of them would add a parameter to three unrelated screens to serve one leaf.
+/// `RemoteCameraView` → review sheet), and none of the views in between
+/// writes to the pantry. Threading a repository through all of them would
+/// add a parameter to three unrelated screens to serve one leaf. (Profile
+/// is handed an `InventoryStore` for its own Kitchen Impact section, but it
+/// does not pass it down - the chain below it still has nothing to do with
+/// the pantry.)
 ///
 /// ## Why the default is a repository that refuses
 ///
