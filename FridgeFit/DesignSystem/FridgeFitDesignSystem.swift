@@ -29,6 +29,10 @@ enum FridgeFitTheme {
         static let danger = adaptive(light: 0xC84F42, dark: 0xFF9C8C)
         static let accent = adaptive(light: 0xED8066, dark: 0xFF9D88)
         static let disabledSurface = adaptive(light: 0xE8ECE6, dark: 0x343C36)
+        /// Honey Yellow, the palette's second accent. Used for figures that
+        /// need to read against the filled green surfaces, where neither
+        /// `primary` nor `accent` has enough contrast.
+        static let honey = adaptive(light: 0xF3C767, dark: 0xF7D489)
 
         private static func adaptive(light: UInt32, dark: UInt32) -> Color {
             Color(uiColor: UIColor { traits in
@@ -59,8 +63,15 @@ enum FridgeFitTheme {
 
     enum Typography {
         static let hero: Font = .largeTitle.weight(.bold)
+        /// The name of the screen, above any in-screen navigation. Larger
+        /// than `screenTitle`, which titles a region *within* a screen.
+        static let pageTitle: Font = .title.weight(.bold)
         static let screenTitle: Font = .title2.weight(.bold)
         static let sectionTitle: Font = .headline
+        /// For sections that are the user's main landmarks on a long
+        /// scrolling screen, where `sectionTitle` does not separate them
+        /// enough from the card text underneath.
+        static let sectionTitleProminent: Font = .title3.weight(.bold)
         static let cardTitle: Font = .body.weight(.semibold)
         static let body: Font = .body
         static let supporting: Font = .subheadline

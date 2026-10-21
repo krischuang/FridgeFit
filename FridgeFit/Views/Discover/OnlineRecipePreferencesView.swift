@@ -58,6 +58,9 @@ struct OnlineRecipePreferencesView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(FridgeFitTheme.ColorToken.canvas)
+        .tint(FridgeFitTheme.ColorToken.primary)
         .navigationTitle("Filters")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

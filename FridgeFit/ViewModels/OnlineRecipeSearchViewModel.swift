@@ -80,4 +80,12 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
         hasSearched = false
         errorMessage = nil
     }
+
+    /// Persists supported filters and immediately requests results that match
+    /// them. Keeping this sequence in the model prevents the sheet and header
+    /// from drifting into subtly different refresh behaviour.
+    func applyPreferencesAndSearch(_ newPreferences: OnlineRecipePreferences) async {
+        updatePreferences(newPreferences)
+        await search()
+    }
 }
