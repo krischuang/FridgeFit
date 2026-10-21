@@ -127,25 +127,11 @@ nonisolated enum OnlineRecipeExpiryRanking {
         return !a.isEmpty && a == matchKey(pantryName)
     }
 
+    /// Provider names first lose parenthetical notes
+    /// (`OnlineIngredientName.normalized`), then go through the app-wide
+    /// rule (`IngredientNameMatching`), so Discover agrees with the pantry.
     static func matchKey(_ name: String) -> String {
-        var words = OnlineIngredientName.normalized(name).lowercased().split(separator: " ").map(String.init)
-        guard let last = words.popLast() else { return "" }
-        words.append(singular(last))
-        return words.joined(separator: " ")
-    }
-
-    /// Plural fold for the last word only: "tomatoes" → "tomato",
-    /// "berries" → "berry", "eggs" → "egg". Leaves "-ss" words alone
-    /// ("watercress").
-    static func singular(_ word: String) -> String {
-        guard word.count > 3 else { return word }
-        if word.hasSuffix("ies") { return String(word.dropLast(3)) + "y" }
-        if word.hasSuffix("oes") || word.hasSuffix("ches") || word.hasSuffix("shes")
-            || word.hasSuffix("xes") || word.hasSuffix("sses") {
-            return String(word.dropLast(2))
-        }
-        if word.hasSuffix("s"), !word.hasSuffix("ss") { return String(word.dropLast()) }
-        return word
+        IngredientNameMatching.matchKey(OnlineIngredientName.normalized(name))
     }
 
     private static func sortedByUrgency(_ uses: [UrgentIngredientUse]) -> [UrgentIngredientUse] {
