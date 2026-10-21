@@ -257,7 +257,7 @@ struct ContentView: View {
                     inventory: inventoryStore,
                     onFindRecipes: {
                         recipesPath = [.recommendations]
-                        selectedTab = .recipes
+                        navigation.selectedTab = .recipes
                     }
                 )
             }
