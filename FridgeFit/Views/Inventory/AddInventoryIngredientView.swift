@@ -36,25 +36,11 @@ struct AddInventoryIngredientView: View {
                 }
             }
             .navigationTitle("Add Ingredient")
-            .kitchenInlineNavigationTitle()
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                    }
-                    .accessibilityLabel("Close")
-                }
-
-                if selectedTemplate != nil {
-                    ToolbarItem {
-                        Button {
-                            selectedTemplate = nil
-                        } label: {
-                            Image(systemName: "chevron.left")
-                        }
-                        .accessibilityLabel("Back")
+                if selectedTemplate == nil {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }
                     }
                 }
             }
@@ -63,57 +49,56 @@ struct AddInventoryIngredientView: View {
 
     private var templateList: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.large) {
                 searchField
 
                 if !recentTemplates.isEmpty && searchText.isEmpty {
-                    templateSection("Add Again", templates: Array(recentTemplates.prefix(3)))
+                    templateSection("Add Again", subtitle: "Recently added ingredients", templates: Array(recentTemplates.prefix(3)))
                 }
 
-                templateSection(searchText.isEmpty ? "Common" : "Results", templates: filteredTemplates)
+                templateSection(
+                    searchText.isEmpty ? "Common Ingredients" : "Results",
+                    subtitle: searchText.isEmpty ? "Choose an ingredient to continue" : "Matching ingredients",
+                    templates: filteredTemplates
+                )
 
                 Button {
                     selectedTemplate = customTemplate
                 } label: {
-                    HStack {
-                        Text("Can't find it? Add Custom Item")
-                        Spacer()
-                        Image(systemName: "plus.circle")
-                    }
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(KitchenTheme.forest)
-                    .padding(.horizontal, 14)
-                    .frame(minHeight: 46)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(KitchenTheme.surface)
-                    )
+                    Label("Add Custom Item", systemImage: "plus.circle")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(FridgeFitSecondaryButtonStyle())
             }
-            .padding(20)
+            .padding(.horizontal, FridgeFitTheme.Spacing.large)
+            .padding(.top, FridgeFitTheme.Spacing.medium)
+            .padding(.bottom, FridgeFitTheme.Spacing.screen)
         }
-        .background(KitchenTheme.background.ignoresSafeArea())
+        .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
     }
 
     private var searchField: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: FridgeFitTheme.Spacing.small) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
+                .font(.body.weight(.medium))
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
 
-            TextField("What did you get?", text: $searchText)
-                .kitchenIngredientTextInput()
+            TextField("Search common ingredients", text: $searchText)
+                .font(FridgeFitTheme.Typography.body)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+
+            if !searchText.isEmpty {
+                Button { searchText = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                        .frame(width: 36, height: 44)
+                }
+                .accessibilityLabel("Clear search")
+            }
         }
-        .padding(.horizontal, 13)
-        .frame(minHeight: 44)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(KitchenTheme.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Color.primary.opacity(0.10), lineWidth: 1)
-        )
+        .padding(.leading, FridgeFitTheme.Spacing.medium)
+        .padding(.trailing, searchText.isEmpty ? FridgeFitTheme.Spacing.medium : 0)
+        .frame(minHeight: 46)
+        .fridgeFitCardSurface()
     }
 
     /// Templates for food the user has added before, most recent first.
@@ -137,13 +122,21 @@ struct AddInventoryIngredientView: View {
             .filter { seen.insert($0.id).inserted }
     }
 
-    private func templateSection(_ title: String, templates: [IngredientTemplate]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(.primary)
+    private func templateSection(_ title: String, subtitle: String, templates: [IngredientTemplate]) -> some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(FridgeFitTheme.Typography.sectionTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                Text(subtitle)
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            }
 
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 10)], spacing: 10) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 148, maximum: 190), spacing: FridgeFitTheme.Spacing.small)],
+                spacing: FridgeFitTheme.Spacing.small
+            ) {
                 ForEach(templates) { template in
                     Button {
                         selectedTemplate = template
@@ -179,32 +172,27 @@ private struct TemplateTile: View {
     let summary: String
 
     var body: some View {
-        VStack(spacing: 7) {
+        HStack(spacing: FridgeFitTheme.Spacing.small) {
             IngredientTemplateArtwork(template: template)
 
-            Text(template.name)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(template.name)
+                    .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                    .lineLimit(2)
 
-            Text(summary)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.70)
+                Text(summary)
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity)
-        .frame(minHeight: 102)
-        .padding(.horizontal, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(KitchenTheme.tile)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-        )
+        .frame(minHeight: 82, alignment: .leading)
+        .padding(.horizontal, FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(template.name), \(summary)")
     }

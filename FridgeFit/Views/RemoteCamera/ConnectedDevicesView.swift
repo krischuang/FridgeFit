@@ -5,43 +5,57 @@
 
 import SwiftUI
 
-/// Screen A: what this device is, what else is signed into the same account,
-/// and the two ways into the prototype.
+/// Presentation entry point for FridgeFit's existing two-device camera
+/// system. Registration, discovery, and connection remain in the supplied
+/// view models; this view only chooses which existing flow to open.
 struct ConnectedDevicesView: View {
     @StateObject private var viewModel: ConnectedDevicesViewModel
     @Environment(\.scenePhase) private var scenePhase
+    @State private var isPresentingAvailableCameras = false
+    @State private var isPresentingRemoteCamera = false
 
     init(identity: DeviceIdentity) {
         _viewModel = StateObject(wrappedValue: ConnectedDevicesViewModel(identity: identity))
     }
 
-    /// For previews and tests, which supply doubles.
+    /// For previews and tests, which supply an existing discovery model.
     init(viewModel: ConnectedDevicesViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
     }
 
     var body: some View {
-        List {
-            thisDeviceSection
-            availableDevicesSection
-            modesSection
-
-            if let errorMessage = viewModel.errorMessage {
-                Section {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
+        ChooseDeviceRoleView(
+            deviceName: viewModel.identity.deviceName,
+            availableCameraCount: viewModel.availableCameras.count,
+            otherDevices: viewModel.otherDevices,
+            status: viewModel.status(for:),
+            isRegistering: viewModel.isRegistering,
+            errorMessage: viewModel.errorMessage,
+            isPresentingAvailableCameras: $isPresentingAvailableCameras,
+            cameraDestination: {
+                CameraModeView(identity: viewModel.identity)
+            },
+            remoteDestination: {
+                AvailableCamerasView(viewModel: viewModel) { camera in
+                    RemoteCameraView(
+                        identity: viewModel.identity,
+                        initialCamera: camera,
+                        onPresentationChange: { isPresentingRemoteCamera = $0 }
+                    )
                 }
             }
-        }
-        .navigationTitle("Connected Devices")
+        )
         .task { await viewModel.start() }
-        // Stops heartbeating when the app leaves the foreground, so a
-        // backgrounded phone drops off the other device's list instead of
-        // sitting there as an unreachable camera.
+        .onChange(of: isPresentingAvailableCameras) { _, isPresented in
+            // AvailableCamerasView stops the shared model as it leaves. Start
+            // it again only once the chooser is visible after Back.
+            guard !isPresented else { return }
+            Task { await viewModel.start() }
+        }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
+                guard !isPresentingRemoteCamera else { return }
                 Task { await viewModel.start() }
             case .inactive, .background:
                 viewModel.stop()
@@ -49,99 +63,16 @@ struct ConnectedDevicesView: View {
                 break
             }
         }
-        .onDisappear { viewModel.stop() }
-    }
-
-    private var thisDeviceSection: some View {
-        Section("This Device") {
-            LabeledContent("Name", value: viewModel.identity.deviceName)
-
-            Picker("Role", selection: Binding(
-                get: { viewModel.role },
-                set: { newRole in Task { await viewModel.setRole(newRole) } }
-            )) {
-                ForEach(DeviceRole.allCases, id: \.self) { role in
-                    Label(role.displayName, systemImage: RemoteCameraPresentation.symbol(for: role))
-                        .tag(role)
-                }
-            }
-
-            if viewModel.isRegistering {
-                Label("Registering…", systemImage: "arrow.triangle.2.circlepath")
-                    .foregroundStyle(.secondary)
-                    .font(.footnote)
-            }
-        }
-    }
-
-    private var availableDevicesSection: some View {
-        Section {
-            if viewModel.otherDevices.isEmpty {
-                Text("""
-                No other devices yet. Sign in to the same FridgeFit account on \
-                your other iPhone and open this screen there.
-                """)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            } else {
-                ForEach(viewModel.otherDevices) { device in
-                    DeviceRow(device: device, status: viewModel.status(for: device))
-                }
-            }
-        } header: {
-            Text("Available Devices")
-        } footer: {
-            Text("""
-            Devices disappear from this list about \
-            \(Int(RegisteredDevice.presenceWindow)) seconds after they stop \
-            checking in, so a phone that quit or lost its connection doesn't \
-            keep showing as available.
-            """)
-            .font(.caption)
-        }
-    }
-
-    private var modesSection: some View {
-        Section {
-            NavigationLink {
-                CameraModeView(identity: viewModel.identity)
-            } label: {
-                Label {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Camera Mode")
-                        Text("Use this iPhone as the fridge camera")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                } icon: {
-                    Image(systemName: "camera")
-                }
-            }
-
-            NavigationLink {
-                RemoteCameraView(identity: viewModel.identity)
-            } label: {
-                Label {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Remote Camera")
-                        Text("View and capture from your other iPhone")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                } icon: {
-                    Image(systemName: "video")
-                }
-            }
-        } header: {
-            Text("Modes")
-        } footer: {
-            Text(WebRTCConfiguration.current.connectivityCaveat)
-                .font(.caption)
+        .onDisappear {
+            // Pushing Available Cameras reuses this model. Do not race its
+            // initial `start()` with a parent `stop()`.
+            guard !isPresentingAvailableCameras && !isPresentingRemoteCamera else { return }
+            viewModel.stop()
         }
     }
 }
 
-/// One row in the device list: name, role, and the status it is actually in.
+/// Compact device metadata reused by the existing Remote Camera presentation.
 struct DeviceRow: View {
     let device: RegisteredDevice
     let status: DeviceConnectionStatus
@@ -149,14 +80,16 @@ struct DeviceRow: View {
     var body: some View {
         HStack {
             Image(systemName: RemoteCameraPresentation.symbol(for: device.deviceRole))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(device.deviceName)
+                    .font(FridgeFitTheme.Typography.cardTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
                 Text(device.deviceRole.displayName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
             }
 
             Spacer()
@@ -168,18 +101,19 @@ struct DeviceRow: View {
     }
 }
 
+#if DEBUG
 #Preview {
-    let identity = DeviceIdentity(deviceId: "preview-device", deviceName: "Preview iPhone")
+    let identity = DeviceIdentity(deviceId: "preview-device", deviceName: "Kitchen iPhone")
     let registry = InMemoryDeviceRegistry(seedDevices: [
         identity.asRegisteredDevice(role: .controller),
         RegisteredDevice(
-            deviceId: "other-device",
-            deviceName: "Kitchen iPhone",
+            deviceId: "camera-device",
+            deviceName: "Fridge Camera",
             deviceRole: .camera,
             connectionStatus: .available,
             lastSeenAt: Date(),
             createdAt: Date()
-        ),
+        )
     ])
     return NavigationStack {
         ConnectedDevicesView(
@@ -187,3 +121,4 @@ struct DeviceRow: View {
         )
     }
 }
+#endif

@@ -22,6 +22,7 @@ enum IngredientEditorMode {
 /// template proposed a shelf life or the user turns it on - an item with no
 /// date is honest, an item with a guessed date is not.
 struct IngredientEditorView: View {
+    @Environment(\.dismiss) private var dismiss
     let mode: IngredientEditorMode
     @ObservedObject var inventory: InventoryStore
     let onDone: () -> Void
@@ -36,6 +37,10 @@ struct IngredientEditorView: View {
     @State private var lowStockThreshold: Double?
     @State private var errorMessage: String?
     @State private var isSaving = false
+    /// The real record identified by the pantry's existing duplicate rule.
+    /// This view only presents recovery; it does not reimplement detection.
+    @State private var detectedDuplicate: PantryItem?
+    @State private var duplicateItemBeingEdited: PantryItem?
     /// Whether the user touched the amount. Decides whether the saved event
     /// says `quantityAdjusted` or `edited`, so correcting a typo is not
     /// recorded as having used something.
@@ -71,129 +76,58 @@ struct IngredientEditorView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 18) {
-                IngredientArtwork(category: category, size: 54)
-                    .padding(.top, 4)
-
-                VStack(spacing: 0) {
-                    editorRow("Name") {
-                        TextField("Ingredient", text: $name)
-                            .multilineTextAlignment(.trailing)
-                            .kitchenIngredientTextInput()
-                            .accessibilityLabel("Ingredient name")
-                    }
-
-                    editorRow("Category") {
-                        Picker("Category", selection: $category) {
-                            ForEach(IngredientCategory.allCases) { category in
-                                Text(category.displayName).tag(category)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                    }
-
-                    editorRow("Kind") {
-                        Picker("Kind", selection: Binding(
-                            get: { quantity.type },
-                            set: {
-                                quantity = Self.defaultQuantity(for: $0)
-                                quantityWasEdited = true
-                            }
-                        )) {
-                            Text("Count").tag(QuantityType.countable)
-                            Text("Amount").tag(QuantityType.measurable)
-                            Text("Package").tag(QuantityType.packaged)
-                        }
-                        .pickerStyle(.menu)
-                    }
-
-                    editorRow(quantitySectionTitle) {
-                        QuantityInputView(quantity: Binding(
-                            get: { quantity },
-                            set: {
-                                quantity = $0
-                                quantityWasEdited = true
-                            }
-                        ))
-                    }
-
-                    editorRow("Storage") {
-                        Picker("Storage", selection: $storageLocation) {
-                            ForEach(StorageLocation.allCases) { location in
-                                Text(location.title).tag(location)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-
-                    if shouldShowOpenedState {
-                        editorRow("State") {
-                            Picker("State", selection: $openedState) {
-                                Text("Unopened").tag(OpenedState.unopened)
-                                Text("Opened").tag(OpenedState.opened)
-                            }
-                            .pickerStyle(.segmented)
-                        }
-                    }
-
-                    editorRow("Expiry") {
-                        Toggle("Track", isOn: $hasExpiry.animation(.snappy))
-                            .labelsHidden()
-                            .accessibilityLabel("Track an expiry date")
-                    }
-
-                    if hasExpiry {
-                        editorRow("Date") {
-                            DatePicker("Date", selection: $expiryDate, displayedComponents: .date)
-                                .labelsHidden()
-                                .accessibilityLabel("Expiry date")
-                        }
-                    }
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+                nameSection
+                storageSection
+                quantitySection
+                expirySection
+                if let detectedDuplicate {
+                    duplicateRecoveryCard(for: detectedDuplicate)
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(KitchenTheme.surface.opacity(0.94))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color.primary.opacity(0.09), lineWidth: 1)
-                )
-
-                Button {
-                    Task { await save() }
-                } label: {
-                    Group {
-                        if isSaving {
-                            ProgressView().tint(.white)
-                        } else {
-                            Text(isAdding ? "Add to Kitchen" : "Save Changes")
-                                .font(.headline)
-                        }
-                    }
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(KitchenTheme.warmAccent)
-                    )
-                }
-                .disabled(isSaveDisabled)
-                .opacity(isSaveDisabled ? 0.45 : 1)
-                // While saving, the label is a bare ProgressView, so the
-                // button would be announced with no name at all at exactly
-                // the moment the user wants to know whether it took.
-                .accessibilityLabel(
-                    isSaving
-                        ? "Saving"
-                        : (isAdding ? "Add to Kitchen" : "Save Changes")
-                )
             }
-            .padding(20)
+            .padding(.horizontal, FridgeFitTheme.Spacing.large)
+            .padding(.top, FridgeFitTheme.Spacing.medium)
+            .padding(.bottom, FridgeFitTheme.Spacing.screen)
         }
-        .background(KitchenTheme.background.ignoresSafeArea())
-        .navigationTitle(name)
-        .kitchenInlineNavigationTitle()
+        .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
+        .navigationTitle(isAdding ? "Add Ingredient" : "Edit Ingredient")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { dismiss() }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") { Task { await save() } }
+                    .disabled(isSaveDisabled)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            Button {
+                Task { await save() }
+            } label: {
+                Group {
+                    if isSaving {
+                        ProgressView().tint(FridgeFitTheme.ColorToken.card)
+                    } else {
+                        Label(isAdding ? "Add to Pantry" : "Save Changes", systemImage: isAdding ? "plus.circle" : "checkmark.circle")
+                    }
+                }
+            }
+            .buttonStyle(FridgeFitPrimaryButtonStyle())
+            .disabled(isSaveDisabled)
+            // While saving, the label is a bare ProgressView, so the button
+            // would be announced with no name at all at exactly the moment
+            // the user wants to know whether it took.
+            .accessibilityLabel(
+                isSaving
+                    ? "Saving"
+                    : (isAdding ? "Add to Pantry" : "Save Changes")
+            )
+            .padding(.horizontal, FridgeFitTheme.Spacing.large)
+            .padding(.top, FridgeFitTheme.Spacing.small)
+            .padding(.bottom, FridgeFitTheme.Spacing.xSmall)
+            .background(FridgeFitTheme.ColorToken.canvas.opacity(0.96))
+        }
         .alert("Couldn't save ingredient", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -202,26 +136,190 @@ struct IngredientEditorView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+        .sheet(item: $duplicateItemBeingEdited) { item in
+            NavigationStack {
+                IngredientEditorView(
+                    mode: .edit(item),
+                    inventory: inventory,
+                    onDone: {
+                        detectedDuplicate = nil
+                        duplicateItemBeingEdited = nil
+                    }
+                )
+            }
+            .presentationDetents([.large])
+        }
     }
 
-    private func editorRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Text(title)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.primary)
-
-                Spacer(minLength: 12)
-
-                content()
-                    .font(.subheadline)
+    private var nameSection: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            HStack(spacing: FridgeFitTheme.Spacing.small) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                TextField("Search or enter ingredient…", text: $name)
+                    .font(FridgeFitTheme.Typography.body.weight(.medium))
+                    .accessibilityLabel("Ingredient name")
+                if !name.isEmpty {
+                    Button { name = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                            .frame(width: 32, height: 32)
+                    }
+                    .accessibilityLabel("Clear ingredient name")
+                }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.horizontal, FridgeFitTheme.Spacing.medium)
+            .frame(minHeight: 46)
+            .fridgeFitCardSurface()
 
-            Divider()
-                .overlay(KitchenTheme.separator)
-                .padding(.leading, 14)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: FridgeFitTheme.Spacing.small) {
+                    ForEach(matchingTemplates) { template in
+                        Button { apply(template) } label: {
+                            Label(template.name, systemImage: template.name.caseInsensitiveCompare(name) == .orderedSame ? "checkmark" : "plus")
+                        }
+                        .buttonStyle(FridgeFitChipStyle(isSelected: template.name.caseInsensitiveCompare(name) == .orderedSame))
+                    }
+                }
+            }
+
+            HStack {
+                Text("Category")
+                    .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                Spacer()
+                Picker("Category", selection: $category) {
+                    ForEach(IngredientCategory.allCases) { value in
+                        Text(value.displayName).tag(value)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+        }
+    }
+
+    private var storageSection: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+            Text("Storage Location")
+                .font(FridgeFitTheme.Typography.caption.weight(.bold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .textCase(.uppercase)
+
+            HStack(spacing: FridgeFitTheme.Spacing.xSmall) {
+                ForEach(StorageLocation.allCases) { location in
+                    Button { storageLocation = location } label: {
+                        Label(location.title, systemImage: storageSymbol(for: location))
+                            .font(FridgeFitTheme.Typography.metadata.weight(storageLocation == location ? .semibold : .regular))
+                            .foregroundStyle(storageLocation == location ? FridgeFitTheme.ColorToken.textPrimary : FridgeFitTheme.ColorToken.textSecondary)
+                            .frame(maxWidth: .infinity, minHeight: 38)
+                            .background(storageLocation == location ? FridgeFitTheme.ColorToken.card : .clear, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(storageLocation == location ? .isSelected : [])
+                }
+            }
+            .padding(4)
+            .background(FridgeFitTheme.ColorToken.disabledSurface.opacity(0.65), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+        }
+    }
+
+    private var quantitySection: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            HStack {
+                Text("Quantity")
+                    .font(FridgeFitTheme.Typography.supporting.weight(.bold))
+                Spacer()
+                Text(quantity.displayText)
+                    .font(FridgeFitTheme.Typography.metadata)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            }
+
+            Picker("Quantity type", selection: Binding(
+                get: { quantity.type },
+                set: { quantity = Self.defaultQuantity(for: $0); quantityWasEdited = true }
+            )) {
+                Text("Count").tag(QuantityType.countable)
+                Text("Amount").tag(QuantityType.measurable)
+                Text("Pack").tag(QuantityType.packaged)
+            }
+            .pickerStyle(.segmented)
+
+            StitchQuantityControl(quantity: Binding(
+                get: { quantity },
+                set: { quantity = $0; quantityWasEdited = true }
+            ))
+
+            if shouldShowOpenedState {
+                Picker("Package state", selection: $openedState) {
+                    Text("Unopened").tag(OpenedState.unopened)
+                    Text("Opened").tag(OpenedState.opened)
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
+    }
+
+    private var expirySection: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            HStack(spacing: FridgeFitTheme.Spacing.small) {
+                Image(systemName: "calendar.badge.checkmark")
+                    .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                    .frame(width: 28, height: 28)
+                    .background(FridgeFitTheme.ColorToken.successBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Track Expiry Date")
+                        .font(FridgeFitTheme.Typography.supporting.weight(.bold))
+                    Text("Smart reminders before waste")
+                        .font(FridgeFitTheme.Typography.caption)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                }
+                Spacer()
+                Toggle("Track expiry date", isOn: $hasExpiry.animation(.snappy))
+                    .labelsHidden()
+                    .accessibilityLabel("Track an expiry date")
+            }
+
+            if hasExpiry {
+                Divider()
+                DatePicker("Use by", selection: $expiryDate, displayedComponents: .date)
+                    .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+                if let state = ExpiryService.state(for: expiryDate), state.shouldPrioritise {
+                    Label("This item is \(state.title.lowercased()) and will be prioritised in recipe recommendations.", systemImage: "clock.fill")
+                        .font(FridgeFitTheme.Typography.caption)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+                        .padding(FridgeFitTheme.Spacing.small)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(FridgeFitTheme.ColorToken.warningBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+                }
+            }
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
+    }
+
+    private var matchingTemplates: [IngredientTemplate] {
+        Array(InventoryTemplateCatalog.matching(name).prefix(5))
+    }
+
+    private func apply(_ template: IngredientTemplate) {
+        name = template.name
+        category = template.category
+        storageLocation = template.storageLocation
+        quantity = template.defaultQuantity
+        openedState = template.openedState
+        if let suggested = template.suggestedExpiryDate() {
+            hasExpiry = true
+            expiryDate = suggested
+        }
+    }
+
+    private func storageSymbol(for location: StorageLocation) -> String {
+        switch location {
+        case .fridge: return "refrigerator"
+        case .freezer: return "snowflake"
+        case .pantry: return "cabinet"
         }
     }
 
@@ -247,6 +345,45 @@ struct IngredientEditorView: View {
 
     private var isSaveDisabled: Bool {
         isSaving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func duplicateRecoveryCard(for item: PantryItem) -> some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            Label("Already in your fridge", systemImage: "exclamationmark.triangle.fill")
+                .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+
+            Text("\(item.name) is already tracked. Open the existing item to update its quantity or details instead of creating a second entry.")
+                .font(FridgeFitTheme.Typography.metadata)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button {
+                duplicateItemBeingEdited = item
+            } label: {
+                Label("Update Existing Item", systemImage: "arrow.uturn.right.circle")
+            }
+            .buttonStyle(FridgeFitSecondaryButtonStyle())
+
+            Button("Dismiss") {
+                detectedDuplicate = nil
+            }
+            .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            .frame(minHeight: 44)
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .background(
+            FridgeFitTheme.ColorToken.warningBackground,
+            in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous)
+                .stroke(FridgeFitTheme.ColorToken.warningText.opacity(0.22), lineWidth: 1)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(item.name) already exists in your fridge")
+        .accessibilityHint("Open the existing item to update it instead of creating a duplicate")
     }
 
     private static func defaultQuantity(for type: QuantityType) -> Quantity {
@@ -290,10 +427,134 @@ struct IngredientEditorView: View {
                 ))
             }
             onDone()
+        } catch let error as AddPantryItemError {
+            guard case let .duplicateIngredient(existingName) = error else {
+                errorMessage = error.errorDescription ?? "This ingredient could not be saved right now. Try again."
+                return
+            }
+
+            detectedDuplicate = await existingInventoryItem(named: existingName)
+            if detectedDuplicate == nil {
+                errorMessage = error.errorDescription ?? "This ingredient already exists in your fridge."
+            }
         } catch let error as LocalizedError {
             errorMessage = error.errorDescription ?? "This ingredient could not be saved right now. Try again."
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Resolves the item rejected by `AddPantryItemUseCase` using the same
+    /// name-matching behaviour as the stored ingredient. Reload only if a
+    /// cross-device change has not reached this screen's `InventoryStore`.
+    private func existingInventoryItem(named name: String) async -> PantryItem? {
+        if let item = inventory.items.first(where: { $0.ingredient.matches(name: name) }) {
+            return item
+        }
+
+        await inventory.load()
+        return inventory.items.first { $0.ingredient.matches(name: name) }
+    }
+}
+
+/// Compact quantity control for the shared add/edit editor. It only converts
+/// between quantity shapes when the user explicitly changes the type picker;
+/// increments and units retain the existing `Quantity` representation.
+private struct StitchQuantityControl: View {
+    @Binding var quantity: Quantity
+
+    private static let measureUnits: [MeasurementUnit] = [.grams, .kilograms, .milliliters, .liters]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+            HStack(spacing: FridgeFitTheme.Spacing.medium) {
+                HStack(spacing: 0) {
+                    quantityButton("minus", action: decrement)
+                    Text(amountText)
+                        .font(FridgeFitTheme.Typography.supporting.weight(.bold))
+                        .monospacedDigit()
+                        .frame(minWidth: 38, minHeight: 36)
+                    quantityButton("plus", action: increment)
+                }
+                .background(FridgeFitTheme.ColorToken.disabledSurface.opacity(0.6), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+
+                unitPicker
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var unitPicker: some View {
+        switch quantity {
+        case .count(_, let unit):
+            unitChip(unit.symbol, isSelected: true) {}
+        case .measure(let value, let selectedUnit):
+            HStack(spacing: FridgeFitTheme.Spacing.xSmall) {
+                ForEach(Self.measureUnits) { unit in
+                    unitChip(unit.symbol, isSelected: unit == selectedUnit) {
+                        quantity = .measure(value, unit: unit)
+                    }
+                }
+            }
+        case .package(let count, let selectedUnit, let level):
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: FridgeFitTheme.Spacing.xSmall) {
+                    ForEach(PackageUnit.allCases) { unit in
+                        unitChip(unit.rawValue, isSelected: unit == selectedUnit) {
+                            quantity = .package(count: count, unit: unit, level: level)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func unitChip(_ title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                .foregroundStyle(isSelected ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.textSecondary)
+                .lineLimit(1)
+                .padding(.horizontal, FridgeFitTheme.Spacing.small)
+                .frame(minHeight: 36)
+                .background(isSelected ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.disabledSurface.opacity(0.7), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .frame(minWidth: 44, minHeight: 44)
+    }
+
+    private func quantityButton(_ systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                .frame(width: 36, height: 36)
+        }
+        .buttonStyle(.plain)
+        .frame(minWidth: 44, minHeight: 44)
+    }
+
+    private var amountText: String {
+        switch quantity {
+        case .count(let value, _): return "\(value)"
+        case .measure(let value, _): return value.formatted(.number.precision(.fractionLength(0...1)))
+        case .package(let count, _, _): return "\(count)"
+        }
+    }
+
+    private func increment() {
+        switch quantity {
+        case .count(let value, let unit): quantity = .count(value + 1, unit: unit)
+        case .measure(let value, let unit): quantity = .measure(value + 1, unit: unit)
+        case .package(let count, let unit, let level): quantity = .package(count: count + 1, unit: unit, level: level)
+        }
+    }
+
+    private func decrement() {
+        switch quantity {
+        case .count(let value, let unit): quantity = .count(max(0, value - 1), unit: unit)
+        case .measure(let value, let unit): quantity = .measure(max(0, value - 1), unit: unit)
+        case .package(let count, let unit, let level): quantity = .package(count: max(1, count - 1), unit: unit, level: level)
         }
     }
 }

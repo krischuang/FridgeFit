@@ -26,41 +26,38 @@ struct CameraModeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                VideoSurface(
-                    track: viewModel.localVideoTrack,
-                    isLive: viewModel.isReceivingFrames,
-                    placeholder: viewModel.isActive
-                        ? "Starting the camera…"
-                        : "The camera is off. Camera Mode starts it when this screen opens.",
-                    isMirrored: viewModel.cameraPosition == .front
-                )
-
-                statusCard
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.large) {
+                header
+                cameraPreview
+                cameraInformation
                 controls
 
                 if let summary = viewModel.lastCaptureSummary {
-                    Label(summary, systemImage: "checkmark.circle")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    Label(summary, systemImage: "checkmark.circle.fill")
+                        .font(FridgeFitTheme.Typography.metadata)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                        .padding(FridgeFitTheme.Spacing.medium)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(FridgeFitTheme.ColorToken.successBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
                 }
 
                 if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    errorCard(errorMessage)
                 }
 
-                Text(viewModel.connectivityCaveat)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Label(connectionRecommendation, systemImage: "info.circle")
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding()
+            .padding(.horizontal, FridgeFitTheme.Spacing.large)
+            .padding(.vertical, FridgeFitTheme.Spacing.large)
         }
-        .navigationTitle("Camera Mode")
+        .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
+        .navigationTitle("Kitchen Camera")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(FridgeFitTheme.ColorToken.canvas, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .task { await viewModel.activate() }
         .onDisappear {
             Task { await viewModel.deactivate() }
@@ -73,37 +70,124 @@ struct CameraModeView: View {
         }
     }
 
-    private var statusCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                ConnectionStatusLabel(status: viewModel.status)
-                Spacer()
-                Text(viewModel.cameraPosition.displayName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+    private var header: some View {
+        HStack(alignment: .center, spacing: FridgeFitTheme.Spacing.medium) {
+            Image(systemName: "video.fill")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 44, height: 44)
+                .background(FridgeFitTheme.ColorToken.successBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(viewModel.identity.deviceName)
+                    .font(FridgeFitTheme.Typography.sectionTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                Text("Kitchen Camera Mode")
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
             }
 
-            LabeledContent("This device", value: viewModel.identity.deviceName)
+            Spacer(minLength: FridgeFitTheme.Spacing.small)
 
-            LabeledContent("Controller") {
-                Text(viewModel.connectedControllerName ?? "Not connected")
-                    .foregroundStyle(viewModel.connectedControllerName == nil ? .secondary : .primary)
+            statusBadge
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var statusBadge: some View {
+        Label(cameraStatusTitle, systemImage: cameraStatusSymbol)
+            .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+            .foregroundStyle(cameraStatusTint)
+            .padding(.horizontal, FridgeFitTheme.Spacing.small)
+            .padding(.vertical, FridgeFitTheme.Spacing.xSmall)
+            .background(cameraStatusTint.opacity(0.14), in: Capsule())
+            .accessibilityLabel("Camera status: \(cameraStatusTitle)")
+    }
+
+    private var cameraPreview: some View {
+        Group {
+            if usesCompactUnavailablePreview {
+                videoSurface
+                    .frame(width: 168)
+            } else {
+                videoSurface
+                    .frame(maxWidth: .infinity)
+                    .overlay(alignment: .topLeading) {
+                        Label(viewModel.identity.deviceName, systemImage: "camera")
+                            .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.92))
+                            .padding(.horizontal, FridgeFitTheme.Spacing.small)
+                            .padding(.vertical, FridgeFitTheme.Spacing.xSmall)
+                            .background(.black.opacity(0.48), in: Capsule())
+                            .padding(FridgeFitTheme.Spacing.medium)
+                    }
             }
         }
-        .font(.subheadline)
-        .padding()
-        .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 12))
+        .frame(maxWidth: .infinity)
+    }
+
+    private var videoSurface: some View {
+        VideoSurface(
+            track: viewModel.localVideoTrack,
+            isLive: viewModel.isReceivingFrames,
+            placeholder: cameraPlaceholder,
+            isMirrored: viewModel.cameraPosition == .front
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous)
+                .stroke(FridgeFitTheme.ColorToken.border.opacity(0.55), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
+    }
+
+    private var cameraInformation: some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            Text("Camera information")
+                .font(FridgeFitTheme.Typography.cardTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+
+            infoRow(title: "Camera lens", value: viewModel.cameraPosition.displayName, systemImage: "camera.rotate")
+            Divider().overlay(FridgeFitTheme.ColorToken.border)
+            infoRow(
+                title: "Remote controller",
+                value: viewModel.connectedControllerName ?? "No controller connected",
+                systemImage: "iphone.gen3"
+            )
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .fridgeFitCardSurface()
+    }
+
+    private func infoRow(title: String, value: String, systemImage: String) -> some View {
+        HStack(spacing: FridgeFitTheme.Spacing.small) {
+            Image(systemName: systemImage)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 28, height: 28)
+                .background(FridgeFitTheme.ColorToken.successBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+
+            Text(title)
+                .font(FridgeFitTheme.Typography.metadata)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+
+            Spacer(minLength: FridgeFitTheme.Spacing.small)
+
+            Text(value)
+                .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                .multilineTextAlignment(.trailing)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private var controls: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: FridgeFitTheme.Spacing.small) {
             Button {
                 Task { await viewModel.switchCamera(announce: true) }
             } label: {
                 Label("Switch Camera", systemImage: "arrow.triangle.2.circlepath.camera")
-                    .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(FridgeFitSecondaryButtonStyle())
             .disabled(!viewModel.canSwitchCamera)
 
             Button(role: .destructive) {
@@ -115,22 +199,72 @@ struct CameraModeView: View {
                 Label("Stop Camera", systemImage: "stop.circle")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .font(FridgeFitTheme.Typography.button)
+            .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                    .stroke(FridgeFitTheme.ColorToken.danger.opacity(0.45), lineWidth: 1)
+            }
             .disabled(!viewModel.isActive)
         }
     }
-}
 
-#Preview {
-    // No camera in the Simulator, so this previews the refused state - which
-    // is the point: Camera Mode explains itself rather than showing black.
-    NavigationStack {
-        CameraModeView(
-            viewModel: CameraModeViewModel(
-                identity: DeviceIdentity(deviceId: "preview-device", deviceName: "Preview iPhone"),
-                registry: InMemoryDeviceRegistry(),
-                transport: InMemorySignalingTransport()
-            )
-        )
+    private func errorCard(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.small) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                Text(errorTitle)
+                    .font(FridgeFitTheme.Typography.cardTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                Text(message)
+                    .font(FridgeFitTheme.Typography.metadata)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(FridgeFitTheme.Spacing.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(FridgeFitTheme.ColorToken.warningBackground.opacity(0.72), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var cameraStatusTitle: String {
+        viewModel.isActive && !viewModel.isReceivingFrames ? "Starting" : viewModel.status.displayName
+    }
+
+    private var cameraStatusSymbol: String {
+        viewModel.isActive && !viewModel.isReceivingFrames
+            ? "ellipsis.circle"
+            : RemoteCameraPresentation.symbol(for: viewModel.status)
+    }
+
+    private var cameraStatusTint: Color {
+        viewModel.isActive && !viewModel.isReceivingFrames
+            ? FridgeFitTheme.ColorToken.warningText
+            : RemoteCameraPresentation.tint(for: viewModel.status)
+    }
+
+    private var cameraPlaceholder: String {
+        if let errorMessage = viewModel.errorMessage {
+            return errorMessage
+        }
+        return viewModel.isActive
+            ? "Starting the camera…"
+            : "Kitchen Camera Mode is unavailable."
+    }
+
+    private var usesCompactUnavailablePreview: Bool {
+        !viewModel.isActive && viewModel.status == .offline
+    }
+
+    private var errorTitle: String {
+        viewModel.isActive ? "Camera needs attention" : "Kitchen Camera Mode couldn't start"
+    }
+
+    private var connectionRecommendation: String {
+        "For the most reliable connection, use the same Wi-Fi network on both phones. Some networks may prevent a connection."
     }
 }

@@ -75,6 +75,25 @@ final class ReceiptScannerViewModel: ObservableObject {
         )
     }
 
+    #if DEBUG
+    /// Supplies an isolated in-memory review state for SwiftUI previews.
+    /// It is deliberately unavailable in release builds and never invokes
+    /// recognition or persistence.
+    convenience init(
+        previewDrafts: [ReceiptItemDraft],
+        previewSummary: AddDetectedIngredientsSummary? = nil
+    ) {
+        self.init(
+            textRecognizer: MockReceiptTextRecognizer(lines: []),
+            interpreter: MockReceiptIngredientInterpreter(),
+            pantryRepository: InMemoryPantryRepository()
+        )
+        drafts = previewDrafts
+        addSummary = previewSummary
+        scanState = .completed
+    }
+    #endif
+
     /// Deliberately `nonisolated`: `Task.cancel()` is `Sendable` and safe
     /// from any thread, so this deinit touches nothing that needs the main
     /// actor and has no reason to hop onto it.
