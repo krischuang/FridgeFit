@@ -320,6 +320,7 @@ struct RemoteCameraView: View {
                     return
                 }
                 await viewModel.analyseLocalImage(image)
+                presentReviewIfCurrentAnalysis()
             } catch {
                 viewModel.reportLocalImageFailure()
             }
