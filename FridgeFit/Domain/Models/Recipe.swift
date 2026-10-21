@@ -76,6 +76,12 @@ nonisolated struct Recipe: Identifiable, Hashable, Codable {
     /// How demanding the recipe is. `nil` when unstated.
     var difficulty: CookingDifficulty?
 
+    /// Remote photo for recipes saved from Discover; `nil` for bundled
+    /// recipes. The saved copy of the photo itself lives in the saved-recipe
+    /// store (see `SavedRecipeRepository.imageData(forRecipeID:)`), so this is
+    /// only the fallback when no local copy exists.
+    var imageURL: URL?
+
     init(
         id: UUID = UUID(),
         title: String,
@@ -88,7 +94,8 @@ nonisolated struct Recipe: Identifiable, Hashable, Codable {
         tastePreferences: Set<TastePreference>? = nil,
         dietaryLabels: Set<DietaryRestriction>? = nil,
         totalCookingTimeInMinutes: Int? = nil,
-        difficulty: CookingDifficulty? = nil
+        difficulty: CookingDifficulty? = nil,
+        imageURL: URL? = nil
     ) {
         self.id = id
         self.title = title
@@ -102,6 +109,7 @@ nonisolated struct Recipe: Identifiable, Hashable, Codable {
         self.dietaryLabels = dietaryLabels
         self.totalCookingTimeInMinutes = totalCookingTimeInMinutes
         self.difficulty = difficulty
+        self.imageURL = imageURL
     }
 
     // MARK: - Metadata readings

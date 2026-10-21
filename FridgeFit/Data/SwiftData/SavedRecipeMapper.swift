@@ -42,7 +42,8 @@ enum SavedRecipeMapper {
             tastePreferences: entity.tastePreferences.map { Set($0.compactMap(TastePreference.init(rawValue:))) },
             dietaryLabels: entity.dietaryLabels.map { Set($0.compactMap(DietaryRestriction.init(rawValue:))) },
             totalCookingTimeInMinutes: entity.totalCookingTimeInMinutes,
-            difficulty: entity.difficulty.flatMap(CookingDifficulty.init(rawValue:))
+            difficulty: entity.difficulty.flatMap(CookingDifficulty.init(rawValue:)),
+            imageURL: entity.imageURLString.flatMap(URL.init(string:))
         )
     }
 
@@ -75,6 +76,7 @@ enum SavedRecipeMapper {
         entity.tastePreferences = recipe.tastePreferences.map { $0.map(\.rawValue).sorted() }
         entity.dietaryLabels = recipe.dietaryLabels.map { $0.map(\.rawValue).sorted() }
         entity.difficulty = recipe.difficulty?.rawValue
+        entity.imageURLString = recipe.imageURL?.absoluteString
     }
 
     static func makeLines(for recipe: Recipe) -> [SavedRecipeIngredientEntity] {

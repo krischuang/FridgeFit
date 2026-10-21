@@ -54,12 +54,22 @@ import Foundation
 /// - `tastePreferences` stays `nil` for the same reason as cuisine.
 nonisolated struct SaveOnlineRecipeUseCase {
     let repository: SavedRecipeRepository
+    /// Fetches the recipe photo once so it is stored with the recipe.
+    /// `nil` saves without a photo (the UI then falls back to `imageURL`).
+    var imageDownloader: RecipeImageDownloading? = nil
 
     @discardableResult
     func execute(_ onlineRecipe: OnlineRecipe) async throws -> Recipe {
         let recipe = try Self.recipe(from: onlineRecipe)
+
+        // A missing or failed photo never blocks the save.
+        var imageData: Data?
+        if let url = recipe.imageURL, let imageDownloader {
+            imageData = await imageDownloader.imageData(from: url)
+        }
+
         do {
-            try await repository.save(recipe, sourceRecipeID: onlineRecipe.id)
+            try await repository.save(recipe, sourceRecipeID: onlineRecipe.id, imageData: imageData)
         } catch let error as SaveOnlineRecipeError {
             throw error
         } catch {
@@ -120,7 +130,8 @@ nonisolated struct SaveOnlineRecipeUseCase {
             ingredients: ingredients,
             instructions: instructions,
             symbolName: "globe",
-            totalCookingTimeInMinutes: online.readyInMinutes
+            totalCookingTimeInMinutes: online.readyInMinutes,
+            imageURL: online.imageURL
         )
     }
 

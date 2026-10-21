@@ -30,7 +30,15 @@ nonisolated final class SwiftDataSavedRecipeRepository: SavedRecipeRepository {
     }
 
     func save(_ recipe: Recipe, sourceRecipeID: Int) async throws {
-        try await store.save(recipe, sourceRecipeID: sourceRecipeID)
+        try await store.save(recipe, sourceRecipeID: sourceRecipeID, imageData: nil)
+    }
+
+    func save(_ recipe: Recipe, sourceRecipeID: Int, imageData: Data?) async throws {
+        try await store.save(recipe, sourceRecipeID: sourceRecipeID, imageData: imageData)
+    }
+
+    func imageData(forRecipeID id: UUID) async throws -> Data? {
+        try await store.imageData(forRecipeID: id)
     }
 
     func remove(id: UUID) async throws {
@@ -45,6 +53,8 @@ nonisolated final class SwiftDataSavedRecipeRepository: SavedRecipeRepository {
 ///   is read or written without an owner.
 /// - Saving an already-saved recipe updates that row in place and replaces
 ///   its ingredient lines, so there is never a duplicate.
+/// - A photo is stored with the recipe when one is given; saving again
+///   without one keeps the photo already stored.
 /// - Newest save first.
 /// - Removing a recipe that isn't saved is not an error.
 /// - Store failures surface as `SaveOnlineRecipeError` (`loadFailed` /
@@ -74,7 +84,7 @@ final class SwiftDataSavedRecipeStore {
         }
     }
 
-    func save(_ recipe: Recipe, sourceRecipeID: Int) throws {
+    func save(_ recipe: Recipe, sourceRecipeID: Int, imageData: Data?) throws {
         let ownerID = try requireOwnerID()
         do {
             let target: SavedRecipeEntity
@@ -91,6 +101,10 @@ final class SwiftDataSavedRecipeStore {
                 context.insert(target)
             }
 
+            if let imageData {
+                target.imageData = imageData
+            }
+
             let lines = SavedRecipeMapper.makeLines(for: recipe)
             for line in lines {
                 context.insert(line)
@@ -103,6 +117,15 @@ final class SwiftDataSavedRecipeStore {
         } catch {
             context.rollback()
             throw SaveOnlineRecipeError.saveFailed
+        }
+    }
+
+    func imageData(forRecipeID id: UUID) throws -> Data? {
+        let ownerID = try requireOwnerID()
+        do {
+            return try entity(id: id, ownerID: ownerID)?.imageData
+        } catch {
+            throw SaveOnlineRecipeError.loadFailed
         }
     }
 

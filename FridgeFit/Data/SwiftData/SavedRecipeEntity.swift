@@ -48,6 +48,14 @@ final class SavedRecipeEntity {
     var dietaryLabels: [String]?
     var difficulty: Int?
 
+    /// Where the photo came from (Spoonacular's image CDN).
+    var imageURLString: String?
+    /// Local copy of the photo, downscaled JPEG, taken once at save time so
+    /// the saved recipe shows its picture offline and without re-fetching.
+    /// `.externalStorage` lets SwiftData keep the bytes beside the database
+    /// file instead of inside a row.
+    @Attribute(.externalStorage) var imageData: Data?
+
     var savedAt: Date
 
     @Relationship(deleteRule: .cascade, inverse: \SavedRecipeIngredientEntity.recipe)

@@ -9,6 +9,7 @@ import Foundation
 nonisolated final class InMemorySavedRecipeRepository: SavedRecipeRepository {
     private(set) var recipes: [Recipe]
     private(set) var sourceIDs: [UUID: Int] = [:]
+    private(set) var images: [UUID: Data] = [:]
     /// When set, every call throws this - for failure-path tests.
     var failure: Error?
 
@@ -28,9 +29,20 @@ nonisolated final class InMemorySavedRecipeRepository: SavedRecipeRepository {
         sourceIDs[recipe.id] = sourceRecipeID
     }
 
+    func save(_ recipe: Recipe, sourceRecipeID: Int, imageData: Data?) async throws {
+        try await save(recipe, sourceRecipeID: sourceRecipeID)
+        if let imageData { images[recipe.id] = imageData }
+    }
+
+    func imageData(forRecipeID id: UUID) async throws -> Data? {
+        if let failure { throw failure }
+        return images[id]
+    }
+
     func remove(id: UUID) async throws {
         if let failure { throw failure }
         recipes.removeAll { $0.id == id }
         sourceIDs[id] = nil
+        images[id] = nil
     }
 }
