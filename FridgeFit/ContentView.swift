@@ -8,11 +8,18 @@
 import SwiftUI
 
 enum AppTab: Hashable, CaseIterable {
-    case home
     case kitchen
     case recipes
+    case home
     case discover
     case profile
+
+    static let navigationOrder: [AppTab] = [.kitchen, .recipes, .home, .discover, .profile]
+}
+
+private enum RecipesRoute: Hashable {
+    case recommendations
+    case catalogue
 }
 
 struct AppNavigationState: Equatable {
@@ -33,6 +40,15 @@ struct AppNavigationState: Equatable {
         selectedTab = .recipes
         isBrowsingRecipes = true
     }
+
+    mutating func findRecipes() {
+        selectedTab = .recipes
+        isBrowsingRecipes = false
+    }
+
+    mutating func openDiscover() {
+        selectedTab = .discover
+    }
 }
 
 /// Root of the authenticated app: Home, My Fridge, Recipes, Discover, and
@@ -50,12 +66,9 @@ struct ContentView: View {
     /// judged against one pantry and one catalogue - there is no separate
     /// sample store behind this feature.
     @StateObject private var recommendationViewModel: RecommendationViewModel
-    /// The Discover tab's state: online recipe search.
-    ///
-    /// Built on `OnlineRecipeFeature`, which currently yields
-    /// `UnconfiguredOnlineRecipeService` - no live service object exists in
-    /// the process, so nothing here can reach the network. Discover renders
-    /// an explicit "not set up" state instead.
+    /// The Discover tab's state: online recipe search. The feature factory
+    /// supplies the live cached service when a Spoonacular key is configured,
+    /// and an explained unavailable service when it is not.
     @StateObject private var onlineRecipeSearchViewModel: OnlineRecipeSearchViewModel
     /// The Kitchen tab's state. Built on the *same* `pantryRepository` as
     /// every other tab, so an item added here shows up in the Pantry list
@@ -63,9 +76,16 @@ struct ContentView: View {
     /// two readings of one collection, not two stores.
     @StateObject private var inventoryStore: InventoryStore
     @State private var navigation = AppNavigationState()
+    @State private var recipesPath: [RecipesRoute] = []
     /// Shared with the remote-camera review sheet through the environment,
     /// so a confirmed ingredient reaches the same pantry as everything else.
     private let pantryRepository: PantryRepository
+    /// The money side: budget, spends and per-item prices. Built here, next
+    /// to the pantry it reads, so no screen has to construct a Firestore
+    /// store of its own. Reaches Profile → Impact & Budget through
+    /// `\.fundsEnvironment`, the same way the pantry reaches the camera
+    /// review sheet.
+    private let fundsEnvironment: FundsEnvironment
 
     /// Takes its repositories from the composition root rather than building
     /// them.
@@ -80,6 +100,7 @@ struct ContentView: View {
     init(dependencies: AppDependencies) {
         let pantryRepository = dependencies.pantryRepository
         self.pantryRepository = pantryRepository
+        self.fundsEnvironment = .firestore(pantryRepository: pantryRepository)
         let bundledRecipeRepository = BundledRecipeRepository()
 
         // Chosen by `AppDependencies` with the rest of the persistence graph:
@@ -178,59 +199,66 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $navigation.selectedTab) {
-            NavigationStack {
-                HomeView(
-                    inventory: inventoryStore,
-                    recommendationViewModel: recommendationViewModel,
-                    recipeViewModel: recipeViewModel,
-                    substitutionViewModel: substitutionViewModel,
-                    suggestionViewModel: recipeSuggestionViewModel,
-                    pantryViewModel: pantryViewModel,
-                    scannerViewModel: scannerViewModel,
-                    onOpenMyFridge: { navigation.openMyFridge() },
-                    onOpenSmartScan: { navigation.openSmartScan() },
-                    onBrowseRecipes: { navigation.browseRecipes() }
-                )
-            }
-            .tabItem { Label("Home", systemImage: "house") }
-            .tag(AppTab.home)
-
-            // Kitchen is the spatial view of the same pantry - fridge,
-            // freezer, pantry, plus expiry. Deliberately second rather than
-            // first: Pantry has always been the launch tab, and this change
-            // adds a view without moving the one people already use.
-            //
             // The stack belongs to the tab. `MyKitchenView` does not open
             // one of its own, so there is exactly one navigation bar.
-            NavigationStack {
-                MyKitchenView(
-                    inventory: inventoryStore,
-                    scannerViewModel: scannerViewModel,
-                    isPresentingSmartScan: $navigation.isPresentingSmartScan
-                )
-            }
-            .tabItem { Label("My Fridge", systemImage: "refrigerator") }
-            .tag(AppTab.kitchen)
-
-            NavigationStack {
-                RecipeRecommendationsView(
-                    viewModel: recommendationViewModel,
-                    recipeViewModel: recipeViewModel,
-                    substitutionViewModel: substitutionViewModel,
-                    suggestionViewModel: recipeSuggestionViewModel,
-                    onBrowseAllRecipes: { navigation.isBrowsingRecipes = true }
-                )
-                .navigationDestination(isPresented: $navigation.isBrowsingRecipes) {
-                    RecipeListView(
-                        viewModel: recipeViewModel,
-                        substitutionViewModel: substitutionViewModel,
-                        suggestionViewModel: recipeSuggestionViewModel,
-                        recommendationViewModel: recommendationViewModel
+            Tab("My Fridge", systemImage: "refrigerator", value: AppTab.kitchen) {
+                NavigationStack {
+                    MyKitchenView(
+                        inventory: inventoryStore,
+                        scannerViewModel: scannerViewModel,
+                        isPresentingSmartScan: $navigation.isPresentingSmartScan
                     )
                 }
             }
-            .tabItem { Label("Recipes", systemImage: "fork.knife") }
-            .tag(AppTab.recipes)
+
+            Tab("Recipes", systemImage: "book.closed", value: AppTab.recipes) {
+                NavigationStack(path: $recipesPath) {
+                    SavedRecipesView(
+                        viewModel: recipeViewModel,
+                        substitutionViewModel: substitutionViewModel,
+                        onExploreDiscover: { navigation.openDiscover() },
+                        onFindRecommendations: { pushRecipeRoute(.recommendations) },
+                        onBrowseAllRecipes: { pushRecipeRoute(.catalogue) }
+                    )
+                    .navigationDestination(for: RecipesRoute.self) { route in
+                        switch route {
+                        case .recommendations:
+                            RecipeRecommendationsView(
+                                viewModel: recommendationViewModel,
+                                recipeViewModel: recipeViewModel,
+                                substitutionViewModel: substitutionViewModel,
+                                suggestionViewModel: recipeSuggestionViewModel,
+                                onBrowseAllRecipes: { pushRecipeRoute(.catalogue) }
+                            )
+                        case .catalogue:
+                            RecipeListView(
+                                viewModel: recipeViewModel,
+                                substitutionViewModel: substitutionViewModel,
+                                suggestionViewModel: recipeSuggestionViewModel,
+                                recommendationViewModel: recommendationViewModel
+                            )
+                        }
+                    }
+                }
+            }
+
+            Tab("Home", systemImage: "house", value: AppTab.home) {
+                NavigationStack {
+                    HomeView(
+                        inventory: inventoryStore,
+                        recommendationViewModel: recommendationViewModel,
+                        recipeViewModel: recipeViewModel,
+                        substitutionViewModel: substitutionViewModel,
+                        suggestionViewModel: recipeSuggestionViewModel,
+                        pantryViewModel: pantryViewModel,
+                        scannerViewModel: scannerViewModel,
+                        onOpenMyFridge: { navigation.openMyFridge() },
+                        onOpenSmartScan: { navigation.openSmartScan() },
+                        onFindRecipes: { showRecipeRoute(.recommendations) },
+                        onBrowseRecipes: { showRecipeRoute(.catalogue) }
+                    )
+                }
+            }
 
             // Discover is online recipes, and is deliberately its own tab
             // rather than a surface inside Recipes: Recipes is the catalogue
@@ -240,26 +268,37 @@ struct ContentView: View {
             //
             // The stack belongs to the tab. `DiscoverRecipesView` opens none
             // of its own, so there is exactly one navigation bar.
-            NavigationStack {
-                DiscoverRecipesView(
-                    viewModel: onlineRecipeSearchViewModel,
-                    recipeViewModel: recipeViewModel
-                )
+            Tab("Discover", systemImage: "safari", value: AppTab.discover) {
+                NavigationStack {
+                    DiscoverRecipesView(
+                        viewModel: onlineRecipeSearchViewModel,
+                        recipeViewModel: recipeViewModel
+                    )
+                }
             }
-            .tabItem { Label("Discover", systemImage: "globe") }
-            .tag(AppTab.discover)
 
             // Handed the same `inventoryStore` as Home and My Fridge, so
             // Profile's Kitchen Impact counts the activity log those two
             // screens write to. It used to build its own Firestore event
             // repository, which meant it read a different store from the
-            // rest of the app as soon as `AppDependencies` selected
-            // SwiftData.
-            NavigationStack {
-                ProfileView(inventory: inventoryStore)
+            // rest of the app.
+            Tab("Profile", systemImage: "person.crop.circle", value: AppTab.profile) {
+                NavigationStack {
+                    ProfileView(
+                        inventory: inventoryStore,
+                        onFindRecipes: {
+                            showRecipeRoute(.recommendations)
+                        },
+                        onOpenPantry: { navigation.openMyFridge() }
+                    )
+                }
+                .toolbar(.visible, for: .tabBar)
             }
-            .tabItem { Label("Profile", systemImage: "person.crop.circle") }
-            .tag(AppTab.profile)
+        }
+        .tabViewStyle(.tabBarOnly)
+        .tint(FridgeFitTheme.ColorToken.primary)
+        .onChange(of: recipesPath) { _, path in
+            navigation.isBrowsingRecipes = path.last == .catalogue
         }
         // Reaches the remote-camera review sheet, four levels down, without
         // adding a pantry parameter to ConnectedDevicesView and
@@ -270,6 +309,25 @@ struct ContentView: View {
         // as every other tab, so a confirmed ingredient lands in the same
         // place and under the same auth.
         .environment(\.pantryRepository, pantryRepository)
+        // Reaches Profile → Impact & Budget without giving that screen a
+        // Firestore dependency of its own. `nil` in previews and tests, in
+        // which case the money cards render their unavailable state.
+        .environment(\.fundsEnvironment, fundsEnvironment)
+    }
+
+    private func showRecipeRoute(_ route: RecipesRoute) {
+        switch route {
+        case .recommendations:
+            navigation.findRecipes()
+        case .catalogue:
+            navigation.browseRecipes()
+        }
+        recipesPath = [route]
+    }
+
+    private func pushRecipeRoute(_ route: RecipesRoute) {
+        guard recipesPath.last != route else { return }
+        recipesPath.append(route)
     }
 }
 

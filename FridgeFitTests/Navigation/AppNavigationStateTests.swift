@@ -9,6 +9,11 @@ import XCTest
 final class AppNavigationStateTests: XCTestCase {
     func testFivePrimaryTabsRemainAvailable() {
         XCTAssertEqual(Set(AppTab.allCases), [.home, .kitchen, .recipes, .discover, .profile])
+        XCTAssertEqual(AppTab.navigationOrder, [.kitchen, .recipes, .home, .discover, .profile])
+    }
+
+    func testHomeRemainsTheDefaultTab() {
+        XCTAssertEqual(AppNavigationState().selectedTab, .home)
     }
 
     func testMyFridgeShortcutSelectsKitchenWithoutPresentingScanner() {
@@ -38,5 +43,23 @@ final class AppNavigationStateTests: XCTestCase {
 
         XCTAssertEqual(navigation.selectedTab, .recipes)
         XCTAssertTrue(navigation.isBrowsingRecipes)
+    }
+
+    func testFindRecipesSelectsRecipesWithoutCatalogueState() {
+        var navigation = AppNavigationState()
+        navigation.browseRecipes()
+
+        navigation.findRecipes()
+
+        XCTAssertEqual(navigation.selectedTab, .recipes)
+        XCTAssertFalse(navigation.isBrowsingRecipes)
+    }
+
+    func testDiscoverSelectionUsesSharedNavigationState() {
+        var navigation = AppNavigationState()
+
+        navigation.openDiscover()
+
+        XCTAssertEqual(navigation.selectedTab, .discover)
     }
 }

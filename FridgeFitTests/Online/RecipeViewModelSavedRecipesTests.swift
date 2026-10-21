@@ -57,7 +57,51 @@ final class RecipeViewModelSavedRecipesTests: XCTestCase {
 
         XCTAssertEqual(viewModel.recipes.map(\.id), [bundled.id])
         XCTAssertNil(viewModel.errorMessage)
-        XCTAssertEqual(viewModel.savedRecipeErrorMessage, SaveOnlineRecipeError.loadFailed.errorDescription)
+        XCTAssertEqual(viewModel.savedRecipeLoadErrorMessage, SaveOnlineRecipeError.loadFailed.errorDescription)
+        XCTAssertFalse(viewModel.isLoading)
+    }
+
+    func test_loadRecipes_retryAfterInitialFailure_recoversSavedCollection() async throws {
+        let existing = try SaveOnlineRecipeUseCase.recipe(from: onlineRecipe())
+        let saved = InMemorySavedRecipeRepository(recipes: [existing])
+        saved.failure = URLError(.notConnectedToInternet)
+        let viewModel = makeViewModel(saved: saved)
+
+        await viewModel.loadRecipes()
+        XCTAssertNotNil(viewModel.savedRecipeLoadErrorMessage)
+        XCTAssertTrue(viewModel.savedRecipes.isEmpty)
+
+        saved.failure = nil
+        await viewModel.loadRecipes()
+
+        XCTAssertNil(viewModel.savedRecipeLoadErrorMessage)
+        XCTAssertEqual(viewModel.savedRecipes.map(\.id), [existing.id])
+        XCTAssertFalse(viewModel.isLoading)
+    }
+
+    func test_loadRecipes_repeatedSavedFailure_keepsRetryState() async {
+        let saved = InMemorySavedRecipeRepository()
+        saved.failure = URLError(.timedOut)
+        let viewModel = makeViewModel(saved: saved)
+
+        await viewModel.loadRecipes()
+        await viewModel.loadRecipes()
+
+        XCTAssertEqual(viewModel.savedRecipeLoadErrorMessage, SaveOnlineRecipeError.loadFailed.errorDescription)
+        XCTAssertFalse(viewModel.isLoading)
+    }
+
+    func test_loadRecipes_failureAfterSuccess_preservesPreviouslyLoadedRecipes() async throws {
+        let existing = try SaveOnlineRecipeUseCase.recipe(from: onlineRecipe())
+        let saved = InMemorySavedRecipeRepository(recipes: [existing])
+        let viewModel = makeViewModel(saved: saved)
+        await viewModel.loadRecipes()
+
+        saved.failure = URLError(.networkConnectionLost)
+        await viewModel.loadRecipes()
+
+        XCTAssertEqual(viewModel.savedRecipes.map(\.id), [existing.id])
+        XCTAssertNotNil(viewModel.savedRecipeLoadErrorMessage)
     }
 
     func test_saveOnlineRecipe_addsToRecipes_andEvaluatesAgainstPantry() async {
@@ -119,6 +163,6 @@ final class RecipeViewModelSavedRecipesTests: XCTestCase {
         saved.failure = URLError(.timedOut)
         await viewModel.loadRecipesIfNeeded()
 
-        XCTAssertNil(viewModel.savedRecipeErrorMessage, "Second call must not reload")
+        XCTAssertNil(viewModel.savedRecipeLoadErrorMessage, "Second call must not reload")
     }
 }

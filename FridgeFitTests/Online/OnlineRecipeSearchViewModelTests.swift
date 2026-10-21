@@ -80,4 +80,25 @@ final class OnlineRecipeSearchViewModelTests: XCTestCase {
         await viewModel.search()
         XCTAssertEqual(service.receivedCriteria.last?.preferences.intolerances, [.dairy])
     }
+
+    func test_applyPreferencesAndSearch_usesUpdatedFiltersForFreshResults() async {
+        let store = InMemoryOnlineRecipePreferencesStore()
+        let (viewModel, service) = makeViewModel(
+            result: .success([OnlineRecipeFixtures.match()]),
+            store: store
+        )
+        let updated = OnlineRecipePreferences(
+            diet: .vegetarian,
+            intolerances: [.dairy],
+            maxReadyTimeMinutes: 30
+        )
+
+        await viewModel.applyPreferencesAndSearch(updated)
+
+        XCTAssertEqual(store.preferences, updated)
+        XCTAssertEqual(service.receivedCriteria.count, 1)
+        XCTAssertEqual(service.receivedCriteria.first?.preferences, updated)
+        XCTAssertEqual(viewModel.matches.map(\.id), [1])
+        XCTAssertTrue(viewModel.hasSearched)
+    }
 }

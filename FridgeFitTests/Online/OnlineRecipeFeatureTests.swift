@@ -20,8 +20,8 @@ final class OnlineRecipeFeatureTests: XCTestCase {
         XCTAssertEqual(OnlineRecipeFeature.provider, .enabled)
     }
 
-    func test_shippedSavedRecipeStorageState_isDisabledPendingRulesDeployment() {
-        XCTAssertEqual(OnlineRecipeFeature.savedRecipeStorage, .disabledPendingRulesDeployment)
+    func test_shippedSavedRecipeStorageState_isEnabled() {
+        XCTAssertEqual(OnlineRecipeFeature.savedRecipeStorage, .enabled)
     }
 
     // MARK: - No key required, and none read

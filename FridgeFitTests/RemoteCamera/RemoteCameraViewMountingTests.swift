@@ -27,11 +27,18 @@ final class RemoteCameraViewMountingTests: XCTestCase {
 
     private let identity = DeviceIdentity(deviceId: "mount-device", deviceName: "Mount iPhone")
     private var window: UIWindow?
+    private var retainedAuthViewModel: AuthViewModel?
 
     override func tearDown() async throws {
         window?.isHidden = true
         window?.rootViewController = nil
         window = nil
+
+        // Let SwiftUI detach the hosted hierarchy before releasing dependencies
+        // that were also retained by its environment.
+        await Task.yield()
+        retainedAuthViewModel = nil
+
         // A turn for the hosting view's teardown to finish before the next test.
         try? await Task.sleep(for: .milliseconds(50))
         try await super.tearDown()
@@ -82,6 +89,22 @@ final class RemoteCameraViewMountingTests: XCTestCase {
             try? await Task.sleep(for: .milliseconds(120))
         }
         host.view.layoutIfNeeded()
+    }
+
+    private func waitUntil(
+        timeout: Duration = .seconds(2),
+        condition: () -> Bool
+    ) async -> Bool {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+
+        while clock.now < deadline {
+            if condition() { return true }
+            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+
+        return condition()
     }
 
     func test_connectedDevicesViewMountsAndDiscoversTheCamera() async throws {
@@ -152,21 +175,36 @@ final class RemoteCameraViewMountingTests: XCTestCase {
 
     func test_profileViewMountsWithTheConnectedDevicesLink() async throws {
         // Profile is handed the kitchen's store, the way `ContentView` hands
-        // it the one `AppDependencies` built. In-memory here so mounting the
-        // screen does not touch the device's real store.
+        // it the one the app built. In-memory here so mounting the screen
+        // does not touch the device's real store.
+        let seededEvent = InventoryEvent(
+            pantryItemID: UUID(),
+            itemName: "Mount-test spinach",
+            kind: .finished
+        )
         let inventory = InventoryStore(
             pantryRepository: InMemoryPantryRepository(),
-            eventRepository: InMemoryInventoryEventRepository()
+            eventRepository: InMemoryInventoryEventRepository(seedEvents: [seededEvent])
         )
+        let authViewModel = AuthViewModel(observesAuthState: false)
+        retainedAuthViewModel = authViewModel
 
         try await mount(
             NavigationStack {
-                ProfileView(inventory: inventory).environmentObject(AuthViewModel())
+                ProfileView(inventory: inventory, onFindRecipes: {})
+                    .environmentObject(authViewModel)
+                    .environment(\.pantryRepository, InMemoryPantryRepository())
             }
         )
 
-        // Reaching here means the entry point into the prototype builds; the
-        // link's destination is constructed lazily when tapped.
+        let didLoadSeededEvent = await waitUntil {
+            inventory.events.contains(seededEvent)
+        }
+
+        XCTAssertTrue(didLoadSeededEvent, "ProfileView did not finish loading its seeded inventory event")
+        XCTAssertEqual(inventory.events, [seededEvent])
+        // Reaching here also means the Profile entry point and its lazily-built
+        // Connected Devices link rendered without accessing Firebase Auth.
         XCTAssertNotNil(window?.rootViewController)
     }
 }
