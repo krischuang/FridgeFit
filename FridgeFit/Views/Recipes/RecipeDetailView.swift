@@ -17,7 +17,8 @@ struct RecipeDetailView: View {
             LazyVStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.section) {
                 RecipeDetailHero(
                     recipe: recipe,
-                    feasibility: viewModel.feasibility(for: recipe)
+                    feasibility: viewModel.feasibility(for: recipe),
+                    imageData: viewModel.imageData(for: recipe)
                 )
                 RecipePantryMatchCard(feasibility: viewModel.feasibility(for: recipe))
 
@@ -75,6 +76,8 @@ struct RecipeDetailView: View {
 private struct RecipeDetailHero: View {
     let recipe: Recipe
     let feasibility: RecipeFeasibilityResult?
+    /// Stored photo for a saved recipe; falls back to `recipe.imageURL`.
+    var imageData: Data? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
@@ -82,7 +85,20 @@ private struct RecipeDetailHero: View {
                 RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.largeCard, style: .continuous)
                     .fill(heroBackground)
                     .frame(minHeight: 230)
-                BotanicalRecipeArtwork(symbolName: recipe.symbolName)
+                if RecipePhoto<EmptyView>.hasPhoto(imageData: imageData, imageURL: recipe.imageURL) {
+                    Color.clear
+                        .frame(height: 230)
+                        .frame(maxWidth: .infinity)
+                        .overlay {
+                            RecipePhoto(imageData: imageData, imageURL: recipe.imageURL) {
+                                BotanicalRecipeArtwork(symbolName: recipe.symbolName)
+                            }
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.largeCard, style: .continuous))
+                        .accessibilityHidden(true)
+                } else {
+                    BotanicalRecipeArtwork(symbolName: recipe.symbolName)
+                }
                 VStack {
                     HStack {
                         FridgeFitStatusBadge(title: "Pantry matched", systemImage: "leaf.fill", tone: .success)

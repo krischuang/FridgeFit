@@ -35,6 +35,9 @@ final class RecipeViewModel: ObservableObject {
     /// Last save/remove failure. Separate from `errorMessage` so it never
     /// shows up as "Couldn't Load Recipes".
     @Published var savedRecipeErrorMessage: String?
+    /// Locally stored photos of saved recipes, by recipe id. Read from the
+    /// saved-recipe store, never from the network.
+    @Published private(set) var savedRecipeImages: [UUID: Data] = [:]
     private(set) var hasLoaded = false
 
     private let recipeRepository: RecipeRepository
@@ -69,12 +72,15 @@ final class RecipeViewModel: ObservableObject {
         recipeRepository: RecipeRepository,
         pantryRepository: PantryRepository,
         savedRecipeRepository: SavedRecipeRepository? = nil,
-        savedRecipeUnavailableExplanation: String? = nil
+        savedRecipeUnavailableExplanation: String? = nil,
+        imageDownloader: RecipeImageDownloading? = nil
     ) {
         self.recipeRepository = recipeRepository
         self.evaluateFeasibilityUseCase = EvaluateRecipeFeasibilityUseCase(pantryRepository: pantryRepository)
         self.savedRecipeRepository = savedRecipeRepository
-        self.saveOnlineRecipeUseCase = savedRecipeRepository.map { SaveOnlineRecipeUseCase(repository: $0) }
+        self.saveOnlineRecipeUseCase = savedRecipeRepository.map {
+            SaveOnlineRecipeUseCase(repository: $0, imageDownloader: imageDownloader)
+        }
         self.removeSavedRecipeUseCase = savedRecipeRepository.map { RemoveSavedRecipeUseCase(repository: $0) }
         self.savedRecipeUnavailableExplanation = savedRecipeRepository == nil
             ? savedRecipeUnavailableExplanation
@@ -119,6 +125,7 @@ final class RecipeViewModel: ObservableObject {
             recipes = saved + bundled.filter { !savedIDs.contains($0.id) }
             savedRecipeIDs = savedIDs
             hasLoaded = true
+            await loadSavedRecipeImages(for: saved)
             await refreshFeasibility()
         } catch {
             errorMessage = error.localizedDescription
@@ -163,6 +170,9 @@ final class RecipeViewModel: ObservableObject {
             recipes.removeAll { $0.id == recipe.id }
             recipes.insert(recipe, at: 0)
             savedRecipeIDs.insert(recipe.id)
+            if let data = try? await savedRecipeRepository?.imageData(forRecipeID: recipe.id) {
+                savedRecipeImages[recipe.id] = data
+            }
             if let result = try? await evaluateFeasibilityUseCase.execute(recipe: recipe) {
                 feasibilityResults[recipe.id] = result
             }
@@ -180,11 +190,31 @@ final class RecipeViewModel: ObservableObject {
             try await removeSavedRecipeUseCase.execute(id: recipe.id)
             recipes.removeAll { $0.id == recipe.id }
             savedRecipeIDs.remove(recipe.id)
+            savedRecipeImages[recipe.id] = nil
             feasibilityResults[recipe.id] = nil
         } catch {
             savedRecipeErrorMessage = (error as? SaveOnlineRecipeError)?.errorDescription
                 ?? SaveOnlineRecipeError.removeFailed.errorDescription
         }
+    }
+
+    /// The locally stored photo for `recipe`, if it was saved with one.
+    func imageData(for recipe: Recipe) -> Data? {
+        savedRecipeImages[recipe.id]
+    }
+
+    private func loadSavedRecipeImages(for recipes: [Recipe]) async {
+        guard let savedRecipeRepository else {
+            savedRecipeImages = [:]
+            return
+        }
+        var images: [UUID: Data] = [:]
+        for recipe in recipes {
+            if let data = try? await savedRecipeRepository.imageData(forRecipeID: recipe.id) {
+                images[recipe.id] = data
+            }
+        }
+        savedRecipeImages = images
     }
 
     /// Re-evaluates every already-loaded recipe against the current

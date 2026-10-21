@@ -126,7 +126,8 @@ struct ContentView: View {
                 recipeRepository: bundledRecipeRepository,
                 pantryRepository: pantryRepository,
                 savedRecipeRepository: savedRecipeRepository,
-                savedRecipeUnavailableExplanation: OnlineRecipeFeature.savedRecipeUnavailableExplanation()
+                savedRecipeUnavailableExplanation: OnlineRecipeFeature.savedRecipeUnavailableExplanation(),
+                imageDownloader: URLSessionRecipeImageDownloader()
             )
         )
         _recommendationViewModel = StateObject(

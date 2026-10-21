@@ -33,6 +33,8 @@ struct RecipeRow: View {
     let recipe: Recipe
     let feasibility: RecipeFeasibilityResult?
     var isSaved = false
+    /// Stored photo for a saved recipe (see `RecipeViewModel.imageData(for:)`).
+    var imageData: Data? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
@@ -40,10 +42,18 @@ struct RecipeRow: View {
                 RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
                     .fill(artworkBackground)
                     .frame(minHeight: 132)
-                Image(systemName: recipe.symbolName ?? "fork.knife")
-                    .font(.system(.largeTitle, design: .rounded, weight: .semibold))
-                    .foregroundStyle(FridgeFitTheme.ColorToken.primary)
-                    .accessibilityHidden(true)
+                if RecipePhoto<EmptyView>.hasPhoto(imageData: imageData, imageURL: recipe.imageURL) {
+                    Color.clear
+                        .frame(height: 132)
+                        .frame(maxWidth: .infinity)
+                        .overlay {
+                            RecipePhoto(imageData: imageData, imageURL: recipe.imageURL) { symbolArtwork }
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+                        .accessibilityHidden(true)
+                } else {
+                    symbolArtwork
+                }
                 VStack {
                     HStack(alignment: .top) {
                         if isSaved {
@@ -105,6 +115,13 @@ struct RecipeRow: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private var symbolArtwork: some View {
+        Image(systemName: recipe.symbolName ?? "fork.knife")
+            .font(.system(.largeTitle, design: .rounded, weight: .semibold))
+            .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+            .accessibilityHidden(true)
     }
 
     private var artworkBackground: Color {

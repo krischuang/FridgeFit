@@ -283,7 +283,12 @@ struct RecipeCatalogueCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
-            RecipeRow(recipe: recipe, feasibility: feasibility, isSaved: isSaved)
+            RecipeRow(
+                recipe: recipe,
+                feasibility: feasibility,
+                isSaved: isSaved,
+                imageData: viewModel.imageData(for: recipe)
+            )
 
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: FridgeFitTheme.Spacing.small) {
