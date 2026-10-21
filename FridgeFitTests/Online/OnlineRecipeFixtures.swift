@@ -47,8 +47,15 @@ enum OnlineRecipeFixtures {
         let missed = (0 ..< missedCount).map {
             OnlineRecipeIngredient(providerID: 100 + $0, name: "missing \($0)", amount: 1, unit: .pieces, originalUnit: "")
         }
+        // Like a real provider response, the recipe's ingredient list is the
+        // used lines plus the missed lines - so re-deriving have/missing from
+        // the pantry (`OnlineRecipePantryReconciler`) gives the same counts.
+        var fixtureRecipe = recipe(id: id, title: title, intolerances: intolerances)
+        fixtureRecipe.ingredients = used.enumerated().map { index, name in
+            OnlineRecipeIngredient(providerID: 10 + index, name: name, amount: 1, unit: .pieces, originalUnit: "")
+        } + missed
         return OnlineRecipeMatch(
-            recipe: recipe(id: id, title: title, intolerances: intolerances),
+            recipe: fixtureRecipe,
             usedIngredientNames: used,
             missedIngredients: missed
         )
