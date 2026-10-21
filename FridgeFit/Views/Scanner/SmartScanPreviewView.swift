@@ -22,10 +22,7 @@ struct SmartScanPreviewView: View {
     @StateObject private var ingredientScanner = RemoteCameraViewModel(identity: DeviceIdentity.current())
     @State private var isPresentingReceiptScanner = false
     @State private var isPresentingLiveAICameraSetup = false
-    @State private var isPresentingIngredientCamera = false
     @State private var isPresentingIngredientReview = false
-    @State private var isRequestingIngredientCamera = false
-    @State private var cameraAccessMessage: String?
     @State private var ingredientPhotoItem: PhotosPickerItem?
     /// Completion is staged until its review sheet has dismissed, avoiding a
     /// success cover appearing above an active review sheet.
@@ -40,32 +37,16 @@ struct SmartScanPreviewView: View {
 
                     liveAICameraCard
 
-                    VStack(spacing: FridgeFitTheme.Spacing.medium) {
-                        scanModeCard(
-                            title: "Scan Ingredients",
-                            systemImage: "camera.viewfinder",
-                            badgeTitle: "Ingredient recognition",
-                            badgeImage: "leaf",
-                            detail: "Capture or choose a photo of ingredients, then review them before saving.",
-                            actionTitle: ingredientScanner.isAnalyzingSnapshot ? "Analysing…" : "Open Camera",
-                            actionImage: "camera"
-                        ) {
-                            requestIngredientCamera()
-                        }
-                        .disabled(ingredientScanner.isAnalyzingSnapshot)
-
-                        scanModeCard(
-                            title: "Scan Receipt",
-                            systemImage: "doc.text.viewfinder",
-                            badgeTitle: "Smart OCR",
-                            badgeImage: "text.viewfinder",
-                            detail: "Snap a grocery receipt to import grocery items, quantities, and categories for review.",
-                            actionTitle: "Scan Paper Receipt",
-                            actionImage: "doc.viewfinder",
-                            usesSecondaryAction: true
-                        ) {
-                            isPresentingReceiptScanner = true
-                        }
+                    scanModeCard(
+                        title: "Scan Receipt",
+                        systemImage: "doc.text.viewfinder",
+                        badgeTitle: "Smart OCR",
+                        badgeImage: "text.viewfinder",
+                        detail: "Snap a grocery receipt to import grocery items, quantities, and categories for review.",
+                        actionTitle: "Scan Paper Receipt",
+                        actionImage: "doc.viewfinder"
+                    ) {
+                        isPresentingReceiptScanner = true
                     }
 
                     controlBanner
@@ -142,13 +123,6 @@ struct SmartScanPreviewView: View {
                         }
                 }
             }
-            .fullScreenCover(isPresented: $isPresentingIngredientCamera) {
-                CameraPicker(
-                    onCapture: analyseIngredientImage,
-                    onFailure: { ingredientScanner.reportLocalImageFailure() }
-                )
-                .ignoresSafeArea()
-            }
             .sheet(isPresented: $isPresentingIngredientReview, onDismiss: {
                 presentPendingSuccessIfNeeded()
             }) {
@@ -173,17 +147,6 @@ struct SmartScanPreviewView: View {
                     onScanMore: scanMore,
                     onViewMyFridge: finishSmartScan
                 )
-            }
-            .alert(
-                "Camera Unavailable",
-                isPresented: Binding(
-                    get: { cameraAccessMessage != nil },
-                    set: { if !$0 { cameraAccessMessage = nil } }
-                )
-            ) {
-                Button("OK") { cameraAccessMessage = nil }
-            } message: {
-                Text(cameraAccessMessage ?? "")
             }
             .onChange(of: ingredientPhotoItem) { _, item in
                 guard let item else { return }
@@ -316,14 +279,13 @@ struct SmartScanPreviewView: View {
         detail: String,
         actionTitle: String,
         actionImage: String,
-        usesSecondaryAction: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
             scanArtwork(systemImage: systemImage, badgeTitle: badgeTitle, badgeImage: badgeImage)
 
             VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
-                Label(title, systemImage: title == "Scan Ingredients" ? "leaf" : "doc.text")
+                Label(title, systemImage: "doc.text")
                     .font(FridgeFitTheme.Typography.sectionTitle)
                     .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
 
@@ -333,17 +295,10 @@ struct SmartScanPreviewView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if usesSecondaryAction {
-                Button(action: action) {
-                    Label(actionTitle, systemImage: actionImage)
-                }
-                .buttonStyle(FridgeFitSecondaryButtonStyle())
-            } else {
-                Button(action: action) {
-                    Label(actionTitle, systemImage: actionImage)
-                }
-                .buttonStyle(FridgeFitPrimaryButtonStyle())
+            Button(action: action) {
+                Label(actionTitle, systemImage: actionImage)
             }
+            .buttonStyle(FridgeFitSecondaryButtonStyle())
         }
         .padding(FridgeFitTheme.Spacing.medium)
         .fridgeFitCardSurface()
@@ -391,21 +346,6 @@ struct SmartScanPreviewView: View {
         }
         .padding(FridgeFitTheme.Spacing.small)
         .background(FridgeFitTheme.ColorToken.successBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
-    }
-
-    private func requestIngredientCamera() {
-        guard !isRequestingIngredientCamera else { return }
-        isRequestingIngredientCamera = true
-        Task {
-            defer { isRequestingIngredientCamera = false }
-            let access = await CameraAccess.request()
-            switch access {
-            case .granted:
-                isPresentingIngredientCamera = true
-            case .denied, .unavailable:
-                cameraAccessMessage = access.explanation
-            }
-        }
     }
 
     private func loadIngredientPhoto(_ item: PhotosPickerItem) {
