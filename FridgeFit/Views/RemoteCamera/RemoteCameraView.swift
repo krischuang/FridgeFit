@@ -57,9 +57,7 @@ struct RemoteCameraView: View {
                     unselectedCameraContent
                 }
 
-                if let snapshot = viewModel.snapshot {
-                    snapshotSection(snapshot)
-                }
+                savedIngredientsFeedback
 
                 if let errorMessage = viewModel.errorMessage {
                     connectionErrorCard(errorMessage)
@@ -88,9 +86,9 @@ struct RemoteCameraView: View {
             guard phase == .background || phase == .inactive else { return }
             Task { await viewModel.stop() }
         }
-        // Presented from the analysis summary. Both the analysis and the photo
-        // are read here, and `currentAnalysis` guarantees they are the same
-        // capture - the sheet cannot open against a mismatched pair.
+        // Both the analysis and the photo are read here, and `currentAnalysis`
+        // guarantees they are the same capture - the sheet cannot open
+        // against a mismatched pair.
         .sheet(isPresented: $isReviewingIngredients) {
             if let analysis = viewModel.currentAnalysis, let snapshot = viewModel.snapshot {
                 IngredientReviewView(
@@ -702,6 +700,26 @@ struct RemoteCameraView: View {
         )
     }
 
+    @ViewBuilder
+    private var savedIngredientsFeedback: some View {
+        if !confirmedIngredients.isEmpty {
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                Label(
+                    "Saved \(confirmedIngredients.count) to your pantry: "
+                    + confirmedIngredients.map(\.name).joined(separator: ", "),
+                    systemImage: "checkmark.circle.fill"
+                )
+                .font(FridgeFitTheme.Typography.caption)
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                Text("Open the Pantry tab to see them.")
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+            }
+            .padding(FridgeFitTheme.Spacing.medium)
+            .fridgeFitCardSurface()
+        }
+    }
+
     private var placeholderText: String {
         switch viewModel.status {
         case .connecting:
@@ -717,181 +735,4 @@ struct RemoteCameraView: View {
         }
     }
 
-    // MARK: - Snapshot
-
-    private func snapshotSection(_ snapshot: UIImage) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Captured Photo")
-                .font(.headline)
-
-            Image(uiImage: snapshot)
-                .resizable()
-                .scaledToFit()
-                .frame(maxHeight: 320)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            HStack(spacing: 12) {
-                Button {
-                    viewModel.saveSnapshot()
-                } label: {
-                    Label("Save Locally", systemImage: "square.and.arrow.down")
-                }
-                .buttonStyle(.bordered)
-
-                ShareLink(
-                    item: Image(uiImage: snapshot),
-                    preview: SharePreview("Fridge snapshot", image: Image(uiImage: snapshot))
-                ) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                }
-                .buttonStyle(.bordered)
-            }
-
-            if let savedName = viewModel.savedSnapshotName {
-                Text("Saved to Documents/RemoteSnapshots/\(savedName)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            analysisSummarySection
-            recognitionSection
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 12))
-    }
-
-    /// Summary of the hybrid analysis, with the way into the review sheet.
-    ///
-    /// Reads `currentAnalysis`, not `snapshotAnalysis`: a result computed from
-    /// a different photo is never shown, however recent it is.
-    @ViewBuilder
-    private var analysisSummarySection: some View {
-        if let analysis = viewModel.currentAnalysis {
-            Divider()
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Label("Hybrid analysis", systemImage: "sparkle.magnifyingglass")
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
-                    Text(String(format: "%.1fs", analysis.duration))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                // Said before the counts, so the chips are read in the right
-                // light: "2 single" means something different when only one
-                // method ran.
-                if let message = analysis.classification.userMessage {
-                    Label(message, systemImage: analysis.classification.capability.isExpectedLimitation
-                          ? "info.circle" : "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(analysis.classification.capability.isExpectedLimitation
-                                         ? Color.secondary : .orange)
-                        .accessibilityIdentifier("analysis-capability")
-                }
-                if analysis.classification.isDetectorOnly {
-                    Text("YOLO-only — every row needs review")
-                        .font(.caption2.weight(.medium))
-                        .padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(Color.yellow.opacity(0.18), in: Capsule())
-                        .foregroundStyle(.secondary)
-                }
-
-                if analysis.fused.isEmpty && analysis.packaging.lines.isEmpty {
-                    Text(Self.nothingRecognisedMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    HStack(spacing: 10) {
-                        tierChip("\(analysis.fused.count(of: .agreed)) agreed", .green)
-                        tierChip("\(analysis.fused.count(of: .singleSource)) single", .secondary)
-                        if analysis.fused.conflictCount > 0 {
-                            tierChip("\(analysis.fused.conflictCount) disagree", .orange)
-                        }
-                    }
-                }
-
-                Button {
-                    isReviewingIngredients = true
-                } label: {
-                    Label("Review Ingredients", systemImage: "checklist")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("review-ingredients")
-
-                if !confirmedIngredients.isEmpty {
-                    Label(
-                        "Saved \(confirmedIngredients.count) to your pantry: "
-                        + confirmedIngredients.map(\.name).joined(separator: ", "),
-                        systemImage: "checkmark.circle.fill"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.green)
-                    Text("Open the Pantry tab to see them.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-
-    static let nothingRecognisedMessage = """
-    Nothing recognised in this photo. Meat, fish, cheese and eggs are known \
-    weak spots - you can add them by hand in the review screen.
-    """
-
-    private func tierChip(_ text: String, _ colour: Color) -> some View {
-        Text(text)
-            .font(.caption2.weight(.medium))
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(colour.opacity(0.15), in: Capsule())
-            .foregroundStyle(colour)
-    }
-
-    private var recognitionSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Divider()
-
-            if let explanation = viewModel.recognitionUnavailableExplanation {
-                Label(explanation, systemImage: "info.circle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if let recognition = viewModel.recognition {
-                if recognition.isMockData {
-                    // Loud on purpose. Mock output must never be mistakable
-                    // for real recognition in a screenshot or a demo.
-                    Label("Mock data - not real recognition", systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.orange)
-                }
-                ForEach(recognition.items) { item in
-                    HStack {
-                        Text(item.name)
-                        Spacer()
-                        Text("\(Int(item.confidence * 100))%")
-                            .foregroundStyle(.secondary)
-                    }
-                    .font(.caption)
-                }
-                Text("""
-                Nothing here has been added to your pantry. This prototype \
-                only proves the photo arrived.
-                """)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            } else {
-                Button {
-                    Task { await viewModel.recognizeSnapshot() }
-                } label: {
-                    Label("Try Food Recognition", systemImage: "sparkle.magnifyingglass")
-                }
-                .buttonStyle(.bordered)
-                .font(.caption)
-            }
-        }
-    }
 }
