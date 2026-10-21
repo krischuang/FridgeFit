@@ -421,17 +421,6 @@ struct RemoteCameraView: View {
             analyseButton
 
             Button {
-                viewModel.requestCapture()
-            } label: {
-                Label(
-                    viewModel.isAwaitingSnapshot ? "Waiting for photo…" : "Capture Photo",
-                    systemImage: "camera.shutter.button"
-                )
-            }
-            .buttonStyle(FridgeFitSecondaryButtonStyle())
-            .disabled(!viewModel.canRequestCapture || viewModel.isAnalyzingSnapshot)
-
-            Button {
                 viewModel.requestCameraSwitch()
             } label: {
                 Label("Switch Remote Camera", systemImage: "arrow.triangle.2.circlepath.camera")
