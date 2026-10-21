@@ -80,10 +80,17 @@ struct ContentView: View {
     /// Shared with the remote-camera review sheet through the environment,
     /// so a confirmed ingredient reaches the same pantry as everything else.
     private let pantryRepository: PantryRepository
+    /// The money side: budget, spends and per-item prices. Built here, next
+    /// to the pantry it reads, so no screen has to construct a Firestore
+    /// store of its own. Reaches Profile → Impact & Budget through
+    /// `\.fundsEnvironment`, the same way the pantry reaches the camera
+    /// review sheet.
+    private let fundsEnvironment: FundsEnvironment
 
     init() {
         let pantryRepository = FirestorePantryRepository()
         self.pantryRepository = pantryRepository
+        self.fundsEnvironment = .firestore(pantryRepository: pantryRepository)
         let bundledRecipeRepository = BundledRecipeRepository()
 
         // `nil` while `OnlineRecipeFeature.savedRecipeStorage` is gated off,
@@ -262,7 +269,8 @@ struct ContentView: View {
                         inventory: inventoryStore,
                         onFindRecipes: {
                             showRecipeRoute(.recommendations)
-                        }
+                        },
+                        onOpenPantry: { navigation.openMyFridge() }
                     )
                 }
                 .toolbar(.visible, for: .tabBar)
@@ -279,6 +287,10 @@ struct ContentView: View {
         // pantry. Same repository instance as every other tab, so a confirmed
         // ingredient lands in the same place and under the same auth.
         .environment(\.pantryRepository, pantryRepository)
+        // Reaches Profile → Impact & Budget without giving that screen a
+        // Firestore dependency of its own. `nil` in previews and tests, in
+        // which case the money cards render their unavailable state.
+        .environment(\.fundsEnvironment, fundsEnvironment)
     }
 
     private func showRecipeRoute(_ route: RecipesRoute) {

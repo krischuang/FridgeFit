@@ -13,15 +13,23 @@ import SwiftUI
 /// will be added when their corresponding product state exists.
 struct ProfileView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
+    @Environment(\.fundsEnvironment) private var funds
     @ObservedObject private var inventory: InventoryStore
     @State private var onlineRecipePreferences = OnlineRecipePreferences.default
     @State private var kitchenImpact = KitchenImpact()
     @State private var selectedSection: ProfileSection = .preferences
+    @State private var isShowingNotificationNotice = false
     private let onFindRecipes: () -> Void
+    private let onOpenPantry: () -> Void
 
-    init(inventory: InventoryStore, onFindRecipes: @escaping () -> Void) {
+    init(
+        inventory: InventoryStore,
+        onFindRecipes: @escaping () -> Void,
+        onOpenPantry: @escaping () -> Void = {}
+    ) {
         self.inventory = inventory
         self.onFindRecipes = onFindRecipes
+        self.onOpenPantry = onOpenPantry
     }
 
     var body: some View {
@@ -30,10 +38,10 @@ struct ProfileView: View {
                 appHeader
                 header
                 ProfileSectionTabs(selection: $selectedSection)
-                accountCard
 
                 switch selectedSection {
                 case .preferences:
+                    accountCard
                     personalisationCard
                     kitchenImpactCard
                     dietarySafeguardsCard
@@ -46,8 +54,17 @@ struct ProfileView: View {
 
                     signOutButton
                 case .impact:
-                    ProfileImpactView(inventory: inventory, onFindRecipes: onFindRecipes)
+                    // The approved Impact & Budget layout starts at its own
+                    // hero card, so the account card is not repeated above
+                    // it. Preferences and Settings keep it unchanged.
+                    ProfileImpactView(
+                        inventory: inventory,
+                        funds: funds,
+                        onFindRecipes: onFindRecipes,
+                        onOpenPantry: onOpenPantry
+                    )
                 case .settings:
+                    accountCard
                     ProfileSettingsView()
                 }
             }
@@ -63,16 +80,25 @@ struct ProfileView: View {
         .task { await loadProfileData() }
     }
 
+    /// The screen title and its one-line summary, above the section tabs.
+    ///
+    /// The title is the same on every tab, as in the approved design: the
+    /// screen *is* Profile & Settings, and the segmented control below says
+    /// which part of it is open. Only the summary line changes, so the user
+    /// still gets a description of what they are looking at.
     private var header: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
             Text("Profile & Settings")
-                .font(.title3.weight(.semibold))
+                .font(FridgeFitTheme.Typography.pageTitle)
                 .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
 
-            Text("Your account and connected kitchen devices")
+            Text(selectedSection.subtitle)
                 .font(FridgeFitTheme.Typography.supporting)
                 .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 
@@ -90,11 +116,30 @@ struct ProfileView: View {
 
             Spacer()
 
+            // The design puts a bell here. FridgeFit ships no notification
+            // feature yet, so rather than a control that silently does
+            // nothing, this says so when tapped.
+            Button {
+                isShowingNotificationNotice = true
+            } label: {
+                Image(systemName: "bell")
+                    .font(.body)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Notifications")
+            .accessibilityHint("Explains why reminders are unavailable")
+
             compactAvatar
         }
-        .frame(minHeight: 40)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("FridgeFit, signed in as \(accountName)")
+        .frame(minHeight: 44)
+        .alert("Reminders aren't set up yet", isPresented: $isShowingNotificationNotice) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("FridgeFit doesn't send expiry reminders yet, so there is nothing to show here.")
+        }
     }
 
     private var accountCard: some View {
@@ -545,8 +590,18 @@ private enum ProfileSection: String, CaseIterable, Identifiable {
     var title: LocalizedStringKey {
         switch self {
         case .preferences: "Preferences"
-        case .impact: "Impact & Waste"
+        case .impact: "Impact & Budget"
         case .settings: "Settings"
+        }
+    }
+
+    /// The line under the screen title. Taken from the approved design,
+    /// one per tab.
+    var subtitle: LocalizedStringKey {
+        switch self {
+        case .preferences: "Your culinary identity & account"
+        case .impact: "Track grocery savings, waste reduction & pantry stats"
+        case .settings: "Preferences, notifications & system sync"
         }
     }
 }
@@ -571,11 +626,10 @@ private struct ProfileSectionTabs: View {
         }
         .padding(FridgeFitTheme.Spacing.xSmall)
         .frame(maxWidth: .infinity)
-        .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
-                .stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1)
-        }
+        .background(
+            FridgeFitTheme.ColorToken.disabledSurface,
+            in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+        )
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Profile sections")
     }
@@ -590,11 +644,15 @@ private struct ProfileSectionButton: View {
             selection = section
         } label: {
             Text(section.title)
-                .font(FridgeFitTheme.Typography.caption.weight(selection == section ? .semibold : .regular))
+                .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
                 .foregroundStyle(selection == section ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.textSecondary)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, minHeight: 44)
-                .background(selection == section ? FridgeFitTheme.ColorToken.primary : .clear, in: Capsule())
+                .background(
+                    selection == section ? FridgeFitTheme.ColorToken.primary : .clear,
+                    in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous)
+                )
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selection == section ? .isSelected : [])
