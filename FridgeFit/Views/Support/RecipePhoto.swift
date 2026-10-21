@@ -8,24 +8,26 @@ import UIKit
 
 /// A recipe's photo, from the best source available:
 ///
-/// 1. the copy stored with the saved recipe (`imageData`) - works offline,
+/// 1. the stored photo of a saved recipe, already decoded off the main
+///    thread (`RecipeViewModel.thumbnail(for:)`) - works offline,
 /// 2. otherwise the original `imageURL`, loaded on demand,
 /// 3. otherwise `placeholder` (bundled recipes, or no photo at all).
 ///
-/// Fills its frame; callers size and clip it.
+/// Fills its frame; callers size and clip it. Never decodes image bytes in
+/// `body` - it only draws an image that is already decoded.
 struct RecipePhoto<Placeholder: View>: View {
-    let imageData: Data?
+    let image: UIImage?
     let imageURL: URL?
     @ViewBuilder let placeholder: () -> Placeholder
 
     /// Whether there is any photo to show for this recipe.
-    static func hasPhoto(imageData: Data?, imageURL: URL?) -> Bool {
-        imageData != nil || imageURL != nil
+    static func hasPhoto(image: UIImage?, imageURL: URL?) -> Bool {
+        image != nil || imageURL != nil
     }
 
     var body: some View {
-        if let imageData, let uiImage = UIImage(data: imageData) {
-            Image(uiImage: uiImage)
+        if let image {
+            Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
         } else if let imageURL {

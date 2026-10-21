@@ -5,6 +5,7 @@
 
 import Combine
 import Foundation
+import UIKit
 
 /// Presentation state and actions for browsing recipes and checking each
 /// one's feasibility against the current pantry.
@@ -35,14 +36,20 @@ final class RecipeViewModel: ObservableObject {
     /// Last save/remove failure. Separate from `errorMessage` so it never
     /// shows up as "Couldn't Load Recipes".
     @Published var savedRecipeErrorMessage: String?
-    /// Locally stored photos of saved recipes, by recipe id. Read from the
-    /// saved-recipe store, never from the network.
-    @Published private(set) var savedRecipeImages: [UUID: Data] = [:]
+    /// Decoded, display-ready thumbnails of saved recipes' stored photos, by
+    /// recipe id. Read from the saved-recipe store (never the network) and
+    /// decoded off the main thread; views only draw them. The JPEG bytes are
+    /// not kept here.
+    @Published private(set) var savedRecipeThumbnails: [UUID: UIImage] = [:]
     private(set) var hasLoaded = false
 
     private let recipeRepository: RecipeRepository
     private let evaluateFeasibilityUseCase: EvaluateRecipeFeasibilityUseCase
     private let savedRecipeRepository: SavedRecipeRepository?
+    private let thumbnailCache: RecipeThumbnailCache
+    /// Saved recipes already checked and found to have no stored photo, so
+    /// a reload doesn't ask the store for them again.
+    private var recipeIDsWithoutPhoto: Set<UUID> = []
     private let saveOnlineRecipeUseCase: SaveOnlineRecipeUseCase?
     private let removeSavedRecipeUseCase: RemoveSavedRecipeUseCase?
 
@@ -73,9 +80,11 @@ final class RecipeViewModel: ObservableObject {
         pantryRepository: PantryRepository,
         savedRecipeRepository: SavedRecipeRepository? = nil,
         savedRecipeUnavailableExplanation: String? = nil,
-        imageDownloader: RecipeImageDownloading? = nil
+        imageDownloader: RecipeImageDownloading? = nil,
+        thumbnailCache: RecipeThumbnailCache = RecipeThumbnailCache()
     ) {
         self.recipeRepository = recipeRepository
+        self.thumbnailCache = thumbnailCache
         self.evaluateFeasibilityUseCase = EvaluateRecipeFeasibilityUseCase(pantryRepository: pantryRepository)
         self.savedRecipeRepository = savedRecipeRepository
         self.saveOnlineRecipeUseCase = savedRecipeRepository.map {
@@ -170,9 +179,12 @@ final class RecipeViewModel: ObservableObject {
             recipes.removeAll { $0.id == recipe.id }
             recipes.insert(recipe, at: 0)
             savedRecipeIDs.insert(recipe.id)
-            if let data = try? await savedRecipeRepository?.imageData(forRecipeID: recipe.id) {
-                savedRecipeImages[recipe.id] = data
-            }
+            // A re-save may have stored a new photo: drop what we had.
+            thumbnailCache.remove(recipe.id)
+            recipeIDsWithoutPhoto.remove(recipe.id)
+            savedRecipeThumbnails[recipe.id] = nil
+            let fresh = await thumbnails(for: [recipe.id])
+            savedRecipeThumbnails.merge(fresh) { _, new in new }
             if let result = try? await evaluateFeasibilityUseCase.execute(recipe: recipe) {
                 feasibilityResults[recipe.id] = result
             }
@@ -190,7 +202,9 @@ final class RecipeViewModel: ObservableObject {
             try await removeSavedRecipeUseCase.execute(id: recipe.id)
             recipes.removeAll { $0.id == recipe.id }
             savedRecipeIDs.remove(recipe.id)
-            savedRecipeImages[recipe.id] = nil
+            savedRecipeThumbnails[recipe.id] = nil
+            thumbnailCache.remove(recipe.id)
+            recipeIDsWithoutPhoto.remove(recipe.id)
             feasibilityResults[recipe.id] = nil
         } catch {
             savedRecipeErrorMessage = (error as? SaveOnlineRecipeError)?.errorDescription
@@ -198,23 +212,49 @@ final class RecipeViewModel: ObservableObject {
         }
     }
 
-    /// The locally stored photo for `recipe`, if it was saved with one.
-    func imageData(for recipe: Recipe) -> Data? {
-        savedRecipeImages[recipe.id]
+    /// The decoded thumbnail of `recipe`'s stored photo, if it has one.
+    func thumbnail(for recipe: Recipe) -> UIImage? {
+        savedRecipeThumbnails[recipe.id]
     }
 
     private func loadSavedRecipeImages(for recipes: [Recipe]) async {
-        guard let savedRecipeRepository else {
-            savedRecipeImages = [:]
+        guard savedRecipeRepository != nil else {
+            savedRecipeThumbnails = [:]
             return
         }
-        var images: [UUID: Data] = [:]
-        for recipe in recipes {
-            if let data = try? await savedRecipeRepository.imageData(forRecipeID: recipe.id) {
-                images[recipe.id] = data
+        savedRecipeThumbnails = await thumbnails(for: recipes.map(\.id))
+    }
+
+    /// Thumbnails for `ids`: cached ones are reused as-is; everything else is
+    /// read from the store in **one** batch call and decoded concurrently
+    /// off the main thread, then cached. Recipes known to have no photo are
+    /// not asked for again.
+    private func thumbnails(for ids: [UUID]) async -> [UUID: UIImage] {
+        guard let savedRecipeRepository else { return [:] }
+
+        var result: [UUID: UIImage] = [:]
+        var toFetch: [UUID] = []
+        for id in ids {
+            if let cached = thumbnailCache.image(for: id) {
+                result[id] = cached
+            } else if !recipeIDsWithoutPhoto.contains(id) {
+                toFetch.append(id)
             }
         }
-        savedRecipeImages = images
+        guard !toFetch.isEmpty,
+              let stored = try? await savedRecipeRepository.imageData(forRecipeIDs: toFetch)
+        else { return result }
+
+        let decoded = await RecipeThumbnailDecoder.thumbnails(from: stored)
+        for id in toFetch {
+            if let image = decoded[id] {
+                thumbnailCache.insert(image, for: id)
+                result[id] = image
+            } else if stored[id] == nil {
+                recipeIDsWithoutPhoto.insert(id)
+            }
+        }
+        return result
     }
 
     /// Re-evaluates every already-loaded recipe against the current

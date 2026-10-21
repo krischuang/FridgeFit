@@ -41,6 +41,10 @@ nonisolated final class SwiftDataSavedRecipeRepository: SavedRecipeRepository {
         try await store.imageData(forRecipeID: id)
     }
 
+    func imageData(forRecipeIDs ids: [UUID]) async throws -> [UUID: Data] {
+        try await store.imageData(forRecipeIDs: ids)
+    }
+
     func remove(id: UUID) async throws {
         try await store.remove(id: id)
     }
@@ -124,6 +128,28 @@ final class SwiftDataSavedRecipeStore {
         let ownerID = try requireOwnerID()
         do {
             return try entity(id: id, ownerID: ownerID)?.imageData
+        } catch {
+            throw SaveOnlineRecipeError.loadFailed
+        }
+    }
+
+    /// One fetch for all requested recipes of the current owner. Only rows
+    /// that actually have a photo are returned. The image bytes live in
+    /// external storage and are only read for the rows returned here.
+    func imageData(forRecipeIDs ids: [UUID]) throws -> [UUID: Data] {
+        guard !ids.isEmpty else { return [:] }
+        let ownerID = try requireOwnerID()
+        let descriptor = FetchDescriptor<SavedRecipeEntity>(
+            predicate: #Predicate { ids.contains($0.recipeID) && $0.ownerID == ownerID }
+        )
+        do {
+            var result: [UUID: Data] = [:]
+            for entity in try context.fetch(descriptor) {
+                if let data = entity.imageData {
+                    result[entity.recipeID] = data
+                }
+            }
+            return result
         } catch {
             throw SaveOnlineRecipeError.loadFailed
         }

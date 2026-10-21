@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 /// Shared detail presentation for bundled, saved, recommended, and featured
 /// recipes. Pantry readings remain owned by `RecipeViewModel`.
@@ -18,7 +19,7 @@ struct RecipeDetailView: View {
                 RecipeDetailHero(
                     recipe: recipe,
                     feasibility: viewModel.feasibility(for: recipe),
-                    imageData: viewModel.imageData(for: recipe)
+                    image: viewModel.thumbnail(for: recipe)
                 )
                 RecipePantryMatchCard(feasibility: viewModel.feasibility(for: recipe))
 
@@ -76,8 +77,8 @@ struct RecipeDetailView: View {
 private struct RecipeDetailHero: View {
     let recipe: Recipe
     let feasibility: RecipeFeasibilityResult?
-    /// Stored photo for a saved recipe; falls back to `recipe.imageURL`.
-    var imageData: Data? = nil
+    /// Decoded stored photo for a saved recipe; falls back to `recipe.imageURL`.
+    var image: UIImage? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
@@ -85,12 +86,12 @@ private struct RecipeDetailHero: View {
                 RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.largeCard, style: .continuous)
                     .fill(heroBackground)
                     .frame(minHeight: 230)
-                if RecipePhoto<EmptyView>.hasPhoto(imageData: imageData, imageURL: recipe.imageURL) {
+                if RecipePhoto<EmptyView>.hasPhoto(image: image, imageURL: recipe.imageURL) {
                     Color.clear
                         .frame(height: 230)
                         .frame(maxWidth: .infinity)
                         .overlay {
-                            RecipePhoto(imageData: imageData, imageURL: recipe.imageURL) {
+                            RecipePhoto(image: image, imageURL: recipe.imageURL) {
                                 BotanicalRecipeArtwork(symbolName: recipe.symbolName)
                             }
                         }

@@ -10,6 +10,8 @@ nonisolated final class InMemorySavedRecipeRepository: SavedRecipeRepository {
     private(set) var recipes: [Recipe]
     private(set) var sourceIDs: [UUID: Int] = [:]
     private(set) var images: [UUID: Data] = [:]
+    /// Every batch image request, for tests that check caching.
+    private(set) var batchImageRequests: [[UUID]] = []
     /// When set, every call throws this - for failure-path tests.
     var failure: Error?
 
@@ -37,6 +39,12 @@ nonisolated final class InMemorySavedRecipeRepository: SavedRecipeRepository {
     func imageData(forRecipeID id: UUID) async throws -> Data? {
         if let failure { throw failure }
         return images[id]
+    }
+
+    func imageData(forRecipeIDs ids: [UUID]) async throws -> [UUID: Data] {
+        if let failure { throw failure }
+        batchImageRequests.append(ids)
+        return images.filter { ids.contains($0.key) }
     }
 
     func remove(id: UUID) async throws {

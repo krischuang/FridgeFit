@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 extension IngredientAvailability {
     var tint: Color {
@@ -33,8 +34,8 @@ struct RecipeRow: View {
     let recipe: Recipe
     let feasibility: RecipeFeasibilityResult?
     var isSaved = false
-    /// Stored photo for a saved recipe (see `RecipeViewModel.imageData(for:)`).
-    var imageData: Data? = nil
+    /// Decoded stored photo for a saved recipe (see `RecipeViewModel.thumbnail(for:)`).
+    var image: UIImage? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
@@ -42,12 +43,12 @@ struct RecipeRow: View {
                 RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
                     .fill(artworkBackground)
                     .frame(minHeight: 132)
-                if RecipePhoto<EmptyView>.hasPhoto(imageData: imageData, imageURL: recipe.imageURL) {
+                if RecipePhoto<EmptyView>.hasPhoto(image: image, imageURL: recipe.imageURL) {
                     Color.clear
                         .frame(height: 132)
                         .frame(maxWidth: .infinity)
                         .overlay {
-                            RecipePhoto(imageData: imageData, imageURL: recipe.imageURL) { symbolArtwork }
+                            RecipePhoto(image: image, imageURL: recipe.imageURL) { symbolArtwork }
                         }
                         .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
                         .accessibilityHidden(true)

@@ -43,6 +43,10 @@ nonisolated protocol SavedRecipeRepository: RecipeRepository {
 
     /// The stored photo for a saved recipe, or `nil` if none was saved.
     func imageData(forRecipeID id: UUID) async throws -> Data?
+
+    /// Stored photos for several saved recipes in one call, keyed by recipe
+    /// id. Recipes without a photo are simply absent from the result.
+    func imageData(forRecipeIDs ids: [UUID]) async throws -> [UUID: Data]
 }
 
 /// Defaults for stores that don't keep photos (e.g. Firestore): the recipe
@@ -54,5 +58,16 @@ nonisolated extension SavedRecipeRepository {
 
     func imageData(forRecipeID id: UUID) async throws -> Data? {
         nil
+    }
+
+    /// Fallback for stores without a batch query: one lookup per id.
+    func imageData(forRecipeIDs ids: [UUID]) async throws -> [UUID: Data] {
+        var result: [UUID: Data] = [:]
+        for id in ids {
+            if let data = try await imageData(forRecipeID: id) {
+                result[id] = data
+            }
+        }
+        return result
     }
 }

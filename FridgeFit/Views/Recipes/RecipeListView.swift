@@ -287,7 +287,7 @@ struct RecipeCatalogueCard: View {
                 recipe: recipe,
                 feasibility: feasibility,
                 isSaved: isSaved,
-                imageData: viewModel.imageData(for: recipe)
+                image: viewModel.thumbnail(for: recipe)
             )
 
             ViewThatFits(in: .horizontal) {
