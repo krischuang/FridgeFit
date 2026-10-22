@@ -150,7 +150,7 @@ private struct RecipeCatalogueErrorBanner: View {
             .disabled(isRetrying)
         }
         .padding(FridgeFitTheme.Spacing.medium)
-        .background(FridgeFitTheme.ColorToken.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
+        .background(FridgeFitTheme.ColorToken.errorBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
         .accessibilityElement(children: .contain)
     }
 }

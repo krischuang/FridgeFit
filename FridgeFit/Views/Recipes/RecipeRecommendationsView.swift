@@ -502,7 +502,7 @@ private struct RecommendationAvailabilityDetails: View {
             if !suitability.shoppingIngredients.isEmpty {
                 Label("Still need \(suitability.shoppingIngredients.formattedList)", systemImage: "cart")
                     .foregroundStyle(FridgeFitTheme.ColorToken.danger)
-                    .backgroundDetail(FridgeFitTheme.ColorToken.accent.opacity(0.14))
+                    .backgroundDetail(FridgeFitTheme.ColorToken.errorBackground)
             }
             if !suitability.unverifiedIngredients.isEmpty {
                 Label("Check your amount of \(suitability.unverifiedIngredients.formattedList)", systemImage: "questionmark.circle")

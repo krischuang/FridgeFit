@@ -8,11 +8,11 @@ import SwiftUI
 extension SubstitutionValidationStatus {
     var tint: Color {
         switch self {
-        case .availableInPantry: return .green
-        case .notInPantry: return .secondary
-        case .insufficientQuantity: return .orange
-        case .unsupportedUnit: return .blue
-        case .rejected: return .red
+        case .availableInPantry: return FridgeFitTheme.ColorToken.successText
+        case .notInPantry: return FridgeFitTheme.ColorToken.textSecondary
+        case .insufficientQuantity: return FridgeFitTheme.ColorToken.warningText
+        case .unsupportedUnit: return FridgeFitTheme.ColorToken.primary
+        case .rejected: return FridgeFitTheme.ColorToken.errorText
         }
     }
 }
@@ -54,7 +54,7 @@ struct SubstitutionSectionView: View {
                     }
                     Text("Suggested on-device by Apple Intelligence. Pantry availability is checked against your pantry, not guessed.")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                 }
             } else if !viewModel.canFindSubstitutes {
                 unavailableContent
@@ -70,7 +70,7 @@ struct SubstitutionSectionView: View {
                 if let errorMessage = viewModel.errorMessage(for: recipeIngredient) {
                     Text(errorMessage)
                         .font(FridgeFitTheme.Typography.caption)
-                        .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.errorText)
                 }
             }
         }
@@ -85,10 +85,10 @@ struct SubstitutionSectionView: View {
         VStack(alignment: .leading, spacing: 2) {
             Label(availability.unavailableTitle ?? "Substitutes Unavailable", systemImage: "sparkles.slash")
                 .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
             Text(SubstitutionServiceError.substitutionUnavailable(availability).localizedDescription)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
         }
     }
 }

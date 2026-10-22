@@ -154,7 +154,7 @@ private struct RecipeDetailHero: View {
         switch feasibility?.status {
         case .makeable: FridgeFitTheme.ColorToken.successBackground
         case .almostMakeable: FridgeFitTheme.ColorToken.warningBackground
-        case .notMakeable: FridgeFitTheme.ColorToken.accent.opacity(0.14)
+        case .notMakeable: FridgeFitTheme.ColorToken.errorBackground
         case nil: FridgeFitTheme.ColorToken.disabledSurface
         }
     }
@@ -208,9 +208,9 @@ private struct RecipePantryMatchCard: View {
                 HStack(alignment: .center, spacing: FridgeFitTheme.Spacing.medium) {
                     Image(systemName: feasibility.status.symbolName)
                         .font(.title2.weight(.semibold))
-                        .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                        .foregroundStyle(.white)
                         .frame(width: 44, height: 44)
-                        .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                        .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(feasibility.matchedCount) of \(feasibility.totalRequiredCount) ingredients ready")
@@ -458,7 +458,7 @@ private struct RecipeDetailIngredientCard: View {
         switch evaluation.availability {
         case .available: FridgeFitTheme.ColorToken.successBackground
         case .insufficient: FridgeFitTheme.ColorToken.warningBackground
-        case .missing: FridgeFitTheme.ColorToken.accent.opacity(0.14)
+        case .missing: FridgeFitTheme.ColorToken.errorBackground
         case .quantityUnverified: FridgeFitTheme.ColorToken.disabledSurface
         }
     }
@@ -485,9 +485,9 @@ private struct RecipeInstructionsSection: View {
                     HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.medium) {
                         Text(index + 1, format: .number)
                             .font(FridgeFitTheme.Typography.cardTitle)
-                            .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                            .foregroundStyle(.white)
                             .frame(width: 32, height: 32)
-                            .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                            .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
                         Text(instruction)
                             .font(FridgeFitTheme.Typography.body)
                             .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
