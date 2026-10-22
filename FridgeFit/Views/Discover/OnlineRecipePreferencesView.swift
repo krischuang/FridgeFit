@@ -88,17 +88,17 @@ struct OnlineRecipePreferencesView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
                             Image(systemName: "exclamationmark.circle")
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                             Text(intolerance.displayName)
                             Spacer()
                             Text("Not matched")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                         }
                         if let explanation = intolerance.unassessableExplanation {
                             Text(explanation)
                                 .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                         }
                     }
                     .padding(.vertical, 2)

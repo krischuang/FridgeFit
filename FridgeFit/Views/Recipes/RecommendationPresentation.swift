@@ -8,13 +8,13 @@ import SwiftUI
 extension RecipeReadiness {
     var tint: Color {
         switch self {
-        case .readyToCook: return .green
+        case .readyToCook: return FridgeFitTheme.ColorToken.successText
         // Blue, matching `IngredientAvailability.quantityUnverified` - this
         // readiness exists precisely because an amount couldn't be
         // verified, so it should read the same colour as the ingredient
         // row that caused it rather than as a warning.
-        case .almostReady: return .blue
-        case .needsOneToTwoIngredients: return .orange
+        case .almostReady: return FridgeFitTheme.ColorToken.primary
+        case .needsOneToTwoIngredients: return FridgeFitTheme.ColorToken.warningText
         }
     }
 }
@@ -26,10 +26,10 @@ extension ExpiryUrgency {
     /// the colour.
     var recommendationTint: Color {
         switch self {
-        case .expired: return .red
-        case .today, .tomorrow: return .orange
-        case .soon: return .yellow
-        case .thisWeek, .none: return .secondary
+        case .expired: return KitchenTheme.urgent
+        case .today: return KitchenTheme.urgent
+        case .tomorrow, .soon: return KitchenTheme.soon
+        case .thisWeek, .none: return FridgeFitTheme.ColorToken.textSecondary
         }
     }
 }
@@ -75,7 +75,7 @@ struct RecommendationRow: View {
                             .foregroundStyle(recommendation.readiness.tint)
                         Text(recommendation.readiness.displayName)
                         Text("\u{00B7} \(suitability.pantryMatchPercentage)% of essentials")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     }
                     .font(.caption)
                 }
@@ -88,7 +88,7 @@ struct RecommendationRow: View {
             if let line = metadataLine {
                 Text(line)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
             }
 
             if !recommendation.rankingReasons.isEmpty {
@@ -117,7 +117,7 @@ struct RecommendationRow: View {
                     systemImage: "questionmark.circle"
                 )
                 .font(.caption2)
-                .foregroundStyle(.blue)
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
             }
 
             if !suitability.shoppingIngredients.isEmpty {
@@ -126,7 +126,7 @@ struct RecommendationRow: View {
                     systemImage: "cart"
                 )
                 .font(.caption2)
-                .foregroundStyle(.orange)
+                .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
             }
         }
         .padding(.vertical, 4)
@@ -163,7 +163,7 @@ struct RecommendationRow: View {
         return Label("Uses \(described)", systemImage: "clock.badge.exclamationmark")
             .font(.caption2)
             .foregroundStyle(
-                suitability.urgentIngredients.first?.urgency.recommendationTint ?? .orange
+                suitability.urgentIngredients.first?.urgency.recommendationTint ?? FridgeFitTheme.ColorToken.warningText
             )
     }
 
@@ -175,7 +175,7 @@ struct RecommendationRow: View {
             systemImage: "exclamationmark.triangle.fill"
         )
         .font(.caption2)
-        .foregroundStyle(.red)
+        .foregroundStyle(FridgeFitTheme.ColorToken.errorText)
     }
 }
 
@@ -200,8 +200,8 @@ struct FeedbackBadge: View {
 
     private var tint: Color {
         switch action {
-        case .saved: return .accentColor
-        case .skipped, .reported: return .secondary
+        case .saved: return FridgeFitTheme.ColorToken.primary
+        case .skipped, .reported: return FridgeFitTheme.ColorToken.textSecondary
         }
     }
 

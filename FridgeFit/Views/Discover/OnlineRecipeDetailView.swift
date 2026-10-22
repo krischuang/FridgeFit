@@ -115,9 +115,9 @@ private struct OnlineRecipeMatchCard: View {
             HStack(spacing: FridgeFitTheme.Spacing.medium) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.title2)
-                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                    .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
-                    .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                    .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(match.usedIngredientNames.count) pantry ingredients matched")
@@ -163,7 +163,7 @@ private struct OnlineRecipeSaveCard: View {
                             Label("Save to Recipes", systemImage: "bookmark")
                             if viewModel.isSaving(onlineRecipeID: recipe.id) {
                                 Spacer()
-                                ProgressView().tint(FridgeFitTheme.ColorToken.card)
+                                ProgressView().tint(.white)
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -380,9 +380,9 @@ private struct OnlineInstructionsSection: View {
                     HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.medium) {
                         Text(index + 1, format: .number)
                             .font(FridgeFitTheme.Typography.cardTitle)
-                            .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                            .foregroundStyle(.white)
                             .frame(width: 32, height: 32)
-                            .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                            .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
                         Text(step)
                             .font(FridgeFitTheme.Typography.body)
                             .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)

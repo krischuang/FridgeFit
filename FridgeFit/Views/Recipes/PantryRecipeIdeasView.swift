@@ -34,6 +34,7 @@ struct PantryRecipeIdeasView: View {
                             Task { await viewModel.loadSuggestions() }
                         }
                         .buttonStyle(.borderedProminent)
+                        .tint(FridgeFitTheme.ColorToken.brandFill)
                     }
                 } else if viewModel.suggestions.isEmpty {
                     ContentUnavailableView {
@@ -47,6 +48,7 @@ struct PantryRecipeIdeasView: View {
                             Task { await viewModel.loadSuggestions() }
                         }
                         .buttonStyle(.borderedProminent)
+                        .tint(FridgeFitTheme.ColorToken.brandFill)
                     }
                 } else {
                     suggestionList
@@ -94,6 +96,7 @@ struct PantryRecipeIdeasView: View {
         } actions: {
             Button("Back to Recipes") { dismiss() }
                 .buttonStyle(.borderedProminent)
+                .tint(FridgeFitTheme.ColorToken.brandFill)
         }
     }
 }
@@ -110,30 +113,30 @@ private struct SuggestionRow: View {
                 if let time = suggestion.formattedPreparationTime {
                     Text(time)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                 }
             }
 
             if suggestion.usesOnlyPantryIngredients {
                 Label("Uses only what you have", systemImage: "checkmark.circle.fill")
                     .font(.caption)
-                    .foregroundStyle(.green)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.successText)
             } else {
                 Label(
                     "Missing: \(suggestion.missingIngredients.joined(separator: ", "))",
                     systemImage: "cart"
                 )
                 .font(.caption)
-                .foregroundStyle(.orange)
+                .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
             }
 
             Text("From your pantry: \(suggestion.availableIngredients.joined(separator: ", "))")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
 
             Text(suggestion.shortInstructions)
                 .font(.callout)
-                .foregroundStyle(.primary)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)

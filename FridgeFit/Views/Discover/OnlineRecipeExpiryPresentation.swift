@@ -25,8 +25,9 @@ enum OnlineRecipeExpiryPresentation {
 
     static func tint(for urgency: ExpiryUrgency?) -> Color {
         switch urgency {
-        case .today, .tomorrow: return .red
-        default: return .orange
+        case .today: return KitchenTheme.urgent
+        case .tomorrow: return KitchenTheme.soon
+        default: return FridgeFitTheme.ColorToken.warningText
         }
     }
 }
@@ -39,7 +40,7 @@ struct OnlineRecipeExpiryBadge: View {
         if use.usesExpiredIngredient {
             Label("Uses expired \(use.expired.joined(separator: ", "))", systemImage: "exclamationmark.triangle.fill")
                 .font(.caption)
-                .foregroundStyle(.red)
+                .foregroundStyle(FridgeFitTheme.ColorToken.errorText)
         } else if use.usesUrgentIngredient {
             Label("Uses up \(OnlineRecipeExpiryPresentation.list(use.urgent))", systemImage: "clock.badge.exclamationmark")
                 .font(.caption)

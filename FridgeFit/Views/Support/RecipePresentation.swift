@@ -129,7 +129,7 @@ struct RecipeRow: View {
         switch feasibility?.status {
         case .makeable: return FridgeFitTheme.ColorToken.successBackground
         case .almostMakeable: return FridgeFitTheme.ColorToken.warningBackground
-        case .notMakeable: return FridgeFitTheme.ColorToken.accent.opacity(0.12)
+        case .notMakeable: return FridgeFitTheme.ColorToken.errorBackground
         case nil: return FridgeFitTheme.ColorToken.disabledSurface
         }
     }
@@ -177,12 +177,12 @@ struct RecipeIngredientRow: View {
                     if evaluation.role == .optional {
                         Text("optional")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     }
                 }
                 Text(detailText)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
             }
             Spacer()
         }
