@@ -21,10 +21,14 @@ import Foundation
 /// only if either:
 /// - it matches an item in the user's pantry (`OnlineRecipeExpiryRanking.namesMatch`,
 ///   i.e. the app-wide `IngredientNameMatching` rule), or
-/// - the provider explicitly reported it in `usedIngredients` - which it
-///   does only when it matched one of the pantry names we sent, so it is
-///   still evidence from the user's own pantry (e.g. pantry "beef" covering
-///   "ground beef").
+/// - the provider explicitly reported it in `usedIngredients` **and** an
+///   in-stock pantry item still shares a word with it (e.g. pantry "beef"
+///   covering "ground beef"). The provider's report reflects the pantry at
+///   search time; the shared-word check stops a used-up or deleted item from
+///   staying "have" when results are re-checked without a new search.
+///
+/// Only items with a quantity above zero count: using an item up leaves it
+/// in the pantry at zero, and that is not "have".
 ///
 /// Everything else is **missing**. `usedIngredientNames` becomes the have
 /// lines and `missedIngredients` the rest, so every count, the ranking, the
@@ -37,13 +41,16 @@ nonisolated enum OnlineRecipePantryReconciler {
         let ingredients = match.recipe.ingredients
         guard !ingredients.isEmpty else { return match }
 
+        let inStock = pantry.filter { $0.quantity > 0 }
+        let inStockWords = Set(inStock.flatMap { words(of: $0.name) })
+
         var have: [String] = []
         var missing: [OnlineRecipeIngredient] = []
         for ingredient in ingredients {
-            let inPantry = pantry.contains { OnlineRecipeExpiryRanking.namesMatch(ingredient.name, $0.name) }
+            let inPantry = inStock.contains { OnlineRecipeExpiryRanking.namesMatch(ingredient.name, $0.name) }
             let reportedUsed = match.usedIngredientNames.contains {
                 OnlineRecipeExpiryRanking.namesMatch($0, ingredient.name)
-            }
+            } && !inStockWords.isDisjoint(with: words(of: ingredient.name))
             if inPantry || reportedUsed {
                 have.append(ingredient.name)
             } else {
@@ -55,5 +62,11 @@ nonisolated enum OnlineRecipePantryReconciler {
         reconciled.usedIngredientNames = have
         reconciled.missedIngredients = missing
         return reconciled
+    }
+
+    /// The matching words of a name, after the same normalisation Discover
+    /// uses everywhere (descriptors, plurals, case).
+    private static func words(of name: String) -> [String] {
+        OnlineRecipeExpiryRanking.matchKey(name).split(separator: " ").map(String.init)
     }
 }

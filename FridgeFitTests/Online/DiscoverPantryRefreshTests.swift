@@ -150,4 +150,49 @@ final class DiscoverPantryRefreshTests: XCTestCase {
         XCTAssertEqual(result.usedIngredientNames, ["mild cheddar cheese"])
         XCTAssertEqual(result.missedIngredients.map(\.name), ["macaroni"])
     }
+
+    // MARK: - Deducting from My Fridge
+
+    func test_reconcile_itemUsedUpToZero_isMissing() {
+        var egg = item("egg")
+        egg.quantity = 0
+
+        let result = OnlineRecipePantryReconciler.reconciled(bakedCustard(), pantry: [egg])
+
+        XCTAssertTrue(result.usedIngredientNames.isEmpty, "An item used up to zero is not 'have', even though the provider reported eggs as used")
+        XCTAssertEqual(result.missedIngredients.count, 4)
+    }
+
+    func test_reconcile_providerReportedUsed_isDroppedOnceThePantryItemIsGone() {
+        var recipe = OnlineRecipeFixtures.recipe(id: 9, title: "Chilli")
+        recipe.ingredients = [line("ground beef", id: 10220), line("onion", id: 11282)]
+        let match = OnlineRecipeMatch(recipe: recipe, usedIngredientNames: ["ground beef"], missedIngredients: [line("onion", id: 11282)])
+
+        let withBeef = OnlineRecipePantryReconciler.reconciled(match, pantry: [item("beef")])
+        let withoutBeef = OnlineRecipePantryReconciler.reconciled(match, pantry: [item("onion")])
+
+        XCTAssertEqual(withBeef.usedIngredientNames, ["ground beef"])
+        XCTAssertEqual(withoutBeef.usedIngredientNames, ["onion"])
+        XCTAssertEqual(withoutBeef.missedIngredients.map(\.name), ["ground beef"])
+    }
+
+    func test_refreshPantryMatch_afterDeductingToZero_marksItMissing() async throws {
+        let pantry = OnlineRecipeFixtures.pantry("egg", "milk")
+        let service = MockOnlineRecipeService(result: .success([bakedCustard()]))
+        let viewModel = OnlineRecipeSearchViewModel(
+            useCase: FindOnlineRecipesFromPantryUseCase(recipeService: service, pantryRepository: pantry),
+            preferencesStore: InMemoryOnlineRecipePreferencesStore()
+        )
+        await viewModel.search()
+
+        let all = try await pantry.fetchAll()
+        var milk = try XCTUnwrap(all.first { $0.name == "milk" })
+        milk.quantity = 0
+        try await pantry.update(milk)
+        await viewModel.refreshPantryMatch()
+
+        let missing = viewModel.matches.first?.missedIngredients.map(\.name)
+        XCTAssertEqual(missing, ["brown sugar", "milk", "vanilla extract"])
+        XCTAssertEqual(service.receivedCriteria.count, 1)
+    }
 }
