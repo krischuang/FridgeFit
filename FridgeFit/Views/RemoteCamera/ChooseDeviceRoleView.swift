@@ -60,8 +60,12 @@ struct ChooseDeviceRoleView<CameraDestination: View, RemoteDestination: View>: V
                 .buttonStyle(.plain)
                 .accessibilityHint("Opens Camera Mode")
 
-                NavigationLink(isActive: $isPresentingAvailableCameras) {
-                    remoteDestination()
+                // Driven by a binding rather than a value route: the parent
+                // watches the same flag to restart discovery on Back, and
+                // `navigationDestination(isPresented:)` clears it on pop the
+                // way the deprecated `NavigationLink(isActive:)` did.
+                Button {
+                    isPresentingAvailableCameras = true
                 } label: {
                     roleCard(
                         title: "Use as Remote Camera",
@@ -73,6 +77,9 @@ struct ChooseDeviceRoleView<CameraDestination: View, RemoteDestination: View>: V
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("Shows available FridgeFit cameras")
+                .navigationDestination(isPresented: $isPresentingAvailableCameras) {
+                    remoteDestination()
+                }
 
                 discoveryStatus
 
