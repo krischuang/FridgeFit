@@ -17,6 +17,17 @@ nonisolated final class WebRTCFactory {
 
     let peerConnectionFactory: RTCPeerConnectionFactory
 
+    /// Forces the lazy construction above to happen now.
+    ///
+    /// Called when Connected Devices opens, so the SSL setup, codec
+    /// registries and worker threads are ready before a session needs them
+    /// instead of being built in the middle of one. Safe to call repeatedly
+    /// and from any thread - `shared` is a `let`, so the runtime guarantees
+    /// one initialisation.
+    static func warmUp() {
+        _ = shared
+    }
+
     private init() {
         RTCInitializeSSL()
         // Warnings and errors only. WebRTC's info level logs every ICE

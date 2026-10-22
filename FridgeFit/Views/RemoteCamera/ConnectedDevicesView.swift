@@ -59,7 +59,15 @@ struct ConnectedDevicesView: View {
                 }
             }
         )
-        .task { await viewModel.start() }
+        .task {
+            // Build WebRTC's factory now rather than when a session starts.
+            // It is created lazily and its first use initialises SSL, the
+            // codec registries and the SDK's worker threads - work that would
+            // otherwise land between the user picking a camera and the offer
+            // being made. Whichever role they choose next needs it.
+            WebRTCFactory.warmUp()
+            await viewModel.start()
+        }
         .onChange(of: isPresentingAvailableCameras) { _, isPresented in
             // AvailableCamerasView stops the shared model as it leaves. Start
             // it again only once the chooser is visible after Back.
