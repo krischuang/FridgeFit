@@ -311,6 +311,22 @@ struct ContentView: View {
         .onChange(of: recipesPath) { _, path in
             navigation.isBrowsingRecipes = path.last == .catalogue
         }
+        // Discover's results were matched against the pantry at search time.
+        // Tell the model when Discover is on screen and when the pantry
+        // changes, and it re-checks them locally (no API call) so "missing"
+        // is never stale. Deciding *whether* the work is worth doing is the
+        // model's job, not the view's - a pantry edit made while the user is
+        // on Home recomputes nothing until they arrive.
+        .onChange(of: navigation.selectedTab) { _, tab in
+            if tab == .discover {
+                onlineRecipeSearchViewModel.discoverDidAppear()
+            } else {
+                onlineRecipeSearchViewModel.discoverDidDisappear()
+            }
+        }
+        .onChange(of: inventoryStore.items) { _, _ in
+            onlineRecipeSearchViewModel.pantryDidChange()
+        }
         // Reaches the remote-camera review sheet, four levels down, without
         // adding a pantry parameter to ConnectedDevicesView and
         // RemoteCameraView - neither of which writes to the pantry itself,

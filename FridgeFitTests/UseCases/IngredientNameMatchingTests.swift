@@ -79,7 +79,11 @@ final class IngredientNameMatchingTests: XCTestCase {
         }
     }
 
-    func test_discoverExpiryRanking_usesTheSameRule() {
+    /// Discover asks the coverage question, so it goes through `covers`
+    /// rather than `matches` - see `IngredientCoverageConsistencyTests` for
+    /// the cross-engine agreement. The folds both questions share still hold
+    /// here, and the words neither folds are still refused.
+    func test_discoverExpiryRanking_usesTheSharedCoverageRule() {
         XCTAssertTrue(OnlineRecipeExpiryRanking.namesMatch("eggs", "Egg"))
         XCTAssertTrue(OnlineRecipeExpiryRanking.namesMatch("bay leaves (dried)", "Bay Leaf"))
         XCTAssertFalse(OnlineRecipeExpiryRanking.namesMatch("coconut milk", "Milk"))

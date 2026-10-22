@@ -47,10 +47,42 @@ enum OnlineRecipeFixtures {
         let missed = (0 ..< missedCount).map {
             OnlineRecipeIngredient(providerID: 100 + $0, name: "missing \($0)", amount: 1, unit: .pieces, originalUnit: "")
         }
+        // Like a real provider response, the recipe's ingredient list is the
+        // used lines plus the missed lines - so re-deriving have/missing from
+        // the pantry (`OnlineRecipePantryReconciler`) gives the same counts.
+        var fixtureRecipe = recipe(id: id, title: title, intolerances: intolerances)
+        fixtureRecipe.ingredients = used.enumerated().map { index, name in
+            OnlineRecipeIngredient(providerID: 10 + index, name: name, amount: 1, unit: .pieces, originalUnit: "")
+        } + missed
         return OnlineRecipeMatch(
-            recipe: recipe(id: id, title: title, intolerances: intolerances),
+            recipe: fixtureRecipe,
             usedIngredientNames: used,
             missedIngredients: missed
+        )
+    }
+
+    /// One ingredient line, for suites that build a recipe's list by hand.
+    static func line(_ name: String, id: Int) -> OnlineRecipeIngredient {
+        OnlineRecipeIngredient(providerID: id, name: name, amount: 1, unit: .pieces, originalUnit: "")
+    }
+
+    /// Spoonacular's shape for the reported Discover bug: brown sugar is in
+    /// the ingredient list but in neither `used` nor `missed`, because the
+    /// provider assumes pantry staples are owned. Reconciling against a
+    /// pantry that holds only an egg must therefore read 1 matched, 3
+    /// missing - not the provider's 1 and 2.
+    static func bakedCustard() -> OnlineRecipeMatch {
+        var custard = recipe(id: 641_000, title: "Baked Custard")
+        custard.ingredients = [
+            line("eggs", id: 1123),
+            line("brown sugar", id: 19334),
+            line("milk", id: 1077),
+            line("vanilla extract", id: 2050),
+        ]
+        return OnlineRecipeMatch(
+            recipe: custard,
+            usedIngredientNames: ["eggs"],
+            missedIngredients: [line("milk", id: 1077), line("vanilla extract", id: 2050)]
         )
     }
 

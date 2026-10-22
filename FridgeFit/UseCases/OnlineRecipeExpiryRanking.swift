@@ -15,10 +15,11 @@ import Foundation
 ///   item sinks below everything else instead of rising - ranking it up
 ///   would be recommending someone eat food that has gone off. Same rule as
 ///   `GenerateContextAwareRecommendationsUseCase`.
-/// - **Conservative name matching.** The provider's used-ingredient names
-///   and pantry names are different vocabularies. They match only after
-///   `OnlineIngredientName.normalized`, case folding and a plural fold on the
-///   last word ("tomatoes" ↔ "Tomato"). No synonym or substring matching:
+/// - **Conservative name matching, shared with Recipes.** The provider's
+///   used-ingredient names and pantry names are different vocabularies.
+///   They match only after `OnlineIngredientName.normalized` and the
+///   app-wide coverage rule (`IngredientNameMatching.covers` - case, plural
+///   and leading descriptor folds). No synonym or substring matching:
 ///   "coconut milk" must never claim to use up the user's milk. Missing a
 ///   match just means no boost; a false match would be a false claim.
 /// - **No double counting.** Each pantry item is credited at most once per
@@ -127,11 +128,14 @@ nonisolated enum OnlineRecipeExpiryRanking {
         return !a.isEmpty && a == matchKey(pantryName)
     }
 
-    /// Provider names first lose parenthetical notes
-    /// (`OnlineIngredientName.normalized`), then go through the app-wide
-    /// rule (`IngredientNameMatching`), so Discover agrees with the pantry.
+    /// Names first lose parenthetical notes
+    /// (`OnlineIngredientName.normalized`, a provider quirk the pantry never
+    /// has), then go through the app-wide coverage rule
+    /// (`IngredientNameMatching.coverageKey`) - the same rule Recipes uses
+    /// to decide whether the pantry holds an ingredient. Discover and
+    /// Recipes therefore give the same answer for the same two names.
     static func matchKey(_ name: String) -> String {
-        IngredientNameMatching.matchKey(OnlineIngredientName.normalized(name))
+        IngredientNameMatching.coverageKey(OnlineIngredientName.normalized(name))
     }
 
     private static func sortedByUrgency(_ uses: [UrgentIngredientUse]) -> [UrgentIngredientUse] {

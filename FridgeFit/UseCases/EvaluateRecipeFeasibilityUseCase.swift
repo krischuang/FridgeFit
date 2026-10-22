@@ -21,11 +21,14 @@ nonisolated struct EvaluateRecipeFeasibilityUseCase {
     /// Compares every ingredient `recipe` requires against the signed-in
     /// user's pantry and returns the result.
     ///
-    /// Matches ingredients by normalized name (`Ingredient.matches(name:)`
-    /// - case-, whitespace- and plural-insensitive, so "Egg" in the pantry
-    /// covers "Eggs" in a recipe), the same rule Pantry itself uses, not
-    /// by id: pantry items and recipe ingredients are created separately,
-    /// so id equality would never match.
+    /// Matches ingredients by normalized name
+    /// (`IngredientNameMatching.covers` - case-, whitespace- and
+    /// plural-insensitive and ignoring leading descriptors, so "Egg" in the
+    /// pantry covers "Eggs" and "Cheddar Cheese" covers "mild cheddar
+    /// cheese"), not by id: pantry items and recipe ingredients are created
+    /// separately, so id equality would never match. Discover reconciles
+    /// against the same rule, so the two screens agree about what the user
+    /// has.
     func execute(recipe: Recipe) async throws -> RecipeFeasibilityResult {
         let pantryItems = try await pantryRepository.fetchAll()
         return Self.evaluate(recipe: recipe, against: pantryItems)
@@ -57,7 +60,9 @@ nonisolated struct EvaluateRecipeFeasibilityUseCase {
     }
 
     nonisolated private static func evaluate(_ recipeIngredient: RecipeIngredient, against pantryItems: [PantryItem]) -> RecipeIngredientEvaluation {
-        guard let pantryItem = pantryItems.first(where: { $0.ingredient.matches(name: recipeIngredient.ingredient.name) }) else {
+        guard let pantryItem = pantryItems.first(where: {
+            IngredientNameMatching.covers(pantryName: $0.ingredient.name, recipeName: recipeIngredient.ingredient.name)
+        }) else {
             return RecipeIngredientEvaluation(recipeIngredient: recipeIngredient, pantryQuantity: nil, pantryUnit: nil, availability: .missing)
         }
 

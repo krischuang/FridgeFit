@@ -18,6 +18,10 @@ import Foundation
 ///   a recipe is dropped if it contains one, *or* if its ingredients
 ///   couldn't be verified (`containsIntolerances == nil`). The provider's
 ///   own `intolerances` filter is trusted as a first pass only.
+/// - **Have vs missing comes from the pantry**: each recipe's ingredient
+///   lines are re-checked against the real pantry
+///   (`OnlineRecipePantryReconciler`), so staples the provider assumes are
+///   owned (sugar, salt, flour) show as missing unless the user has them.
 /// - **Use it up first**: recipes that use pantry items close to expiry
 ///   rank first (most urgent first), and recipes that would use an expired
 ///   item sink - see `OnlineRecipeExpiryRanking`. Near-expiry names are also
@@ -69,9 +73,9 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
             resultLimit: resultLimit
         )
 
-        let matches: [OnlineRecipeMatch]
+        let providerMatches: [OnlineRecipeMatch]
         do {
-            matches = try await recipeService.searchRecipes(matching: criteria)
+            providerMatches = try await recipeService.searchRecipes(matching: criteria)
         } catch let error as OnlineRecipeSearchError {
             throw error
         } catch is CancellationError {
@@ -79,6 +83,59 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
         } catch {
             throw OnlineRecipeSearchError.providerUnavailable
         }
+
+        return try evaluate(
+            providerMatches: providerMatches,
+            pantry: pantry,
+            preferences: effectivePreferences,
+            excluding: excludedRecipeIDs
+        )
+    }
+
+    /// Re-applies the pantry to results already fetched - **no network
+    /// call, no API quota**. Used when the user returns to Discover after
+    /// changing their pantry, so "matched" / "missing", the safety filter
+    /// and the expiry ranking reflect the pantry as it is now.
+    ///
+    /// - Parameter providerMatches: the provider's original results
+    ///   (`OnlineRecipeSearchResult.providerMatches`), not the already
+    ///   reconciled ones, so an item removed from the pantry is counted as
+    ///   missing again.
+    func reevaluate(
+        providerMatches: [OnlineRecipeMatch],
+        preferences: OnlineRecipePreferences,
+        excluding excludedRecipeIDs: Set<Int> = []
+    ) async throws -> OnlineRecipeSearchResult {
+        let pantry: [PantryItem]
+        do {
+            pantry = try await pantryRepository.fetchAll()
+        } catch {
+            throw OnlineRecipeSearchError.pantryUnavailable
+        }
+        return try evaluate(
+            providerMatches: providerMatches,
+            pantry: pantry,
+            preferences: preferences.sanitized(),
+            excluding: excludedRecipeIDs
+        )
+    }
+
+    /// Everything after the network: reconcile with the pantry, drop hidden
+    /// and unsafe recipes, rank. Shared by `execute` and `reevaluate` so the
+    /// two can never disagree.
+    private func evaluate(
+        providerMatches: [OnlineRecipeMatch],
+        pantry: [PantryItem],
+        preferences effectivePreferences: OnlineRecipePreferences,
+        excluding excludedRecipeIDs: Set<Int>
+    ) throws -> OnlineRecipeSearchResult {
+        let currentDate = now()
+        let urgentItems = OnlineRecipeExpiryRanking.urgentPantryItems(in: pantry, now: currentDate, calendar: calendar)
+
+        // Have/missing comes from the user's real pantry, not from the
+        // provider's "not missing" (it assumes staples like sugar are owned).
+        // Done before ranking so counts, order and badges all agree.
+        let matches = providerMatches.map { OnlineRecipePantryReconciler.reconciled($0, pantry: pantry) }
 
         let visible = matches.filter { !excludedRecipeIDs.contains($0.id) }
         let safe = visible.filter { Self.isSafe($0.recipe, for: effectivePreferences.intolerances) }
@@ -96,7 +153,8 @@ nonisolated struct FindOnlineRecipesFromPantryUseCase {
             excludedForSafetyCount: visible.count - safe.count,
             excludedAsHiddenCount: matches.count - visible.count,
             expiryUse: expiryUse,
-            urgentPantryIngredients: urgentItems
+            urgentPantryIngredients: urgentItems,
+            providerMatches: providerMatches
         )
     }
 

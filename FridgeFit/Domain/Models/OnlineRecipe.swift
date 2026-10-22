@@ -100,13 +100,19 @@ nonisolated struct OnlineRecipeIngredient: Identifiable, Hashable, Codable {
 
 /// A search hit: the recipe plus how it lines up with the user's pantry.
 ///
-/// The provider decides which pantry ingredients a recipe uses and which
-/// further ones it needs; this app doesn't re-derive that match.
+/// The provider's used/missed lists are only a starting point: it assumes
+/// common staples (sugar, salt, flour) are owned. `FindOnlineRecipesFromPantryUseCase`
+/// re-derives both from the user's real pantry (`OnlineRecipePantryReconciler`)
+/// before anything is shown or ranked.
 nonisolated struct OnlineRecipeMatch: Identifiable, Hashable, Codable {
     var recipe: OnlineRecipe
-    /// Pantry ingredient names this recipe uses.
+    /// Names of the recipe's ingredient lines the user has, as reconciled
+    /// against the pantry - not the provider's `usedIngredients`.
     var usedIngredientNames: [String]
-    /// Ingredients the recipe needs that the pantry doesn't have.
+    /// The recipe's ingredient lines the user doesn't have. Together with
+    /// `usedIngredientNames` this accounts for every line of
+    /// `recipe.ingredients`, which is why a staple the provider omitted from
+    /// its own missed list still shows up here.
     var missedIngredients: [OnlineRecipeIngredient]
     /// `true` when served from the offline cache - the UI says so, so
     /// possibly-stale data is never presented as fresh.

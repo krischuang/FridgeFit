@@ -63,10 +63,10 @@ nonisolated struct SuggestRecipesFromPantryUseCase {
 
         // The pantry decides, not the model.
         let available = requiredIngredients.filter { required in
-            pantryItems.contains { $0.ingredient.matches(name: required) }
+            pantryItems.contains { IngredientNameMatching.covers(pantryName: $0.ingredient.name, recipeName: required) }
         }
         let missing = requiredIngredients.filter { required in
-            !pantryItems.contains { $0.ingredient.matches(name: required) }
+            !pantryItems.contains { IngredientNameMatching.covers(pantryName: $0.ingredient.name, recipeName: required) }
         }
 
         // A suggestion that uses nothing from the pantry isn't a pantry

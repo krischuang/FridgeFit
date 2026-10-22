@@ -79,6 +79,11 @@ nonisolated struct OnlineRecipeSearchResult: Hashable {
     var expiryUse: [Int: OnlineRecipeExpiryUse] = [:]
     /// Pantry items the ranking prioritised, most urgent first.
     var urgentPantryIngredients: [UrgentIngredientUse] = []
+    /// The provider's results as fetched, before pantry reconciliation,
+    /// hiding and safety filtering - kept so the pantry can be re-applied
+    /// later without another API call
+    /// (`FindOnlineRecipesFromPantryUseCase.reevaluate`).
+    var providerMatches: [OnlineRecipeMatch] = []
 
     var isFromCache: Bool { matches.contains { $0.isFromCache } }
 }

@@ -5,9 +5,15 @@
 
 import SwiftUI
 
-/// Discover's provider-backed detail. It shares the Fresh Botanical structure
-/// of `RecipeDetailView`, while clearly retaining the provider's name-only
-/// pantry match until the recipe is saved and fully evaluated by FridgeFit.
+/// Discover's provider-backed detail. It shares the Fresh Botanical
+/// structure of `RecipeDetailView`, while showing a name-only pantry match:
+/// have/missing is reconciled against the real pantry
+/// (`OnlineRecipePantryReconciler`) under the same coverage rule Recipes
+/// uses, but quantities are not compared until the recipe is saved and fully
+/// evaluated by FridgeFit.
+///
+/// `match` is a value, so an open detail screen tracks the pantry only
+/// because `LiveOnlineRecipeDetail` hands it the latest one - see there.
 struct OnlineRecipeDetailView: View {
     let match: OnlineRecipeMatch
     let intolerances: Set<FoodIntolerance>

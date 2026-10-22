@@ -59,13 +59,12 @@ struct DiscoverRecipesView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .task { await recipeViewModel.loadRecipesIfNeeded() }
-        .navigationDestination(for: OnlineRecipeMatch.self) { match in
-            OnlineRecipeDetailView(
-                match: match,
-                intolerances: viewModel.preferences.intolerances,
-                expiryUse: viewModel.expiryUse(for: match),
-                recipeViewModel: recipeViewModel
-            )
+        // Coming back from My Fridge: re-check have/missing against the
+        // current pantry locally (no API call, no quota). Coalesced with the
+        // tab change that brought us here, so the two cost one pantry read.
+        .onAppear { viewModel.discoverDidAppear() }
+        .navigationDestination(for: OnlineRecipeMatch.self) { pushed in
+            LiveOnlineRecipeDetail(pushed: pushed, viewModel: viewModel, recipeViewModel: recipeViewModel)
         }
         .sheet(isPresented: $isShowingFilters) {
             NavigationStack {
@@ -800,5 +799,31 @@ private struct DiscoverResultsPreview: View {
                 await searchViewModel.search()
             }
         }
+    }
+}
+
+/// The pushed `OnlineRecipeMatch` is a snapshot taken when the row was
+/// tapped. This wrapper observes the search view model itself, so an open
+/// detail screen shows the latest have/missing after the pantry changes,
+/// instead of relying on SwiftUI re-running the destination closure.
+///
+/// Discover counts as visible while this is pushed - the tab has not
+/// changed - so pantry edits keep re-checking and the screen stays live.
+/// Falls back to the snapshot if the recipe is no longer in the results
+/// (hidden, or filtered out), which is better than an empty screen.
+private struct LiveOnlineRecipeDetail: View {
+    let pushed: OnlineRecipeMatch
+    @ObservedObject var viewModel: OnlineRecipeSearchViewModel
+    @ObservedObject var recipeViewModel: RecipeViewModel
+
+    var body: some View {
+        let match = viewModel.matches.first { $0.id == pushed.id } ?? pushed
+        OnlineRecipeDetailView(
+            match: match,
+            intolerances: viewModel.preferences.intolerances,
+            expiryUse: viewModel.expiryUse(for: match),
+            recipeViewModel: recipeViewModel
+        )
+        .onAppear { viewModel.discoverDidAppear() }
     }
 }
