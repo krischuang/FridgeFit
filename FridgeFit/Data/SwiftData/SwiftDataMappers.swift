@@ -34,7 +34,8 @@ enum PantryItemMapper {
             openedState: entity.openedState.flatMap(OpenedState.init(rawValue:)),
             lowStockThreshold: entity.lowStockThreshold,
             packageUnit: entity.packageUnit.flatMap(PackageUnit.init(rawValue:)),
-            packageLevel: entity.packageLevel.flatMap(PackageLevel.init(rawValue:))
+            packageLevel: entity.packageLevel.flatMap(PackageLevel.init(rawValue:)),
+            addedAt: entity.addedAt
         )
     }
 
@@ -52,7 +53,8 @@ enum PantryItemMapper {
             openedState: item.openedState?.rawValue,
             lowStockThreshold: item.lowStockThreshold,
             packageUnit: item.packageUnit?.rawValue,
-            packageLevel: item.packageLevel?.rawValue
+            packageLevel: item.packageLevel?.rawValue,
+            addedAt: item.addedAt
         )
     }
 
@@ -79,6 +81,7 @@ enum PantryItemMapper {
         entity.lowStockThreshold = item.lowStockThreshold
         entity.packageUnit = item.packageUnit?.rawValue
         entity.packageLevel = item.packageLevel?.rawValue
+        entity.addedAt = item.addedAt
     }
 }
 

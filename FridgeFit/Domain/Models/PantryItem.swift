@@ -51,6 +51,12 @@ nonisolated struct PantryItem: Identifiable, Hashable, Codable {
     /// "½ bottle" for the kitchen UI.
     var packageUnit: PackageUnit?
     var packageLevel: PackageLevel?
+    /// When the item first entered the pantry, set by whichever flow added
+    /// it. `nil` on everything stored before this field existed, which is
+    /// read as "not recent" rather than backfilled to now - dating an old
+    /// item to this launch would put a week-old tomato under "Recently
+    /// added".
+    var addedAt: Date?
 
     init(
         id: UUID = UUID(),
@@ -62,7 +68,8 @@ nonisolated struct PantryItem: Identifiable, Hashable, Codable {
         openedState: OpenedState? = nil,
         lowStockThreshold: Double? = nil,
         packageUnit: PackageUnit? = nil,
-        packageLevel: PackageLevel? = nil
+        packageLevel: PackageLevel? = nil,
+        addedAt: Date? = nil
     ) {
         self.id = id
         self.ingredient = ingredient
@@ -74,6 +81,21 @@ nonisolated struct PantryItem: Identifiable, Hashable, Codable {
         self.lowStockThreshold = lowStockThreshold
         self.packageUnit = packageUnit
         self.packageLevel = packageLevel
+        self.addedAt = addedAt
+    }
+
+    /// How long after being added an item still counts as recent.
+    static let recentlyAddedWindow: TimeInterval = 3 * 60 * 60
+
+    /// Whether this belongs in the "Recently added" section.
+    ///
+    /// False for anything with no `addedAt`, and false for a timestamp in the
+    /// future - a device with a skewed clock should drop out of the section,
+    /// not sit in it indefinitely.
+    func wasAddedRecently(now: Date = Date()) -> Bool {
+        guard let addedAt else { return false }
+        let age = now.timeIntervalSince(addedAt)
+        return age >= 0 && age <= Self.recentlyAddedWindow
     }
 
     var name: String { ingredient.name }
