@@ -329,10 +329,16 @@ struct RemoteCameraView: View {
 
     private var liveControlContent: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.large) {
-            livePreview
+            // Connection details sit directly under the device header they
+            // describe, so the preview is the first thing below them rather
+            // than the top of the screen.
             connectionCard
+            livePreview
 
             if viewModel.isConnected {
+                // The headline action is kept against the bottom edge of the
+                // preview - what you analyse is what you can see.
+                analyseSection
                 detectionControls
                 liveActions
             } else {
@@ -384,7 +390,19 @@ struct RemoteCameraView: View {
             RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous)
                 .stroke(FridgeFitTheme.ColorToken.border.opacity(0.65), lineWidth: 1)
         }
+        // Capped rather than full-width: at the surface's 3:4 ratio an iPhone
+        // screen's width makes the preview tall enough to push the capture
+        // button off screen. The height bound shrinks the width with it, so
+        // the aspect ratio - and the detection overlay's alignment with the
+        // frame - is unchanged, and the box is centred instead of hugging
+        // the stack's leading edge.
+        .frame(maxHeight: Self.livePreviewMaxHeight)
+        .frame(maxWidth: .infinity)
     }
+
+    /// Chosen so the preview, the connection card above it and the capture
+    /// button below it all fit on the shortest supported screen.
+    private static let livePreviewMaxHeight: CGFloat = 420
 
     private var connectionCard: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
@@ -414,10 +432,16 @@ struct RemoteCameraView: View {
         .fridgeFitCardSurface()
     }
 
-    private var liveActions: some View {
+    /// The capture action and anything it has to report, kept together so the
+    /// failure and unavailable notices stay attached to the button.
+    private var analyseSection: some View {
         VStack(spacing: FridgeFitTheme.Spacing.small) {
             analyseButton
+        }
+    }
 
+    private var liveActions: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.small) {
             Button {
                 viewModel.requestCameraSwitch()
             } label: {
@@ -541,8 +565,8 @@ struct RemoteCameraView: View {
 
     /// Food-detection toggle, status, and what it found.
     ///
-    /// Sits between the video and the connection details so the thing it
-    /// describes is directly above it.
+    /// Sits below the preview and the capture button, so the live view it
+    /// draws boxes over is still on screen while the toggle is read.
     private var detectionControls: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
             Toggle(isOn: $viewModel.isDetectionEnabled) {
