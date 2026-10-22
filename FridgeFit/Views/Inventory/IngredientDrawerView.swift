@@ -202,7 +202,7 @@ struct IngredientDrawerView: View {
         } label: {
             Image(systemName: "ellipsis.circle")
                 .font(.title3.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                 .frame(width: 34, height: 34)
                 .contentShape(Circle())
         }
@@ -216,7 +216,7 @@ struct IngredientDrawerView: View {
                 .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
 
             HStack(spacing: 0) {
-                RepeatButton(systemImage: "minus") {
+                RepeatButton(systemImage: "minus", accessibilityLabel: "Decrease amount used") {
                     changeUsedAmount(by: -1)
                 } onStart: {
                     startRepeating(delta: -1)
@@ -257,7 +257,7 @@ struct IngredientDrawerView: View {
 
                 Divider()
 
-                RepeatButton(systemImage: "plus") {
+                RepeatButton(systemImage: "plus", accessibilityLabel: "Increase amount used") {
                     changeUsedAmount(by: 1)
                 } onStart: {
                     startRepeating(delta: 1)
@@ -292,7 +292,7 @@ struct IngredientDrawerView: View {
             .padding(.horizontal, FridgeFitTheme.Spacing.medium)
             .frame(height: 52)
             .background(draft.finished ? FridgeFitTheme.ColorToken.successBackground : FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous).stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1) }
+            .overlay { RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous).stroke(FridgeFitTheme.ColorToken.controlBorder, lineWidth: 1) }
         }
         .buttonStyle(.plain)
     }
@@ -343,7 +343,7 @@ struct IngredientDrawerView: View {
                         .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
-                                .stroke(FridgeFitTheme.ColorToken.danger.opacity(0.45), lineWidth: 1)
+                                .stroke(FridgeFitTheme.ColorToken.errorText, lineWidth: 1)
                         }
                 }
                 .buttonStyle(.plain)
@@ -407,10 +407,10 @@ struct IngredientDrawerView: View {
         } label: {
             Text("Save")
                 .font(FridgeFitTheme.Typography.button)
-                .foregroundStyle(isEnabled ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.textSecondary)
+                .foregroundStyle(isEnabled ? .white : FridgeFitTheme.ColorToken.disabledText)
                 .frame(maxWidth: .infinity, minHeight: 48)
                 .background(
-                    isEnabled ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.disabledSurface,
+                    isEnabled ? FridgeFitTheme.ColorToken.brandFill : FridgeFitTheme.ColorToken.disabledSurface,
                     in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
                 )
         }
@@ -616,6 +616,7 @@ private struct DrawerInfoRow: View {
 
 private struct RepeatButton: View {
     let systemImage: String
+    let accessibilityLabel: LocalizedStringKey
     let action: () -> Void
     let onStart: () -> Void
     let onStop: () -> Void
@@ -629,6 +630,7 @@ private struct RepeatButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
         .onLongPressGesture(
             minimumDuration: 0.35,
             maximumDistance: 28,
@@ -647,10 +649,10 @@ private extension View {
 
     func primaryDrawerButton() -> some View {
         font(FridgeFitTheme.Typography.button)
-            .foregroundStyle(FridgeFitTheme.ColorToken.card)
+            .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
             .frame(height: 48)
-            .background(FridgeFitTheme.ColorToken.primary, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+            .background(FridgeFitTheme.ColorToken.brandFill, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
     }
 
     func secondaryDrawerButton() -> some View {

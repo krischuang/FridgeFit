@@ -116,10 +116,10 @@ private struct HomeBrandHeader: View {
         HStack(spacing: FridgeFitTheme.Spacing.small) {
             Image(systemName: "refrigerator")
                 .font(.body.weight(.semibold))
-                .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                .foregroundStyle(.white)
                 .frame(width: 40, height: 40)
                 .background(
-                    FridgeFitTheme.ColorToken.primary,
+                    FridgeFitTheme.ColorToken.brandFill,
                     in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
                 )
 
@@ -244,7 +244,7 @@ private struct HomeInventorySummary: View {
         .background(
             summary.expiredItems.isEmpty
                 ? FridgeFitTheme.ColorToken.successBackground
-                : FridgeFitTheme.ColorToken.accent.opacity(0.14),
+                : FridgeFitTheme.ColorToken.errorBackground,
             in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous)
         )
         .accessibilityElement(children: .contain)
@@ -304,7 +304,7 @@ private struct HomeMetricCard: View {
         switch tone {
         case .fresh: FridgeFitTheme.ColorToken.card
         case .expiring: FridgeFitTheme.ColorToken.warningBackground
-        case .expired: FridgeFitTheme.ColorToken.accent.opacity(0.14)
+        case .expired: FridgeFitTheme.ColorToken.errorBackground
         }
     }
 
@@ -532,7 +532,7 @@ private struct HomeQuickAction: View {
             .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
-                    .stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1)
+                    .stroke(FridgeFitTheme.ColorToken.controlBorder, lineWidth: 1)
             }
         }
         .buttonStyle(.plain)

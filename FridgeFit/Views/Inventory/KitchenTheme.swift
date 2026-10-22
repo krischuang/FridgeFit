@@ -5,37 +5,33 @@
 
 import SwiftUI
 import UIKit
-
 /// Colours for the Kitchen tab.
 ///
-/// Built on the system grouped-background palette rather than fixed hex
-/// values, so the kitchen inherits Dark Mode and Increase Contrast for free
-/// and sits beside the Pantry and Recipes tabs instead of looking like a
-/// different app. The three status colours are explicit because "expired"
-/// has to read as urgent in both appearances, which a semantic colour
-/// doesn't guarantee.
+/// Shared surfaces and brand colours delegate to `FridgeFitTheme`; only the
+/// pantry-specific urgency colours remain here.
 enum KitchenTheme {
-    static let background = Color(uiColor: .systemGroupedBackground)
-    static let surface = Color(uiColor: .secondarySystemGroupedBackground)
-    static let tile = Color(uiColor: .secondarySystemGroupedBackground)
-    static let separator = Color.primary.opacity(0.10)
-    static let urgent = Color(red: 0.70, green: 0.18, blue: 0.12)
-    static let soon = Color(red: 0.72, green: 0.42, blue: 0.12)
-    static let low = Color(red: 0.64, green: 0.41, blue: 0.08)
+    static let background = FridgeFitTheme.ColorToken.canvas
+    static let surface = FridgeFitTheme.ColorToken.card
+    static let tile = FridgeFitTheme.ColorToken.card
+    static let separator = FridgeFitTheme.ColorToken.border
+    static let forest = FridgeFitTheme.ColorToken.primary
+    static let warmAccent = FridgeFitTheme.ColorToken.primary
 
-    /// Darker in light mode, lighter in dark mode - a single colour can't do
-    /// both and stay legible on the tile background.
-    static let forest = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.68, green: 0.86, blue: 0.60, alpha: 1)
-            : UIColor(red: 0.10, green: 0.27, blue: 0.13, alpha: 1)
-    })
+    static let urgent = adaptive(light: 0xB43C31, dark: 0xFF9C8C)
+    static let soon = adaptive(light: 0x926114, dark: 0xFFD58A)
+    static let low = adaptive(light: 0x765A00, dark: 0xF3C767)
 
-    static let warmAccent = Color(UIColor { traits in
-        traits.userInterfaceStyle == .dark
-            ? UIColor(red: 0.56, green: 0.78, blue: 0.50, alpha: 1)
-            : UIColor(red: 0.22, green: 0.45, blue: 0.22, alpha: 1)
-    })
+    private static func adaptive(light: UInt32, dark: UInt32) -> Color {
+        Color(uiColor: UIColor { traits in
+            let value = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(
+                red: CGFloat((value >> 16) & 0xFF) / 255,
+                green: CGFloat((value >> 8) & 0xFF) / 255,
+                blue: CGFloat(value & 0xFF) / 255,
+                alpha: 1
+            )
+        })
+    }
 }
 
 extension ExpiryUrgency {
@@ -49,7 +45,7 @@ extension ExpiryUrgency {
         case .tomorrow, .soon:
             return KitchenTheme.soon
         case .thisWeek, .none:
-            return .secondary
+            return FridgeFitTheme.ColorToken.textSecondary
         }
     }
 }

@@ -29,13 +29,13 @@ struct IngredientTile: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(item.name)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(item.storage.title)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                 .lineLimit(1)
 
             statusPill
@@ -71,13 +71,13 @@ struct IngredientTile: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name)
                     .font(.headline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text(item.ingredient.category.displayName)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     .lineLimit(1)
             }
 
@@ -86,7 +86,7 @@ struct IngredientTile: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.inventoryQuantity.displayText)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
                     .lineLimit(1)
 
                 if let secondaryStatusText {

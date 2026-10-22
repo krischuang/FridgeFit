@@ -114,9 +114,9 @@ struct PairingOnboardingView: View {
         HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.medium) {
             Text("\(number)")
                 .font(FridgeFitTheme.Typography.cardTitle.weight(.bold))
-                .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                .foregroundStyle(.white)
                 .frame(width: 32, height: 32)
-                .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
 
             VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
                 Label(title, systemImage: systemImage)

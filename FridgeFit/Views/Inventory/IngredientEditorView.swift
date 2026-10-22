@@ -107,7 +107,7 @@ struct IngredientEditorView: View {
             } label: {
                 Group {
                     if isSaving {
-                        ProgressView().tint(FridgeFitTheme.ColorToken.card)
+                        ProgressView().tint(.white)
                     } else {
                         Label(isAdding ? "Add to Pantry" : "Save Changes", systemImage: isAdding ? "plus.circle" : "checkmark.circle")
                     }
@@ -469,12 +469,12 @@ private struct StitchQuantityControl: View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
             HStack(spacing: FridgeFitTheme.Spacing.medium) {
                 HStack(spacing: 0) {
-                    quantityButton("minus", action: decrement)
+                    quantityButton("minus", accessibilityLabel: "Decrease ingredient quantity", action: decrement)
                     Text(amountText)
                         .font(FridgeFitTheme.Typography.supporting.weight(.bold))
                         .monospacedDigit()
                         .frame(minWidth: 38, minHeight: 36)
-                    quantityButton("plus", action: increment)
+                    quantityButton("plus", accessibilityLabel: "Increase ingredient quantity", action: increment)
                 }
                 .background(FridgeFitTheme.ColorToken.disabledSurface.opacity(0.6), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
 
@@ -513,17 +513,21 @@ private struct StitchQuantityControl: View {
         Button(action: action) {
             Text(title)
                 .font(FridgeFitTheme.Typography.caption.weight(.semibold))
-                .foregroundStyle(isSelected ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.textSecondary)
+                .foregroundStyle(isSelected ? .white : FridgeFitTheme.ColorToken.textSecondary)
                 .lineLimit(1)
                 .padding(.horizontal, FridgeFitTheme.Spacing.small)
                 .frame(minHeight: 36)
-                .background(isSelected ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.disabledSurface.opacity(0.7), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+                .background(isSelected ? FridgeFitTheme.ColorToken.brandFill : FridgeFitTheme.ColorToken.disabledSurface.opacity(0.7), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
         }
         .buttonStyle(.plain)
         .frame(minWidth: 44, minHeight: 44)
     }
 
-    private func quantityButton(_ systemImage: String, action: @escaping () -> Void) -> some View {
+    private func quantityButton(
+        _ systemImage: String,
+        accessibilityLabel: LocalizedStringKey,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.footnote.weight(.bold))
@@ -532,6 +536,7 @@ private struct StitchQuantityControl: View {
         }
         .buttonStyle(.plain)
         .frame(minWidth: 44, minHeight: 44)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private var amountText: String {

@@ -142,7 +142,7 @@ struct ChooseDeviceRoleView<CameraDestination: View, RemoteDestination: View>: V
         )
         .overlay {
             RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.largeCard, style: .continuous)
-                .stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1)
+                .stroke(FridgeFitTheme.ColorToken.controlBorder, lineWidth: 1)
         }
     }
 

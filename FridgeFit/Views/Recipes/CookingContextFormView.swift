@@ -118,17 +118,17 @@ struct CookingContextFormView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.circle")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                         Text(restriction.displayName)
                         Spacer()
                         Text("Not matched")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     }
                     if let explanation = restriction.unassessableExplanation {
                         Text(explanation)
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     }
                 }
                 .padding(.vertical, 2)
@@ -164,7 +164,7 @@ struct CookingContextFormView: View {
                 } label: {
                     HStack {
                         Text(option[keyPath: label])
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
                         Spacer()
                         if selection.wrappedValue.contains(option) {
                             Image(systemName: "checkmark")

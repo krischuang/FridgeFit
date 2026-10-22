@@ -40,9 +40,9 @@ struct ReceiptItemReviewView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Image(systemName: "person")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                        .foregroundStyle(.white)
                         .frame(width: 36, height: 36)
-                        .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                        .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
                         .accessibilityHidden(true)
                 }
             }
@@ -82,7 +82,7 @@ struct ReceiptItemReviewView: View {
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(FridgeFitTheme.ColorToken.danger)
                     .frame(width: 48, height: 48)
-                    .background(FridgeFitTheme.ColorToken.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+                    .background(FridgeFitTheme.ColorToken.errorBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
 
                 VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
                     Text("Receipt scanned")
@@ -204,7 +204,7 @@ struct ReceiptItemReviewView: View {
                 .foregroundStyle(FridgeFitTheme.ColorToken.danger)
                 .padding(FridgeFitTheme.Spacing.small)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(FridgeFitTheme.ColorToken.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+                .background(FridgeFitTheme.ColorToken.errorBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
             }
 
             HStack {
@@ -219,7 +219,7 @@ struct ReceiptItemReviewView: View {
             } label: {
                 if viewModel.isAddingToPantry {
                     ProgressView()
-                        .tint(FridgeFitTheme.ColorToken.card)
+                        .tint(.white)
                         .frame(maxWidth: .infinity)
                 } else {
                     Label(addButtonTitle, systemImage: "cabinet")
@@ -271,10 +271,10 @@ private struct ReceiptReviewCard: View {
                 } label: {
                     Image(systemName: draft.isSelected ? "checkmark" : "circle")
                         .font(.body.weight(.bold))
-                        .foregroundStyle(draft.isSelected ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.textSecondary)
+                        .foregroundStyle(draft.isSelected ? .white : FridgeFitTheme.ColorToken.textSecondary)
                         .frame(width: 44, height: 44)
                         .background(
-                            draft.isSelected ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.disabledSurface,
+                            draft.isSelected ? FridgeFitTheme.ColorToken.brandFill : FridgeFitTheme.ColorToken.disabledSurface,
                             in: Circle()
                         )
                 }
