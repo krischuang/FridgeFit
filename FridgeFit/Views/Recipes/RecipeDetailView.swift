@@ -19,7 +19,7 @@ struct RecipeDetailView: View {
                 RecipeDetailHero(
                     recipe: recipe,
                     feasibility: viewModel.feasibility(for: recipe),
-                    image: viewModel.thumbnail(for: recipe)
+                    image: viewModel.heroImage(for: recipe)
                 )
                 RecipePantryMatchCard(feasibility: viewModel.feasibility(for: recipe))
 
@@ -67,6 +67,10 @@ struct RecipeDetailView: View {
             }
         }
         .task { await viewModel.evaluateIfNeeded(recipe) }
+        // The list only decodes row-sized thumbnails; the hero wants the full
+        // stored photo, and only for the recipe actually open. Cancelled with
+        // the view if the user leaves before it finishes.
+        .task { await viewModel.loadHeroImage(for: recipe) }
         // Leaving the screen stops any on-device substitution generation
         // still running. Suggestions already found stay in the view model,
         // so coming back doesn't re-run the model.
