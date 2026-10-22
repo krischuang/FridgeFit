@@ -79,9 +79,9 @@ struct IngredientReviewView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Image(systemName: "person")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                        .foregroundStyle(.white)
                         .frame(width: 36, height: 36)
-                        .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                        .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
                         .accessibilityHidden(true)
                 }
             }
@@ -303,7 +303,7 @@ struct IngredientReviewView: View {
                     .frame(minHeight: 44)
             }
             .padding(FridgeFitTheme.Spacing.medium)
-            .background(FridgeFitTheme.ColorToken.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
+            .background(FridgeFitTheme.ColorToken.errorBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
         }
     }
 
@@ -366,7 +366,7 @@ struct IngredientReviewView: View {
             } label: {
                 if viewModel.saveState.isSaving {
                     ProgressView()
-                        .tint(FridgeFitTheme.ColorToken.card)
+                        .tint(.white)
                 } else {
                     Label(saveButtonTitle, systemImage: "checkmark")
                 }
@@ -444,9 +444,9 @@ private struct IngredientScanReviewCard: View {
                 Button(action: onToggle) {
                     Image(systemName: item.isAccepted ? "checkmark" : "circle")
                         .font(.body.weight(.bold))
-                        .foregroundStyle(item.isAccepted ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.textSecondary)
+                        .foregroundStyle(item.isAccepted ? .white : FridgeFitTheme.ColorToken.textSecondary)
                         .frame(width: 44, height: 44)
-                        .background(item.isAccepted ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.disabledSurface, in: Circle())
+                        .background(item.isAccepted ? FridgeFitTheme.ColorToken.brandFill : FridgeFitTheme.ColorToken.disabledSurface, in: Circle())
                 }
                 .accessibilityLabel(item.isAccepted ? "Accepted" : "Rejected")
                 .accessibilityIdentifier("toggle-\(item.id.uuidString)")

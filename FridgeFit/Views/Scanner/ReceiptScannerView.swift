@@ -65,9 +65,9 @@ struct ReceiptScannerView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Image(systemName: "person")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                        .foregroundStyle(.white)
                         .frame(width: 36, height: 36)
-                        .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                        .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
                         .accessibilityHidden(true)
                 }
             }
@@ -163,7 +163,7 @@ struct ReceiptScannerView: View {
 
             Image(systemName: "doc.text.viewfinder")
                 .font(.system(size: 72, weight: .light))
-                .foregroundStyle(FridgeFitTheme.ColorToken.card.opacity(0.3))
+                .foregroundStyle(.white.opacity(0.3))
 
             ReceiptFrameGuide()
                 .padding(.horizontal, 48)
@@ -188,7 +188,7 @@ struct ReceiptScannerView: View {
 
                     Label("Avoid glare · Hold steady", systemImage: "sun.max.fill")
                         .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
-                        .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                        .foregroundStyle(.white)
                 }
             }
             .padding(FridgeFitTheme.Spacing.medium)
@@ -229,15 +229,15 @@ struct ReceiptScannerView: View {
             } label: {
                 Image(systemName: "receipt")
                     .font(.title2.weight(.semibold))
-                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                    .foregroundStyle(.white)
                     .frame(width: 72, height: 72)
-                    .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                    .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
                     .overlay {
-                        Circle().stroke(FridgeFitTheme.ColorToken.card, lineWidth: 4)
+                        Circle().stroke(.white, lineWidth: 4)
                     }
-                    .shadow(color: FridgeFitTheme.ColorToken.primary.opacity(0.3), radius: 0, x: 0, y: 0)
+                    .shadow(color: FridgeFitTheme.ColorToken.brandFill.opacity(0.3), radius: 0, x: 0, y: 0)
                     .padding(4)
-                    .background(FridgeFitTheme.ColorToken.primary.opacity(0.16), in: Circle())
+                    .background(FridgeFitTheme.ColorToken.brandFill.opacity(0.16), in: Circle())
             }
             .frame(minWidth: 44, minHeight: 44)
             .accessibilityLabel("Open camera to capture receipt")
@@ -260,7 +260,7 @@ struct ReceiptScannerView: View {
                 .frame(width: 52, height: 52)
                 .background(FridgeFitTheme.ColorToken.card, in: Circle())
                 .overlay {
-                    Circle().stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1)
+                    Circle().stroke(FridgeFitTheme.ColorToken.controlBorder, lineWidth: 1)
                 }
 
             Text(title)
@@ -374,7 +374,7 @@ struct ReceiptScannerView: View {
         .foregroundStyle(FridgeFitTheme.ColorToken.danger)
         .padding(FridgeFitTheme.Spacing.medium)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(FridgeFitTheme.ColorToken.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+        .background(FridgeFitTheme.ColorToken.errorBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 

@@ -179,9 +179,9 @@ struct AvailableCamerasView<RemoteDestination: View>: View {
         HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.small) {
             Text("\(number)")
                 .font(FridgeFitTheme.Typography.caption.weight(.bold))
-                .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                .foregroundStyle(.white)
                 .frame(width: 20, height: 20)
-                .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
             Text(text)
                 .font(FridgeFitTheme.Typography.metadata)
                 .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)

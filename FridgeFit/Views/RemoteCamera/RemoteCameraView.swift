@@ -183,9 +183,9 @@ struct RemoteCameraView: View {
                     .foregroundStyle(FridgeFitTheme.ColorToken.primary)
                 Image(systemName: "camera.fill")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                    .foregroundStyle(.white)
                     .padding(4)
-                    .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                    .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
                     .offset(x: 22, y: 17)
             }
             .accessibilityHidden(true)
@@ -599,7 +599,7 @@ struct RemoteCameraView: View {
                     .fill(detectionIndicatorColour)
                     .frame(width: 7, height: 7)
                 Text(viewModel.detectionStatus.displayName)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                 if viewModel.detectionStatus.isRunning {
                     Text("·")
                         .foregroundStyle(.tertiary)
@@ -608,12 +608,12 @@ struct RemoteCameraView: View {
                             ? "1 item"
                             : "\(viewModel.detectionCount) items"
                     )
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     if viewModel.reviewCount > 0 {
                         Text("·")
                             .foregroundStyle(.tertiary)
                         Text("\(viewModel.reviewCount) to confirm")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
                     }
                 }
                 Spacer()
@@ -640,7 +640,7 @@ struct RemoteCameraView: View {
                     ForEach(viewModel.ingredients.categories, id: \.self) { category in
                         Label(category.displayName, systemImage: category.symbolName)
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     }
                 }
             }
@@ -650,14 +650,14 @@ struct RemoteCameraView: View {
                 // fallback covers ten COCO classes, not the full taxonomy.
                 Text("Using the COCO fallback model (10 food classes). \(reason)")
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
             }
 
             if let reason = viewModel.detectionStatus.unavailableReason {
                 // Shown instead of boxes - never mock detections.
                 Text(reason)
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.warningText)
             }
 
             detectionDetails

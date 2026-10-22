@@ -205,7 +205,7 @@ struct CameraModeView: View {
             .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
-                    .stroke(FridgeFitTheme.ColorToken.danger.opacity(0.45), lineWidth: 1)
+                    .stroke(FridgeFitTheme.ColorToken.errorText, lineWidth: 1)
             }
             .disabled(!viewModel.isActive)
         }
