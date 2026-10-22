@@ -106,9 +106,13 @@ nonisolated struct OnlineRecipeIngredient: Identifiable, Hashable, Codable {
 /// before anything is shown or ranked.
 nonisolated struct OnlineRecipeMatch: Identifiable, Hashable, Codable {
     var recipe: OnlineRecipe
-    /// Names of the recipe's ingredient lines the user has.
+    /// Names of the recipe's ingredient lines the user has, as reconciled
+    /// against the pantry - not the provider's `usedIngredients`.
     var usedIngredientNames: [String]
-    /// The recipe's ingredient lines the user doesn't have.
+    /// The recipe's ingredient lines the user doesn't have. Together with
+    /// `usedIngredientNames` this accounts for every line of
+    /// `recipe.ingredients`, which is why a staple the provider omitted from
+    /// its own missed list still shows up here.
     var missedIngredients: [OnlineRecipeIngredient]
     /// `true` when served from the offline cache - the UI says so, so
     /// possibly-stale data is never presented as fresh.

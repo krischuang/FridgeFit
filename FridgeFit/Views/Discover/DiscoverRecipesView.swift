@@ -60,8 +60,9 @@ struct DiscoverRecipesView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await recipeViewModel.loadRecipesIfNeeded() }
         // Coming back from My Fridge: re-check have/missing against the
-        // current pantry locally (no API call, no quota).
-        .onAppear { Task { await viewModel.refreshPantryMatch() } }
+        // current pantry locally (no API call, no quota). Coalesced with the
+        // tab change that brought us here, so the two cost one pantry read.
+        .onAppear { viewModel.discoverDidAppear() }
         .navigationDestination(for: OnlineRecipeMatch.self) { pushed in
             LiveOnlineRecipeDetail(pushed: pushed, viewModel: viewModel, recipeViewModel: recipeViewModel)
         }
@@ -805,6 +806,11 @@ private struct DiscoverResultsPreview: View {
 /// tapped. This wrapper observes the search view model itself, so an open
 /// detail screen shows the latest have/missing after the pantry changes,
 /// instead of relying on SwiftUI re-running the destination closure.
+///
+/// Discover counts as visible while this is pushed - the tab has not
+/// changed - so pantry edits keep re-checking and the screen stays live.
+/// Falls back to the snapshot if the recipe is no longer in the results
+/// (hidden, or filtered out), which is better than an empty screen.
 private struct LiveOnlineRecipeDetail: View {
     let pushed: OnlineRecipeMatch
     @ObservedObject var viewModel: OnlineRecipeSearchViewModel
@@ -818,6 +824,6 @@ private struct LiveOnlineRecipeDetail: View {
             expiryUse: viewModel.expiryUse(for: match),
             recipeViewModel: recipeViewModel
         )
-        .onAppear { Task { await viewModel.refreshPantryMatch() } }
+        .onAppear { viewModel.discoverDidAppear() }
     }
 }

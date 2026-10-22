@@ -42,15 +42,26 @@ nonisolated enum OnlineRecipePantryReconciler {
         let ingredients = match.recipe.ingredients
         guard !ingredients.isEmpty else { return match }
 
-        let inStock = pantry.filter { $0.quantity > 0 }
+        // Every name is reduced to its match key exactly once. Asking
+        // `namesMatch` inside the ingredient x pantry loop re-derived both
+        // keys on every comparison, which for a page of results is tens of
+        // thousands of string splits per pantry change.
+        // Materialised, not lazy: it is walked once per ingredient, and a
+        // lazy chain would re-normalise on every pass.
+        let inStock: [StockedName] = pantry.filter { $0.quantity > 0 }.compactMap(StockedName.init)
+        let inStockByKey = Set(inStock.map(\.key))
+        let reportedUsedKeys = Set(
+            match.usedIngredientNames.map { OnlineRecipeExpiryRanking.matchKey($0) }.filter { !$0.isEmpty }
+        )
 
         var have: [String] = []
         var missing: [OnlineRecipeIngredient] = []
         for ingredient in ingredients {
-            let inPantry = inStock.contains { OnlineRecipeExpiryRanking.namesMatch(ingredient.name, $0.name) }
-            let reportedUsed = match.usedIngredientNames.contains {
-                OnlineRecipeExpiryRanking.namesMatch($0, ingredient.name)
-            } && isCovered(ingredient.name, byAnyOf: inStock)
+            let key = OnlineRecipeExpiryRanking.matchKey(ingredient.name)
+            let inPantry = !key.isEmpty && inStockByKey.contains(key)
+            let reportedUsed = !key.isEmpty
+                && reportedUsedKeys.contains(key)
+                && isCovered(key, byAnyOf: inStock)
             if inPantry || reportedUsed {
                 have.append(ingredient.name)
             } else {
@@ -64,9 +75,26 @@ nonisolated enum OnlineRecipePantryReconciler {
         return reconciled
     }
 
-    /// Whether one in-stock item's name is *part of* `ingredientName` -
-    /// every word of the pantry name appears in the ingredient name, so
-    /// pantry "beef" covers "ground beef" but "ground pork" does not.
+    /// An in-stock pantry name, normalised once: its match key and that
+    /// key's words, so neither is recomputed per ingredient.
+    private struct StockedName {
+        let key: String
+        let words: Set<String>
+
+        /// `nil` for a name that normalises to nothing - it can neither
+        /// match nor cover anything.
+        init?(_ item: PantryItem) {
+            let key = OnlineRecipeExpiryRanking.matchKey(item.name)
+            guard !key.isEmpty else { return nil }
+            self.key = key
+            self.words = Set(key.split(separator: " ").map(String.init))
+        }
+    }
+
+    /// Whether one in-stock item's name is *part of* the ingredient whose
+    /// match key is `ingredientKey` - every word of the pantry name appears
+    /// in the ingredient name, so pantry "beef" covers "ground beef" but
+    /// "ground pork" does not.
     ///
     /// Per item and directional on purpose. Pooling every in-stock word and
     /// asking "do these overlap?" let an unrelated item supply the shared
@@ -75,18 +103,9 @@ nonisolated enum OnlineRecipePantryReconciler {
     /// cheese" kept "cream cheese" on the word "cheese". Both are the false
     /// "you have it" this type exists to prevent. A subset test cannot do
     /// that, because neither pantry name is contained in the ingredient.
-    private static func isCovered(_ ingredientName: String, byAnyOf inStock: [PantryItem]) -> Bool {
-        let ingredientWords = Set(words(of: ingredientName))
+    private static func isCovered(_ ingredientKey: String, byAnyOf inStock: [StockedName]) -> Bool {
+        let ingredientWords = Set(ingredientKey.split(separator: " ").map(String.init))
         guard !ingredientWords.isEmpty else { return false }
-        return inStock.contains { item in
-            let itemWords = Set(words(of: item.name))
-            return !itemWords.isEmpty && itemWords.isSubset(of: ingredientWords)
-        }
-    }
-
-    /// The matching words of a name, after the same normalisation Discover
-    /// uses everywhere (descriptors, plurals, case).
-    private static func words(of name: String) -> [String] {
-        OnlineRecipeExpiryRanking.matchKey(name).split(separator: " ").map(String.init)
+        return inStock.contains { $0.words.isSubset(of: ingredientWords) }
     }
 }

@@ -13,7 +13,7 @@ import XCTest
 final class DiscoverPantryRefreshTests: XCTestCase {
 
     private func line(_ name: String, id: Int) -> OnlineRecipeIngredient {
-        OnlineRecipeIngredient(providerID: id, name: name, amount: 1, unit: .pieces, originalUnit: "")
+        OnlineRecipeFixtures.line(name, id: id)
     }
 
     private func item(_ name: String) -> PantryItem {
@@ -21,18 +21,7 @@ final class DiscoverPantryRefreshTests: XCTestCase {
     }
 
     private func bakedCustard() -> OnlineRecipeMatch {
-        var recipe = OnlineRecipeFixtures.recipe(id: 641_000, title: "Baked Custard")
-        recipe.ingredients = [
-            line("eggs", id: 1123),
-            line("brown sugar", id: 19334),
-            line("milk", id: 1077),
-            line("vanilla extract", id: 2050),
-        ]
-        return OnlineRecipeMatch(
-            recipe: recipe,
-            usedIngredientNames: ["eggs"],
-            missedIngredients: [line("milk", id: 1077), line("vanilla extract", id: 2050)]
-        )
+        OnlineRecipeFixtures.bakedCustard()
     }
 
     // MARK: - Use case

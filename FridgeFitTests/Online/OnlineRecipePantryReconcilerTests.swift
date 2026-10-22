@@ -10,29 +10,15 @@ import XCTest
 final class OnlineRecipePantryReconcilerTests: XCTestCase {
 
     private func line(_ name: String, id: Int) -> OnlineRecipeIngredient {
-        OnlineRecipeIngredient(providerID: id, name: name, amount: 1, unit: .pieces, originalUnit: "")
+        OnlineRecipeFixtures.line(name, id: id)
     }
 
     private func pantry(_ names: String...) -> [PantryItem] {
         names.map { PantryItem(ingredient: Ingredient(name: $0), quantity: 1, unit: .pieces) }
     }
 
-    /// Spoonacular's shape for the reported case: brown sugar is in the
-    /// ingredient list but in neither used nor missed, because the provider
-    /// assumes pantry staples are owned.
     private func bakedCustard() -> OnlineRecipeMatch {
-        var recipe = OnlineRecipeFixtures.recipe(id: 641_000, title: "Baked Custard")
-        recipe.ingredients = [
-            line("eggs", id: 1123),
-            line("brown sugar", id: 19334),
-            line("milk", id: 1077),
-            line("vanilla extract", id: 2050),
-        ]
-        return OnlineRecipeMatch(
-            recipe: recipe,
-            usedIngredientNames: ["eggs"],
-            missedIngredients: [line("milk", id: 1077), line("vanilla extract", id: 2050)]
-        )
+        OnlineRecipeFixtures.bakedCustard()
     }
 
     // MARK: - The reported bug
