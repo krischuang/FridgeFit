@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-enum AppTab: Hashable, CaseIterable {
+nonisolated enum AppTab: Hashable, CaseIterable {
     case kitchen
     case recipes
     case home
