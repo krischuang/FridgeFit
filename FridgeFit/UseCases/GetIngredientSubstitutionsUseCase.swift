@@ -46,9 +46,9 @@ nonisolated struct GetIngredientSubstitutionsUseCase {
         let pantryItems = try await pantryRepository.fetchAll()
 
         let cacheKey = SubstitutionCacheKey(
-            recipeID: recipe.id,
-            ingredientName: targetIngredient.ingredient.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-            pantrySnapshotHash: SubstitutionCache.pantrySnapshotHash(pantryItems)
+            recipeTitle: recipe.title,
+            ingredientName: targetIngredient.ingredient.name,
+            pantryFingerprint: SubstitutionCache.pantryFingerprint(pantryItems)
         )
         // A cache hit is served even when the provider has since become
         // unavailable: these suggestions were really generated for this

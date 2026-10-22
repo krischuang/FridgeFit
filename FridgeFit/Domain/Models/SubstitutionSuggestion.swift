@@ -11,7 +11,11 @@ import Foundation
 /// `pantryQuantity`/`pantryUnit`/`validationStatus` come entirely from
 /// `SubstitutionSuggestionValidator` checking the real pantry, never from
 /// the LLM - see `RawSubstitutionSuggestion`.
-nonisolated struct SubstitutionSuggestion: Identifiable, Equatable {
+/// `Codable` so `SubstitutionCacheStore` can keep validated suggestions
+/// across launches. Only ever encoded into that on-device cache - the
+/// validated fields are re-derived from the real pantry whenever a
+/// suggestion is generated, never read back from a wire format.
+nonisolated struct SubstitutionSuggestion: Identifiable, Equatable, Codable {
     let id: UUID
     let ingredientName: String
     let suggestedQuantity: Double?
