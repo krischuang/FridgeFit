@@ -35,4 +35,39 @@ nonisolated protocol SavedRecipeRepository: RecipeRepository {
     /// Removes the saved recipe with `id`. Removing one that isn't saved is
     /// not an error.
     func remove(id: UUID) async throws
+
+    /// Saves `recipe` together with a local copy of its photo, so the saved
+    /// recipe can be shown with its picture without going back online.
+    /// `nil` image data keeps any photo already stored for this recipe.
+    func save(_ recipe: Recipe, sourceRecipeID: Int, imageData: Data?) async throws
+
+    /// The stored photo for a saved recipe, or `nil` if none was saved.
+    func imageData(forRecipeID id: UUID) async throws -> Data?
+
+    /// Stored photos for several saved recipes in one call, keyed by recipe
+    /// id. Recipes without a photo are simply absent from the result.
+    func imageData(forRecipeIDs ids: [UUID]) async throws -> [UUID: Data]
+}
+
+/// Defaults for stores that don't keep photos (e.g. Firestore): the recipe
+/// is saved without one, and the UI falls back to `Recipe.imageURL`.
+nonisolated extension SavedRecipeRepository {
+    func save(_ recipe: Recipe, sourceRecipeID: Int, imageData: Data?) async throws {
+        try await save(recipe, sourceRecipeID: sourceRecipeID)
+    }
+
+    func imageData(forRecipeID id: UUID) async throws -> Data? {
+        nil
+    }
+
+    /// Fallback for stores without a batch query: one lookup per id.
+    func imageData(forRecipeIDs ids: [UUID]) async throws -> [UUID: Data] {
+        var result: [UUID: Data] = [:]
+        for id in ids {
+            if let data = try await imageData(forRecipeID: id) {
+                result[id] = data
+            }
+        }
+        return result
+    }
 }

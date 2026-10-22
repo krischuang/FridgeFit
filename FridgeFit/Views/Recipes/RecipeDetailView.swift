@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 /// Shared detail presentation for bundled, saved, recommended, and featured
 /// recipes. Pantry readings remain owned by `RecipeViewModel`.
@@ -17,7 +18,8 @@ struct RecipeDetailView: View {
             LazyVStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.section) {
                 RecipeDetailHero(
                     recipe: recipe,
-                    feasibility: viewModel.feasibility(for: recipe)
+                    feasibility: viewModel.feasibility(for: recipe),
+                    image: viewModel.heroImage(for: recipe)
                 )
                 RecipePantryMatchCard(feasibility: viewModel.feasibility(for: recipe))
 
@@ -65,6 +67,10 @@ struct RecipeDetailView: View {
             }
         }
         .task { await viewModel.evaluateIfNeeded(recipe) }
+        // The list only decodes row-sized thumbnails; the hero wants the full
+        // stored photo, and only for the recipe actually open. Cancelled with
+        // the view if the user leaves before it finishes.
+        .task { await viewModel.loadHeroImage(for: recipe) }
         // Leaving the screen stops any on-device substitution generation
         // still running. Suggestions already found stay in the view model,
         // so coming back doesn't re-run the model.
@@ -75,6 +81,8 @@ struct RecipeDetailView: View {
 private struct RecipeDetailHero: View {
     let recipe: Recipe
     let feasibility: RecipeFeasibilityResult?
+    /// Decoded stored photo for a saved recipe; falls back to `recipe.imageURL`.
+    var image: UIImage? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
@@ -82,7 +90,20 @@ private struct RecipeDetailHero: View {
                 RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.largeCard, style: .continuous)
                     .fill(heroBackground)
                     .frame(minHeight: 230)
-                BotanicalRecipeArtwork(symbolName: recipe.symbolName)
+                if RecipePhoto<EmptyView>.hasPhoto(image: image, imageURL: recipe.imageURL) {
+                    Color.clear
+                        .frame(height: 230)
+                        .frame(maxWidth: .infinity)
+                        .overlay {
+                            RecipePhoto(image: image, imageURL: recipe.imageURL) {
+                                BotanicalRecipeArtwork(symbolName: recipe.symbolName)
+                            }
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.largeCard, style: .continuous))
+                        .accessibilityHidden(true)
+                } else {
+                    BotanicalRecipeArtwork(symbolName: recipe.symbolName)
+                }
                 VStack {
                     HStack {
                         FridgeFitStatusBadge(title: "Pantry matched", systemImage: "leaf.fill", tone: .success)
