@@ -13,6 +13,10 @@ import UIKit
 final class AuthViewModel: ObservableObject {
     @Published var user: User?
     @Published var errorMessage: String?
+    /// A completed action the user should hear about but that is not a
+    /// failure, currently only "we sent the reset email". Kept separate from
+    /// `errorMessage` so the two never have to share one label.
+    @Published var infoMessage: String?
     @Published var isLoading = false
 
     var isAuthenticated: Bool { user != nil }
@@ -37,6 +41,7 @@ final class AuthViewModel: ObservableObject {
 
     func signIn(email: String, password: String) async {
         errorMessage = nil
+        infoMessage = nil
         isLoading = true
         defer { isLoading = false }
         do {
@@ -47,13 +52,54 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
-    func signUp(email: String, password: String) async {
+    /// - Parameter fullName: optional, and written to the Firebase profile's
+    ///   `displayName` when given. `ProfileView.accountName` already prefers
+    ///   that over the email's local part, so a name typed here is the name
+    ///   shown there; leaving it blank keeps the existing fallback.
+    func signUp(fullName: String = "", email: String, password: String) async {
         errorMessage = nil
+        infoMessage = nil
         isLoading = true
         defer { isLoading = false }
         do {
             let result = try await Auth.auth().createUser(withEmail: email, password: password)
+            let trimmedName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedName.isEmpty {
+                let request = result.user.createProfileChangeRequest()
+                request.displayName = trimmedName
+                // The account exists either way. A profile update that fails
+                // must not read as a failed sign-up, so this is deliberately
+                // not allowed to throw out of here.
+                try? await request.commitChanges()
+            }
             user = result.user
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Sends Firebase's password reset email.
+    ///
+    /// Reports success for any syntactically valid address, including ones
+    /// with no account: confirming which emails are registered would let
+    /// anyone enumerate the user list from the sign-in screen.
+    func sendPasswordReset(email: String) async {
+        errorMessage = nil
+        infoMessage = nil
+
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedEmail.isEmpty else {
+            errorMessage = "Enter your email address first, then tap Forgot Password."
+            return
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            try await Auth.auth().sendPasswordReset(withEmail: trimmedEmail)
+            infoMessage = "If an account exists for \(trimmedEmail), a reset link is on its way."
+        } catch let error as NSError where error.code == AuthErrorCode.userNotFound.rawValue {
+            infoMessage = "If an account exists for \(trimmedEmail), a reset link is on its way."
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -61,6 +107,7 @@ final class AuthViewModel: ObservableObject {
 
     func signInWithGoogle() async {
         errorMessage = nil
+        infoMessage = nil
         isLoading = true
         defer { isLoading = false }
 
