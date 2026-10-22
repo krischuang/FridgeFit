@@ -107,7 +107,7 @@ struct IngredientEditorView: View {
             } label: {
                 Group {
                     if isSaving {
-                        ProgressView().tint(FridgeFitTheme.ColorToken.card)
+                        ProgressView().tint(.white)
                     } else {
                         Label(isAdding ? "Add to Pantry" : "Save Changes", systemImage: isAdding ? "plus.circle" : "checkmark.circle")
                     }
@@ -513,11 +513,11 @@ private struct StitchQuantityControl: View {
         Button(action: action) {
             Text(title)
                 .font(FridgeFitTheme.Typography.caption.weight(.semibold))
-                .foregroundStyle(isSelected ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.textSecondary)
+                .foregroundStyle(isSelected ? .white : FridgeFitTheme.ColorToken.textSecondary)
                 .lineLimit(1)
                 .padding(.horizontal, FridgeFitTheme.Spacing.small)
                 .frame(minHeight: 36)
-                .background(isSelected ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.disabledSurface.opacity(0.7), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
+                .background(isSelected ? FridgeFitTheme.ColorToken.brandFill : FridgeFitTheme.ColorToken.disabledSurface.opacity(0.7), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
         }
         .buttonStyle(.plain)
         .frame(minWidth: 44, minHeight: 44)

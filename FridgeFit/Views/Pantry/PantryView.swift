@@ -33,6 +33,7 @@ struct PantryView: View {
                         Label("Scan Receipt", systemImage: "doc.text.viewfinder")
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(FridgeFitTheme.ColorToken.brandFill)
 
                     Button {
                         isPresentingAddItem = true
@@ -40,6 +41,7 @@ struct PantryView: View {
                         Label("Add Ingredient", systemImage: "plus")
                     }
                     .buttonStyle(.bordered)
+                    .tint(FridgeFitTheme.ColorToken.primary)
                 }
             } else {
                 List {
@@ -52,15 +54,15 @@ struct PantryView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(item.name)
                                         .font(.body)
-                                        .foregroundStyle(.primary)
+                                        .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
                                     Text(item.ingredient.category.rawValue)
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                                 }
                                 Spacer()
                                 Text(item.formattedQuantity)
                                     .font(.callout.weight(.medium))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                                     .monospacedDigit()
                             }
                             .padding(.vertical, 2)

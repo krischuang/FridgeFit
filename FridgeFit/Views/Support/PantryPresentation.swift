@@ -47,9 +47,9 @@ struct InlineErrorBanner: View {
         } icon: {
             Image(systemName: "exclamationmark.triangle.fill")
         }
-        .foregroundStyle(.red)
+        .foregroundStyle(FridgeFitTheme.ColorToken.errorText)
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(FridgeFitTheme.ColorToken.errorBackground, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }

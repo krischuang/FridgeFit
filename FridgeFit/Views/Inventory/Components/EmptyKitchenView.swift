@@ -15,7 +15,7 @@ struct EmptyKitchenView: View {
         VStack(spacing: 12) {
             Image(systemName: "refrigerator")
                 .font(.system(size: 36, weight: .regular))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                 .accessibilityHidden(true)
 
             Text(title)
@@ -23,14 +23,14 @@ struct EmptyKitchenView: View {
 
             Text(message)
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
                     .buttonStyle(.borderedProminent)
-                    .tint(KitchenTheme.warmAccent)
+                    .tint(FridgeFitTheme.ColorToken.brandFill)
                     .padding(.top, 4)
             }
         }

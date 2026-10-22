@@ -194,9 +194,9 @@ struct MyKitchenView: View {
                 } label: {
                     Image(systemName: "plus")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                        .foregroundStyle(.white)
                         .frame(width: 36, height: 36)
-                        .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                        .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
@@ -446,21 +446,21 @@ struct MyKitchenView: View {
             VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
                 Label("USE SOON", systemImage: "clock.fill")
                     .font(FridgeFitTheme.Typography.caption.weight(.bold))
-                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                    .foregroundStyle(KitchenTheme.soon)
                     .padding(.horizontal, FridgeFitTheme.Spacing.small)
                     .padding(.vertical, 5)
-                    .background(FridgeFitTheme.ColorToken.warningText, in: Capsule())
+                    .background(FridgeFitTheme.ColorToken.warningBackground, in: Capsule())
 
                 Spacer(minLength: 0)
 
                 Text(item.name)
                     .font(FridgeFitTheme.Typography.sectionTitle)
-                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                    .foregroundStyle(.white)
                     .lineLimit(2)
 
                 Label(expiryText(for: item), systemImage: "exclamationmark.triangle")
                     .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
-                    .foregroundStyle(FridgeFitTheme.ColorToken.card.opacity(0.92))
+                    .foregroundStyle(.white.opacity(0.92))
                     .lineLimit(2)
             }
             .padding(FridgeFitTheme.Spacing.medium)
@@ -472,7 +472,7 @@ struct MyKitchenView: View {
         ZStack(alignment: .topLeading) {
             InventoryArtworkBackdrop(category: nil)
             LinearGradient(
-                colors: [.clear, FridgeFitTheme.ColorToken.primary.opacity(0.72)],
+                colors: [.clear, FridgeFitTheme.ColorToken.brandFill.opacity(0.9)],
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -482,10 +482,10 @@ struct MyKitchenView: View {
                 Spacer(minLength: 0)
                 Text("Nothing needs attention")
                     .font(FridgeFitTheme.Typography.cardTitle)
-                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                    .foregroundStyle(.white)
                 Text("Your tracked items are not use-soon.")
                     .font(FridgeFitTheme.Typography.metadata)
-                    .foregroundStyle(FridgeFitTheme.ColorToken.card.opacity(0.9))
+                    .foregroundStyle(.white.opacity(0.9))
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(FridgeFitTheme.Spacing.medium)
@@ -506,13 +506,13 @@ struct MyKitchenView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(summary.title)
                     .font(FridgeFitTheme.Typography.caption.weight(.semibold))
-                    .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                    .foregroundStyle(.white)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(categoryItemCount(for: summary))
                     .font(.caption2)
-                    .foregroundStyle(FridgeFitTheme.ColorToken.card.opacity(0.84))
+                    .foregroundStyle(.white.opacity(0.84))
                     .lineLimit(1)
             }
             .padding(FridgeFitTheme.Spacing.small)
@@ -521,7 +521,7 @@ struct MyKitchenView: View {
         .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
-                .stroke(isAll ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.border, lineWidth: isAll ? 2 : 1)
+                .stroke(isAll ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.controlBorder, lineWidth: isAll ? 2 : 1)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(summary.title), \(categoryItemCount(for: summary))")
@@ -628,8 +628,8 @@ struct MyKitchenView: View {
         }
         .padding(.leading, FridgeFitTheme.Spacing.large)
         .padding(.vertical, FridgeFitTheme.Spacing.xSmall)
-        .foregroundStyle(FridgeFitTheme.ColorToken.card)
-        .background(FridgeFitTheme.ColorToken.primary, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+        .foregroundStyle(.white)
+        .background(FridgeFitTheme.ColorToken.brandFill, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
         .padding(.horizontal, FridgeFitTheme.Spacing.large)
         .padding(.bottom, FridgeFitTheme.Spacing.small)
     }

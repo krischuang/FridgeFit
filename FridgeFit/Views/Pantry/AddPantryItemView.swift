@@ -56,7 +56,7 @@ struct AddPantryItemView: View {
                                 Label("Update Existing Quantity", systemImage: "arrow.uturn.right.circle")
                             }
                             .buttonStyle(.bordered)
-                            .tint(.orange)
+                            .tint(FridgeFitTheme.ColorToken.warningText)
                         }
                     }
                 }
