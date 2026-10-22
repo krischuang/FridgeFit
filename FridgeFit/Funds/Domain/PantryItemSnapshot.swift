@@ -6,7 +6,7 @@
 import Foundation
 
 // A read-only snapshot of one pantry item, as reported by the Smart Fridge module.
-struct PantryItemSnapshot: Identifiable, Hashable, Codable, Sendable {
+nonisolated struct PantryItemSnapshot: Identifiable, Hashable, Codable, Sendable {
     let id: PantryItemID
     let name: String
     let quantity: Double

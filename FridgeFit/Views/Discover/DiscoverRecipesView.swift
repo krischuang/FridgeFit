@@ -399,7 +399,7 @@ private struct DiscoverRecipeCard: View {
 /// Turns ingredient counts into honest badge copy. In particular, a recipe
 /// with no matches is not described as pantry-matched, while a recipe with no
 /// ingredient data is distinguished from a measured zero-percent result.
-struct DiscoverPantryMatchPresentation: Equatable {
+nonisolated struct DiscoverPantryMatchPresentation: Equatable {
     enum State: Equatable {
         case unavailable
         case noMatches

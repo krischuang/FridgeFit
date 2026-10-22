@@ -117,7 +117,7 @@ nonisolated struct ReceiptImageFingerprint: Hashable, Codable, CustomStringConve
 /// bit depth, alpha position, row padding - is normalised here, once, so the
 /// fingerprint is a function of the picture rather than of the file that
 /// carried it.
-private struct CanonicalBitmap {
+private nonisolated struct CanonicalBitmap {
     let width: Int
     let height: Int
     /// Row-major, top row first, 4 bytes per pixel, no row padding.
