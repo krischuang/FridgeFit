@@ -80,6 +80,13 @@ final class WebRTCClient: PeerConnectionControlling {
         rtcConfiguration.continualGatheringPolicy = .gatherContinually
         rtcConfiguration.bundlePolicy = .maxBundle
         rtcConfiguration.rtcpMuxPolicy = .require
+        // Pre-gather a candidate pool as soon as the configuration is applied,
+        // rather than waiting for `setLocalDescription`. The controller builds
+        // its peer connection before it writes anything to Firestore, so this
+        // moves host-candidate gathering and the STUN round trips off the
+        // critical path and runs them alongside signaling. One pool entry is
+        // enough: this session negotiates a single bundled transport.
+        rtcConfiguration.iceCandidatePoolSize = 1
 
         let proxy = PeerConnectionDelegateProxy { [weak self] event in
             self?.handle(proxyEvent: event)

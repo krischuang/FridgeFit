@@ -66,6 +66,11 @@ final class PantryItemEntity {
     var lowStockThreshold: Double?
     var packageUnit: String?
     var packageLevel: Double?
+    /// When the item entered the pantry. Optional, so rows written by a
+    /// build before this field existed open with `nil` and are simply not
+    /// recent - SwiftData's lightweight migration adds the column without
+    /// touching them.
+    var addedAt: Date?
 
     /// This item's history.
     ///
@@ -98,7 +103,8 @@ final class PantryItemEntity {
         openedState: String? = nil,
         lowStockThreshold: Double? = nil,
         packageUnit: String? = nil,
-        packageLevel: Double? = nil
+        packageLevel: Double? = nil,
+        addedAt: Date? = nil
     ) {
         self.id = id
         self.ownerID = ownerID
@@ -112,5 +118,6 @@ final class PantryItemEntity {
         self.lowStockThreshold = lowStockThreshold
         self.packageUnit = packageUnit
         self.packageLevel = packageLevel
+        self.addedAt = addedAt
     }
 }

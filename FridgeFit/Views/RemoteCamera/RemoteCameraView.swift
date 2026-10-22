@@ -85,9 +85,15 @@ struct RemoteCameraView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(FridgeFitTheme.ColorToken.canvas, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
+        // Connecting first, and deliberately not after `start()`. `start()`
+        // registers this device and attaches the discovery listener, neither
+        // of which a session depends on - the camera learns who is calling
+        // from the session document itself. Awaiting its Firestore write
+        // before dialling put a full round trip between arriving here and the
+        // offer, for a registration the previous screen had already made.
         .task {
-            await viewModel.start()
             connectInitialCameraIfNeeded()
+            await viewModel.start()
         }
         .onAppear { onPresentationChange?(true) }
         .onDisappear {

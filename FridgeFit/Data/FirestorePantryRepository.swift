@@ -154,6 +154,7 @@ nonisolated extension FirestorePantryRepository {
         "lowStockThreshold",
         "packageUnit",
         "packageLevel",
+        "addedAt",
     ]
 
     /// The kitchen fields that have a value on `item`, keyed as stored.
@@ -176,6 +177,9 @@ nonisolated extension FirestorePantryRepository {
         }
         if let packageLevel = item.packageLevel {
             data["packageLevel"] = packageLevel.rawValue
+        }
+        if let addedAt = item.addedAt {
+            data["addedAt"] = Timestamp(date: addedAt)
         }
         return data
     }
@@ -210,7 +214,8 @@ nonisolated extension FirestorePantryRepository {
             openedState: (data["openedState"] as? String).flatMap(OpenedState.init(rawValue:)),
             lowStockThreshold: data["lowStockThreshold"] as? Double,
             packageUnit: (data["packageUnit"] as? String).flatMap(PackageUnit.init(rawValue:)),
-            packageLevel: (data["packageLevel"] as? Double).flatMap(PackageLevel.init(rawValue:))
+            packageLevel: (data["packageLevel"] as? Double).flatMap(PackageLevel.init(rawValue:)),
+            addedAt: (data["addedAt"] as? Timestamp)?.dateValue()
         )
     }
 }

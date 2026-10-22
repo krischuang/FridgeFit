@@ -85,15 +85,6 @@ nonisolated final class InMemorySignalingTransport: SignalingTransport, @uncheck
         return withLock { sessions[sessionId] }
     }
 
-    func setOffer(sessionId: String, offer: SessionDescriptionPayload) async throws {
-        try throwIfFailing()
-        let updated = try mutateSession(sessionId) { session in
-            session.with(offer: offer, answer: nil).with(state: .offering)
-        }
-        notify(session: updated)
-        notifyIncoming(session: updated)
-    }
-
     func setAnswer(sessionId: String, answer: SessionDescriptionPayload) async throws {
         try throwIfFailing()
         let updated = try mutateSession(sessionId) { session in

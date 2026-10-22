@@ -12,9 +12,13 @@ import Foundation
 /// one place that can create a pantry item and it can't be skipped.
 nonisolated struct AddPantryItemUseCase {
     private let pantryRepository: PantryRepository
+    private let now: @Sendable () -> Date
 
-    init(pantryRepository: PantryRepository) {
+    /// - Parameter now: injectable so a test can place an item inside or
+    ///   outside the "Recently added" window without waiting.
+    init(pantryRepository: PantryRepository, now: @escaping @Sendable () -> Date = { Date() }) {
         self.pantryRepository = pantryRepository
+        self.now = now
     }
 
     /// Validates and adds a pantry item, returning the item that was
@@ -75,7 +79,13 @@ nonisolated struct AddPantryItemUseCase {
             openedState: openedState,
             lowStockThreshold: lowStockThreshold,
             packageUnit: packageUnit,
-            packageLevel: packageLevel
+            packageLevel: packageLevel,
+            // Stamped here, which is the one place a pantry item is ever
+            // constructed: the kitchen editor, the receipt scanner, the
+            // camera review sheet and the remote-camera review all reach the
+            // pantry through this call, so "Recently added" sees every route
+            // in without any of them having to know about it.
+            addedAt: now()
         )
         try await pantryRepository.add(item)
         return item

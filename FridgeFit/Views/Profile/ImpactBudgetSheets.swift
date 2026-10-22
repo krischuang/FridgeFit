@@ -154,8 +154,22 @@ struct LogGrocerySpendSheet: View {
 /// Records what one unit of an ingredient cost, so its value at risk can be
 /// shown. Writes only to the FridgeFunds price store - the pantry item
 /// itself is never modified from here.
+///
+/// Takes the three strings it actually renders rather than an
+/// `AtRiskIngredient`. It used to take the model, which tied the only price
+/// form in the app to the one screen that had such a value to hand - the
+/// Impact screen's at-risk list - and that list only contains items expiring
+/// within `ValueFridgeUseCase.atRiskWindowDays`. Pricing anything else was
+/// therefore impossible, which is why fridge value could stay empty no
+/// matter what the user did. My Fridge's ingredient drawer now opens the
+/// same sheet for any item.
 struct ItemPriceSheet: View {
-    let item: AtRiskIngredient
+    let itemName: String
+    /// The pantry's own unit symbol, for the "price per ..." wording. Empty
+    /// is tolerated and reads as "unit".
+    let unit: String
+    /// "200 g", for the explanatory line. `nil` omits that line.
+    let quantityText: String?
     let currency: Currency
     /// The last price recorded for an ingredient with this name, if the
     /// price book has one.
@@ -167,16 +181,18 @@ struct ItemPriceSheet: View {
 
     private var cost: Decimal? { DecimalInput.parse(costText) }
 
+    private var unitLabel: String { unit.isEmpty ? "unit" : unit }
+
     var body: some View {
         NavigationStack {
             Form {
-                Section("Price per \(item.unit.isEmpty ? "unit" : item.unit)") {
+                Section("Price per \(unitLabel)") {
                     HStack {
                         Text(verbatim: currency.symbol)
                             .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                         TextField("0.00", text: $costText)
                             .keyboardType(.decimalPad)
-                            .accessibilityLabel("Price per \(item.unit.isEmpty ? "unit" : item.unit)")
+                            .accessibilityLabel("Price per \(unitLabel)")
                     }
                     if let suggestion {
                         Button("Use last recorded price, \(suggestion.formatted())") {
@@ -186,13 +202,15 @@ struct ItemPriceSheet: View {
                     }
                 }
 
-                Section {
-                    Text("You have \(item.quantityText) of \(item.name). Its value at risk is this price multiplied by that amount.")
-                        .font(FridgeFitTheme.Typography.caption)
-                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                if let quantityText {
+                    Section {
+                        Text("You have \(quantityText) of \(itemName). Its value is this price multiplied by that amount.")
+                            .font(FridgeFitTheme.Typography.caption)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    }
                 }
             }
-            .navigationTitle(item.name)
+            .navigationTitle(itemName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

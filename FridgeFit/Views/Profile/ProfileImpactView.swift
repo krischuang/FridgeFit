@@ -99,7 +99,9 @@ struct ProfileImpactView: View {
                 }
             case .price(let item):
                 ItemPriceSheet(
-                    item: item,
+                    itemName: item.name,
+                    unit: item.unit,
+                    quantityText: item.quantityText,
                     currency: viewModel.currency,
                     suggestion: viewModel.suggestedUnitCost(forIngredientNamed: item.name)
                 ) { unitCost in

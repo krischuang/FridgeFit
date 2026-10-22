@@ -29,6 +29,15 @@ struct IngredientDrawerView: View {
     @State private var itemBeingEdited: PantryItem?
     @State private var isAdjustingQuantity = false
     @State private var repeatTask: Task<Void, Never>?
+    /// FridgeFunds' stores. Optional because the environment default is
+    /// `nil`; with no funds environment the price row simply never appears,
+    /// rather than the drawer failing to build.
+    @Environment(\.fundsEnvironment) private var funds
+    @State private var isRecordingPrice = false
+    /// Bumped after a price is written, purely to re-read `priceStore` -
+    /// the store is a plain object, not observable, so nothing else would
+    /// tell the row its value changed.
+    @State private var priceRevision = 0
 
     init(
         itemID: UUID,
@@ -96,6 +105,21 @@ struct IngredientDrawerView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(viewModel.errorMessage ?? "Try again.")
+        }
+        // Prices are stored per user in Firestore, so they have to be read
+        // once before the row can show one. Cheap and idempotent.
+        .task { await funds?.reload() }
+        .sheet(isPresented: $isRecordingPrice) {
+            if let item = viewModel.visibleItem, let funds {
+                ItemPriceSheet(
+                    itemName: item.name,
+                    unit: item.unit.symbol,
+                    quantityText: item.formattedQuantity,
+                    currency: funds.displayCurrency,
+                    suggestion: funds.priceBook.entry(forIngredientNamed: item.name)?.unitCost,
+                    onSave: savePrice
+                )
+            }
         }
         .sheet(item: $itemBeingEdited) { item in
             NavigationStack {
@@ -327,6 +351,15 @@ struct IngredientDrawerView: View {
                 }
                 .buttonStyle(FridgeFitSecondaryButtonStyle())
 
+                if funds != nil {
+                    Button {
+                        isRecordingPrice = true
+                    } label: {
+                        Label(recordedPrice == nil ? "Record Price" : "Update Price", systemImage: "tag")
+                    }
+                    .buttonStyle(FridgeFitSecondaryButtonStyle())
+                }
+
                 Button(role: .destructive) {
                     discard()
                 } label: {
@@ -368,8 +401,48 @@ struct IngredientDrawerView: View {
             if let opened = openedLine(for: draft.openedState) {
                 DrawerInfoRow(title: "Opened", value: opened, systemImage: "seal")
             }
+            if funds != nil {
+                DrawerInfoRow(title: "Price", value: priceDetail, systemImage: "tag")
+            }
         }
         .drawerPanel()
+    }
+
+    // MARK: - Price
+
+    /// What one unit of this item cost, if it has ever been recorded.
+    ///
+    /// Read straight from the price store rather than cached: a price is not
+    /// part of `PantryItem`, it lives in FridgeFunds keyed by the item's id,
+    /// and the Impact screen reads it the same way.
+    private var recordedPrice: Money? {
+        _ = priceRevision
+        guard let funds, let item = viewModel.visibleItem else { return nil }
+        return funds.priceStore.info(for: FridgeFitPantryReading.id(for: item))?.unitCost
+    }
+
+    private var priceDetail: String {
+        guard let item = viewModel.visibleItem else { return "Not recorded" }
+        guard let recordedPrice else { return "Not recorded" }
+        return "\(recordedPrice.formatted()) per \(item.unit.symbol)"
+    }
+
+    /// Writes the price to FridgeFunds and remembers it against the
+    /// ingredient's name, so re-buying the same thing suggests it back.
+    ///
+    /// Deliberately the same two calls `ImpactBudgetViewModel.savePrice`
+    /// makes. The pantry item is not touched: a price is FridgeFunds' fact
+    /// about an item, not part of the item.
+    private func savePrice(_ unitCost: Decimal) {
+        guard let funds, let item = viewModel.visibleItem, unitCost > 0 else { return }
+        let id = FridgeFitPantryReading.id(for: item)
+        let money = Money(unitCost, funds.displayCurrency)
+        let existing = funds.priceStore.info(for: id)
+        funds.priceStore.save(
+            ItemPriceInfo(pantryItemID: id, unitCost: money, expiryDate: existing?.expiryDate)
+        )
+        funds.rememberPrice(of: item.name, unit: item.unit.symbol, unitCost: money)
+        priceRevision += 1
     }
 
     private func correctQuantityEditor() -> some View {

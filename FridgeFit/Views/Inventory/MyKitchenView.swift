@@ -126,6 +126,7 @@ struct MyKitchenView: View {
 
                 if viewModel.hasResults {
                     inventoryDashboard
+                    recentlyAddedSection
                     ingredientList
                         .padding(.top, -FridgeFitTheme.Spacing.xSmall)
                 } else if inventory.isLoading {
@@ -437,33 +438,36 @@ struct MyKitchenView: View {
     private func urgentPriorityContent(_ item: PantryItem) -> some View {
         ZStack(alignment: .topLeading) {
             InventoryArtworkBackdrop(category: item.ingredient.category)
-            LinearGradient(
-                colors: [.clear, .black.opacity(0.16), .black.opacity(0.76)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
 
-            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Amber on amber, and padded on its own rather than with the
+                // block below: the caption group carries the scrim, and this
+                // badge already supplies its own contrast.
                 Label("USE SOON", systemImage: "clock.fill")
                     .font(FridgeFitTheme.Typography.caption.weight(.bold))
                     .foregroundStyle(KitchenTheme.soon)
                     .padding(.horizontal, FridgeFitTheme.Spacing.small)
                     .padding(.vertical, 5)
                     .background(FridgeFitTheme.ColorToken.warningBackground, in: Capsule())
+                    .padding(FridgeFitTheme.Spacing.medium)
 
                 Spacer(minLength: 0)
 
-                Text(item.name)
-                    .font(FridgeFitTheme.Typography.sectionTitle)
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
+                VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                    Text(item.name)
+                        .font(FridgeFitTheme.Typography.sectionTitle)
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
 
-                Label(expiryText(for: item), systemImage: "exclamationmark.triangle")
-                    .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.92))
-                    .lineLimit(2)
+                    Label(expiryText(for: item), systemImage: "exclamationmark.triangle")
+                        .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.92))
+                        .lineLimit(2)
+                }
+                .padding(FridgeFitTheme.Spacing.medium)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background { PhotoCaptionScrim() }
             }
-            .padding(FridgeFitTheme.Spacing.medium)
         }
         .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
     }
@@ -497,11 +501,6 @@ struct MyKitchenView: View {
         let isAll = summary == .all
         return ZStack(alignment: .bottomLeading) {
             InventoryArtworkBackdrop(category: summary.representativeCategory, allItems: isAll)
-            LinearGradient(
-                colors: [.clear, .black.opacity(isAll ? 0.66 : 0.72)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(summary.title)
@@ -516,6 +515,8 @@ struct MyKitchenView: View {
                     .lineLimit(1)
             }
             .padding(FridgeFitTheme.Spacing.small)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background { PhotoCaptionScrim() }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
         .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
@@ -525,6 +526,94 @@ struct MyKitchenView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(summary.title), \(categoryItemCount(for: summary))")
+    }
+
+    /// What arrived in the last three hours, above the full list.
+    ///
+    /// A horizontal strip rather than a second vertical list: these items are
+    /// still in Pantry Ingredients below, and repeating them in the same row
+    /// treatment would read as duplicates rather than as a highlight.
+    ///
+    /// Absent entirely when nothing qualifies. Food added before this build
+    /// has no `addedAt` and never appears here, so an existing pantry looks
+    /// the same as it did until something new is added.
+    @ViewBuilder
+    private var recentlyAddedSection: some View {
+        let recent = viewModel.recentlyAddedItems()
+        if !recent.isEmpty {
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+                HStack(alignment: .firstTextBaseline, spacing: FridgeFitTheme.Spacing.small) {
+                    Label("Recently added", systemImage: "sparkles")
+                        .font(FridgeFitTheme.Typography.sectionTitle)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+
+                    Text("last 3 hours")
+                        .font(FridgeFitTheme.Typography.caption)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+
+                    Spacer(minLength: 0)
+                }
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: FridgeFitTheme.Spacing.small) {
+                        ForEach(recent) { item in
+                            recentlyAddedCard(for: item)
+                        }
+                    }
+                    .padding(.horizontal, 1)
+                    .padding(.vertical, 2)
+                }
+                // The strip runs full bleed while the rest of the screen keeps
+                // its margin, so a card can sit under the edge instead of
+                // stopping short of it and looking clipped.
+                .padding(.horizontal, -FridgeFitTheme.Spacing.large)
+                .contentMargins(.horizontal, FridgeFitTheme.Spacing.large, for: .scrollContent)
+            }
+        }
+    }
+
+    private func recentlyAddedCard(for item: PantryItem) -> some View {
+        Button {
+            viewModel.select(item)
+        } label: {
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.xSmall) {
+                HStack(spacing: FridgeFitTheme.Spacing.xSmall) {
+                    Image(systemName: item.ingredient.category.symbolName)
+                        .font(.caption)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+
+                    Text(item.name)
+                        .font(FridgeFitTheme.Typography.cardTitle)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                        .lineLimit(1)
+                }
+
+                Text(item.formattedQuantity)
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+
+                if let addedAt = item.addedAt {
+                    Text(addedAt, format: .relative(presentation: .numeric))
+                        .font(FridgeFitTheme.Typography.caption)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                }
+            }
+            .frame(minWidth: 132, alignment: .leading)
+            .padding(.horizontal, FridgeFitTheme.Spacing.medium)
+            .padding(.vertical, FridgeFitTheme.Spacing.small)
+            .background(
+                FridgeFitTheme.ColorToken.successBackground,
+                in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                    .stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.name), \(item.formattedQuantity), recently added")
     }
 
     private var ingredientList: some View {
@@ -789,47 +878,107 @@ private enum InventoryCategorySummary: CaseIterable, Identifiable {
     }
 }
 
-/// The project has no food-photo assets. This retains the reference's
-/// full-bleed, image-led card proportions using the existing category artwork
-/// instead of introducing generated or misleading food imagery.
+/// The dark band a photo tile's caption sits on.
+///
+/// White text over a full-bleed photo is only readable if something
+/// guarantees a dark area behind it, and the gradient this replaces could not
+/// promise that: it was spread over the whole tile, so its darkest point was
+/// a fraction of black, and a tile whose lower edge happens to be a pale
+/// photo - a glass of milk, a bowl of rice - left the label to disappear into
+/// it. A solid scrim does not depend on what the photo contains.
+///
+/// Feathered at the top rather than hard-edged, so it reads as part of the
+/// image rather than a label stuck onto it.
+private struct PhotoCaptionScrim: View {
+    /// Enough for white text at caption weight to clear WCAG AA against the
+    /// brightest photo in the set.
+    private static let opacity: Double = 0.74
+    private static let feather: CGFloat = 16
+
+    var body: some View {
+        VStack(spacing: 0) {
+            LinearGradient(
+                colors: [.black.opacity(0), .black.opacity(Self.opacity)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: Self.feather)
+
+            Color.black.opacity(Self.opacity)
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// The image behind a kitchen tile.
+///
+/// Where a bundled photo exists it fills the tile edge to edge, which is what
+/// the image-led card proportions were built for. This used to draw
+/// `IngredientArtwork` instead - a deliberately small, fixed-size glyph
+/// scaled up and offset. That was right while the only artwork was an SF
+/// Symbol, and wrong once real category photos shipped: the photo kept the
+/// glyph's dimensions and sat as a square floating inside the tile with the
+/// gradient showing around it.
+///
+/// The tinted gradient and symbol remain as the fallback, so a category with
+/// no photo still gets a tile rather than a blank rectangle.
 private struct InventoryArtworkBackdrop: View {
     let category: IngredientCategory?
     var allItems = false
 
     var body: some View {
         GeometryReader { proxy in
-            let shortestSide = min(proxy.size.width, proxy.size.height)
-            let artworkSize = max(28, shortestSide * 0.52)
-            let circleSize = max(48, shortestSide * 1.08)
-
             ZStack {
-                LinearGradient(
-                    colors: [baseColor.opacity(0.74), baseColor.opacity(0.34)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-
-                Circle()
-                    .fill(FridgeFitTheme.ColorToken.card.opacity(0.18))
-                    .frame(width: circleSize, height: circleSize)
-                    .offset(x: proxy.size.width * 0.24, y: -proxy.size.height * 0.15)
-
-                if let category {
-                    IngredientArtwork(category: category, size: artworkSize)
-                        .scaleEffect(1.45)
-                        .opacity(0.92)
-                        .offset(x: proxy.size.width * 0.12, y: -proxy.size.height * 0.05)
+                if let photo {
+                    Image(uiImage: photo)
+                        .resizable()
+                        // Fill, not fit: a tile is wider than the photo's
+                        // aspect ratio and letterboxing it would reintroduce
+                        // the gaps this is here to remove.
+                        .scaledToFill()
+                        .frame(width: proxy.size.width, height: proxy.size.height)
                 } else {
-                    Image(systemName: allItems ? "square.grid.2x2.fill" : "checkmark.seal.fill")
-                        .font(.system(size: artworkSize, weight: .semibold))
-                        .foregroundStyle(FridgeFitTheme.ColorToken.card.opacity(0.42))
-                        .offset(x: proxy.size.width * 0.1, y: -proxy.size.height * 0.05)
+                    fallback(in: proxy.size)
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
         }
         .accessibilityHidden(true)
+    }
+
+    private var photo: UIImage? {
+        if let category { return BundledPhotoAssets.categoryPhoto(for: category) }
+        return allItems ? BundledPhotoAssets.allCategoriesPhoto() : nil
+    }
+
+    private func fallback(in size: CGSize) -> some View {
+        let shortestSide = min(size.width, size.height)
+        let artworkSize = max(28, shortestSide * 0.52)
+        let circleSize = max(48, shortestSide * 1.08)
+
+        return ZStack {
+            LinearGradient(
+                colors: [baseColor.opacity(0.74), baseColor.opacity(0.34)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            Circle()
+                .fill(FridgeFitTheme.ColorToken.card.opacity(0.18))
+                .frame(width: circleSize, height: circleSize)
+                .offset(x: size.width * 0.24, y: -size.height * 0.15)
+
+            Image(systemName: symbolName)
+                .font(.system(size: artworkSize, weight: .semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.card.opacity(0.42))
+                .offset(x: size.width * 0.1, y: -size.height * 0.05)
+        }
+    }
+
+    private var symbolName: String {
+        if let category { return category.symbolName }
+        return allItems ? "square.grid.2x2.fill" : "checkmark.seal.fill"
     }
 
     private var baseColor: Color {
