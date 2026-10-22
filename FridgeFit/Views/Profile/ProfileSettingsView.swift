@@ -224,7 +224,7 @@ private struct SettingsRowIcon: View {
         switch tone {
         case .neutral: FridgeFitTheme.ColorToken.successBackground
         case .warning: FridgeFitTheme.ColorToken.warningBackground
-        case .danger: FridgeFitTheme.ColorToken.accent.opacity(0.15)
+        case .danger: FridgeFitTheme.ColorToken.errorBackground
         }
     }
 }
