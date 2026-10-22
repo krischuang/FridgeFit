@@ -137,6 +137,17 @@ nonisolated enum ReceiptScanDiagnostics {
         #endif
     }
 
+    /// The figure a demonstration is judged on: tap to review on screen.
+    static func reviewPresented(after duration: Duration, source: ReceiptRecognitionSource) {
+        #if DEBUG
+        print(String(
+            format: "\n=== REVIEW PRESENTED === %.3fs (%@)",
+            ReceiptScanMetrics.seconds(duration),
+            source.diagnosticLabel
+        ))
+        #endif
+    }
+
     #if DEBUG
     private static func formatted(_ value: Double) -> String {
         value.truncatingRemainder(dividingBy: 1) == 0

@@ -33,6 +33,7 @@ nonisolated struct ScanReceiptUseCase {
     /// Optional, and `nil` by default, so every existing construction of
     /// this type behaves exactly as it did before the cache existed.
     private let recognitionCache: ReceiptRecognitionCacheStoring?
+    private let metrics: ReceiptScanMetricsRecording?
 
     init(
         textRecognizer: ReceiptTextRecognizer,
@@ -40,7 +41,8 @@ nonisolated struct ScanReceiptUseCase {
         pantryRepository: PantryRepository,
         parser: ReceiptLineParser = ReceiptLineParser(),
         normalizer: ReceiptItemNormalizer = ReceiptItemNormalizer(),
-        recognitionCache: ReceiptRecognitionCacheStoring? = nil
+        recognitionCache: ReceiptRecognitionCacheStoring? = nil,
+        metrics: ReceiptScanMetricsRecording? = nil
     ) {
         self.textRecognizer = textRecognizer
         self.interpreter = interpreter
@@ -48,6 +50,7 @@ nonisolated struct ScanReceiptUseCase {
         self.parser = parser
         self.normalizer = normalizer
         self.recognitionCache = recognitionCache
+        self.metrics = metrics
     }
 
     /// Whether a scan can be started right now.
@@ -64,13 +67,38 @@ nonisolated struct ScanReceiptUseCase {
         image: CGImage,
         orientation: CGImagePropertyOrientation = .up
     ) async throws -> ReceiptScanOutcome {
+        let started = ContinuousClock.now
+        var fingerprinting: Duration?
+        var cacheLookup: Duration?
+
         // The cache is consulted first, and only ever answers for a picture
         // that has already been through the pipeline below and had its
         // result verified. A miss - including an unreadable store, an entry
         // from an older pipeline, or an image that cannot be fingerprinted
         // at all - falls straight through to the full scan.
-        if let replayed = try await replayedOutcome(for: image, orientation: orientation) {
+        if let replayed = try await replayedOutcome(
+            for: image,
+            orientation: orientation,
+            fingerprinting: &fingerprinting,
+            cacheLookup: &cacheLookup
+        ) {
+            metrics?.record(ReceiptScanMetrics(
+                source: replayed.source,
+                fingerprinting: fingerprinting,
+                cacheLookup: cacheLookup,
+                total: ContinuousClock.now - started
+            ))
             return replayed
+        }
+
+        // Everything below is the original pipeline, untouched.
+        defer {
+            metrics?.record(ReceiptScanMetrics(
+                source: .appleIntelligence,
+                fingerprinting: fingerprinting,
+                cacheLookup: cacheLookup,
+                total: ContinuousClock.now - started
+            ))
         }
 
         let availability = interpreter.availability
@@ -115,20 +143,30 @@ nonisolated struct ScanReceiptUseCase {
     /// a replay from offering to add something the pantry already holds.
     private func replayedOutcome(
         for image: CGImage,
-        orientation: CGImagePropertyOrientation
+        orientation: CGImagePropertyOrientation,
+        fingerprinting: inout Duration?,
+        cacheLookup: inout Duration?
     ) async throws -> ReceiptScanOutcome? {
         guard let recognitionCache else { return nil }
 
         // Several megabytes of pixels. `ReceiptImageFingerprint.make` is
         // `nonisolated`, and this type is too, so it runs off the main actor
         // even though the view model started the task from it.
-        guard let fingerprint = ReceiptImageFingerprint.make(of: image, orientation: orientation) else {
+        let fingerprintStart = ContinuousClock.now
+        let computed = ReceiptImageFingerprint.make(of: image, orientation: orientation)
+        fingerprinting = ContinuousClock.now - fingerprintStart
+
+        guard let fingerprint = computed else {
             ReceiptScanDiagnostics.cacheUnavailable("the image could not be fingerprinted")
             return nil
         }
         try Task.checkCancellation()
 
-        guard let entry = recognitionCache.entry(for: fingerprint) else {
+        let lookupStart = ContinuousClock.now
+        let found = recognitionCache.entry(for: fingerprint)
+        cacheLookup = ContinuousClock.now - lookupStart
+
+        guard let entry = found else {
             ReceiptScanDiagnostics.cacheMiss(fingerprint)
             return nil
         }

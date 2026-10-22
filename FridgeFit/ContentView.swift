@@ -161,7 +161,11 @@ struct ContentView: View {
                 textRecognizer: VisionReceiptTextRecognizer(),
                 interpreter: AppleReceiptIngredientInterpreter(),
                 pantryRepository: pantryRepository,
-                recognitionCache: FileReceiptRecognitionCacheStore()
+                recognitionCache: FileReceiptRecognitionCacheStore(),
+                // Prints stage timings in DEBUG and does nothing in Release,
+                // so a demo's latency can be read off the device rather than
+                // estimated.
+                metrics: LoggingReceiptScanMetricsRecorder()
             )
         )
         _recipeSuggestionViewModel = StateObject(

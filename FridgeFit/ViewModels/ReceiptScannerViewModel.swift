@@ -50,6 +50,15 @@ final class ReceiptScannerViewModel: ObservableObject {
     /// a reused result instead of implying the model just ran.
     @Published private(set) var recognitionSource: ReceiptRecognitionSource?
 
+    /// Wall-clock time from `scan()` being called to the review screen being
+    /// asked to present, for the most recent scan.
+    ///
+    /// This is the number a demonstration is actually judged on - it
+    /// includes the view model's own state updates, not just the use case's
+    /// work - so it is measured here rather than inferred from
+    /// `ReceiptScanMetrics.total`.
+    @Published private(set) var lastScanLatency: Duration?
+
     private let scanReceiptUseCase: ScanReceiptUseCase
     private let addDetectedIngredientsUseCase: AddDetectedIngredientsUseCase
 
@@ -58,6 +67,8 @@ final class ReceiptScannerViewModel: ObservableObject {
     /// writes its results if its token is still the current one, so a slow
     /// first scan can't overwrite a faster second one.
     private var currentScanToken = 0
+    /// When the current scan started, for `lastScanLatency`.
+    private var scanStartedAt: ContinuousClock.Instant?
 
     init(
         scanReceiptUseCase: ScanReceiptUseCase,
@@ -71,14 +82,16 @@ final class ReceiptScannerViewModel: ObservableObject {
         textRecognizer: ReceiptTextRecognizer,
         interpreter: ReceiptIngredientInterpreter,
         pantryRepository: PantryRepository,
-        recognitionCache: ReceiptRecognitionCacheStoring? = nil
+        recognitionCache: ReceiptRecognitionCacheStoring? = nil,
+        metrics: ReceiptScanMetricsRecording? = nil
     ) {
         self.init(
             scanReceiptUseCase: ScanReceiptUseCase(
                 textRecognizer: textRecognizer,
                 interpreter: interpreter,
                 pantryRepository: pantryRepository,
-                recognitionCache: recognitionCache
+                recognitionCache: recognitionCache,
+                metrics: metrics
             ),
             addDetectedIngredientsUseCase: AddDetectedIngredientsUseCase(pantryRepository: pantryRepository)
         )
@@ -152,6 +165,7 @@ final class ReceiptScannerViewModel: ObservableObject {
         excludedItems = []
         addSummary = nil
         recognitionSource = nil
+        lastScanLatency = nil
         scanState = .idle
     }
 
@@ -163,6 +177,7 @@ final class ReceiptScannerViewModel: ObservableObject {
         excludedItems = []
         addSummary = nil
         recognitionSource = nil
+        lastScanLatency = nil
         scanState = .idle
     }
 
@@ -205,6 +220,8 @@ final class ReceiptScannerViewModel: ObservableObject {
 
         scanState = .scanning
         addSummary = nil
+        scanStartedAt = ContinuousClock.now
+        lastScanLatency = nil
 
         // The use case is captured by value rather than reached through
         // `self`, so an abandoned scan doesn't keep the view model alive
@@ -260,6 +277,12 @@ final class ReceiptScannerViewModel: ObservableObject {
             drafts = outcome.pantryCandidates.map(ReceiptItemDraft.init(candidate:))
             scanState = .completed
             isPresentingReview = true
+            // Taken after `isPresentingReview`, so the measurement covers
+            // every state change the review screen waits on.
+            if let scanStartedAt {
+                lastScanLatency = ContinuousClock.now - scanStartedAt
+                ReceiptScanDiagnostics.reviewPresented(after: ContinuousClock.now - scanStartedAt, source: outcome.source)
+            }
 
         case .failure(let error):
             drafts = []
@@ -372,6 +395,7 @@ final class ReceiptScannerViewModel: ObservableObject {
         excludedItems = []
         addSummary = nil
         recognitionSource = nil
+        lastScanLatency = nil
         scanState = .idle
         isPresentingReview = false
     }
