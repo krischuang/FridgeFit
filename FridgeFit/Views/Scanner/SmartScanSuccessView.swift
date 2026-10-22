@@ -59,9 +59,9 @@ struct SmartScanSuccessView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Image(systemName: "person")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                        .foregroundStyle(.white)
                         .frame(width: 36, height: 36)
-                        .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                        .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
                         .accessibilityHidden(true)
                 }
             }

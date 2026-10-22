@@ -19,13 +19,13 @@ import SwiftUI
 struct InlineInfoBanner: View {
     let message: String
     var systemImage: String = "info.circle.fill"
-    var tint: Color = .accentColor
+    var tint: Color = FridgeFitTheme.ColorToken.primary
 
     var body: some View {
         Label {
             Text(message)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
         } icon: {
             Image(systemName: systemImage)
                 .foregroundStyle(tint)

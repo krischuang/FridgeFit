@@ -94,9 +94,9 @@ struct SmartScanPreviewView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Image(systemName: "person")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                        .foregroundStyle(.white)
                         .frame(width: 36, height: 36)
-                        .background(FridgeFitTheme.ColorToken.primary, in: Circle())
+                        .background(FridgeFitTheme.ColorToken.brandFill, in: Circle())
                         .accessibilityHidden(true)
                 }
             }
@@ -316,10 +316,10 @@ struct SmartScanPreviewView: View {
 
             Label(badgeTitle, systemImage: badgeImage)
                 .font(FridgeFitTheme.Typography.caption.weight(.semibold))
-                .foregroundStyle(FridgeFitTheme.ColorToken.card)
+                .foregroundStyle(.white)
                 .padding(.horizontal, FridgeFitTheme.Spacing.small)
                 .padding(.vertical, FridgeFitTheme.Spacing.xSmall)
-                .background(FridgeFitTheme.ColorToken.primary, in: Capsule())
+                .background(FridgeFitTheme.ColorToken.brandFill, in: Capsule())
                 .padding(FridgeFitTheme.Spacing.small)
         }
         .frame(maxWidth: .infinity)
