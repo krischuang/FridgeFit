@@ -125,6 +125,30 @@ final class DiscoverPantryRefreshTests: XCTestCase {
         XCTAssertTrue(service.receivedCriteria.isEmpty)
     }
 
+    // MARK: - Filter changes
+
+    /// `diet`, `cuisine` and `maxReadyTime` are applied by the provider, so
+    /// results fetched under the old filters can never be re-checked into
+    /// compliance locally. Clearing them has to include the cached provider
+    /// response, or the next pantry change puts them straight back.
+    func test_updatePreferences_clearsCachedProviderResults_soNoRefreshRestoresThem() async {
+        let pantry = OnlineRecipeFixtures.pantry("egg")
+        let service = MockOnlineRecipeService(result: .success([bakedCustard()]))
+        let viewModel = OnlineRecipeSearchViewModel(
+            useCase: FindOnlineRecipesFromPantryUseCase(recipeService: service, pantryRepository: pantry),
+            preferencesStore: InMemoryOnlineRecipePreferencesStore()
+        )
+        await viewModel.search()
+        XCTAssertFalse(viewModel.matches.isEmpty)
+
+        viewModel.updatePreferences(OnlineRecipePreferences(diet: .vegetarian))
+        await viewModel.refreshPantryMatch()
+
+        XCTAssertTrue(viewModel.matches.isEmpty, "Results fetched under the previous filters must not come back")
+        XCTAssertFalse(viewModel.hasSearched, "hasSearched and the visible results must stay consistent")
+        XCTAssertEqual(service.receivedCriteria.count, 1, "Clearing filters must not spend quota by itself")
+    }
+
     // MARK: - Descriptor words
 
     func test_namesMatch_ignoresLeadingDescriptors() {

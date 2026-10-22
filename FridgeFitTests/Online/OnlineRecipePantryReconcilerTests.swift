@@ -76,6 +76,43 @@ final class OnlineRecipePantryReconcilerTests: XCTestCase {
         XCTAssertEqual(result.missedIngredients.map(\.name), ["onion"])
     }
 
+    /// The evidence above has to come from an item that is actually part of
+    /// the ingredient. Sharing one word with an unrelated item is not
+    /// evidence - the pantry here holds no beef at all.
+    func test_providerReportedUse_isDropped_whenOnlyAnUnrelatedItemSharesAWord() {
+        var recipe = OnlineRecipeFixtures.recipe(id: 3)
+        recipe.ingredients = [line("ground beef", id: 10220)]
+        let match = OnlineRecipeMatch(recipe: recipe, usedIngredientNames: ["ground beef"], missedIngredients: [])
+
+        let result = OnlineRecipePantryReconciler.reconciled(match, pantry: pantry("ground pork"))
+
+        XCTAssertTrue(result.usedIngredientNames.isEmpty, "\"ground pork\" is not beef, however many words it shares")
+        XCTAssertEqual(result.missedIngredients.map(\.name), ["ground beef"])
+    }
+
+    func test_providerReportedUse_isDropped_whenAnotherCheeseSharesTheWordCheese() {
+        var recipe = OnlineRecipeFixtures.recipe(id: 4)
+        recipe.ingredients = [line("cream cheese", id: 1017)]
+        let match = OnlineRecipeMatch(recipe: recipe, usedIngredientNames: ["cream cheese"], missedIngredients: [])
+
+        let result = OnlineRecipePantryReconciler.reconciled(match, pantry: pantry("cheddar cheese"))
+
+        XCTAssertTrue(result.usedIngredientNames.isEmpty)
+        XCTAssertEqual(result.missedIngredients.map(\.name), ["cream cheese"])
+    }
+
+    /// The direction that is kept: the pantry name is wholly contained in
+    /// the ingredient's, which is how the provider made the match.
+    func test_providerReportedUse_isKept_whenThePantryNameIsPartOfTheIngredient() {
+        var recipe = OnlineRecipeFixtures.recipe(id: 5)
+        recipe.ingredients = [line("cream cheese", id: 1017)]
+        let match = OnlineRecipeMatch(recipe: recipe, usedIngredientNames: ["cream cheese"], missedIngredients: [])
+
+        let result = OnlineRecipePantryReconciler.reconciled(match, pantry: pantry("cheese"))
+
+        XCTAssertEqual(result.usedIngredientNames, ["cream cheese"])
+    }
+
     func test_noIngredientList_isLeftAsTheProviderSentIt() {
         var match = bakedCustard()
         match.recipe.ingredients = []

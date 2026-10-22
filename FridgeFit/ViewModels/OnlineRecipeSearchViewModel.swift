@@ -114,12 +114,19 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
     /// Saves new filters. Existing results are cleared because they no
     /// longer reflect the filters - showing them would be misleading,
     /// especially after adding an intolerance.
+    ///
+    /// That includes the cached provider results: `diet`, `cuisine` and
+    /// `maxReadyTime` are applied by the provider, so a local re-check
+    /// cannot re-apply them. Keeping them would let `refreshPantryMatch()`
+    /// put results fetched under the *old* filters back on screen - with
+    /// `hasSearched` still false - the moment the pantry changed.
     func updatePreferences(_ newPreferences: OnlineRecipePreferences) {
         guard newPreferences != preferences else { return }
         preferences = newPreferences
         preferencesStore.save(newPreferences)
         currentToken += 1
         isLoading = false
+        providerMatches = []
         matches = []
         excludedForSafetyCount = 0
         excludedAsHiddenCount = 0
