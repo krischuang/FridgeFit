@@ -67,7 +67,7 @@ struct KitchenActivityView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(activity.itemName)
                         .font(.headline)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
                         .lineLimit(2)
 
                     Spacer(minLength: 8)
@@ -83,13 +83,13 @@ struct KitchenActivityView: View {
                 if let note = activity.note {
                     Text(note)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Text(activity.date.formatted(date: .abbreviated, time: .shortened))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
             }
         }
         .padding(14)
