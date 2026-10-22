@@ -17,7 +17,8 @@ import Foundation
 /// Only `fetchAll()` is driven - reading the pantry is the single suspension
 /// point in both `execute` and `reevaluate`, so it is the only place two of
 /// them can interleave.
-actor GatedPantryRepository: PantryRepository {
+@MainActor
+final class GatedPantryRepository: PantryRepository {
     private var parked: [Int: CheckedContinuation<[PantryItem], Never>] = [:]
     private var arrivalWaiters: [CheckedContinuation<Void, Never>] = []
     private var enteredCount = 0
