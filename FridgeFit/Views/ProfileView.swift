@@ -536,7 +536,7 @@ struct ProfileView: View {
         .foregroundStyle(FridgeFitTheme.ColorToken.danger)
         .padding(FridgeFitTheme.Spacing.large)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(FridgeFitTheme.ColorToken.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
+        .background(FridgeFitTheme.ColorToken.errorBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 
@@ -703,12 +703,12 @@ private struct ProfileSectionButton: View {
         } label: {
             Text(section.title)
                 .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
-                .foregroundStyle(selection == section ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.textSecondary)
+                .foregroundStyle(selection == section ? .white : FridgeFitTheme.ColorToken.textSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .background(
-                    selection == section ? FridgeFitTheme.ColorToken.primary : .clear,
+                    selection == section ? FridgeFitTheme.ColorToken.brandFill : .clear,
                     in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous)
                 )
         }

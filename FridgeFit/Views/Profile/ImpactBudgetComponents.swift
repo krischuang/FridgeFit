@@ -35,7 +35,7 @@ struct ImpactHeroCard: View {
 
     private var heroBackground: some View {
         ZStack(alignment: .topTrailing) {
-            FridgeFitTheme.ColorToken.primary
+            FridgeFitTheme.ColorToken.brandFill
             Image(systemName: "wallet.bifold.fill")
                 .font(.system(size: 104))
                 .foregroundStyle(.white.opacity(0.08))
@@ -94,7 +94,7 @@ struct ImpactHeroCard: View {
             VStack(alignment: .trailing, spacing: 0) {
                 Text(verbatim: "\(summary.kitchen.finishedThisMonth) items")
                     .font(FridgeFitTheme.Typography.cardTitle)
-                    .foregroundStyle(FridgeFitTheme.ColorToken.honey)
+                    .foregroundStyle(.white)
                 Text("Finished this month")
                     .font(FridgeFitTheme.Typography.caption)
                     .foregroundStyle(.white.opacity(0.85))
@@ -117,7 +117,7 @@ struct ImpactHeroCard: View {
                     HStack(spacing: 3) {
                         Text(verbatim: budget.totalSpent.formatted())
                             .font(FridgeFitTheme.Typography.caption.weight(.semibold))
-                            .foregroundStyle(FridgeFitTheme.ColorToken.honey)
+                            .foregroundStyle(.white)
                         Text(verbatim: "of \(budget.budget.limit.formatted())")
                             .font(FridgeFitTheme.Typography.caption)
                             .foregroundStyle(.white.opacity(0.9))
@@ -541,7 +541,7 @@ struct ImpactCallout: View {
         switch tone {
         case .warning: return FridgeFitTheme.ColorToken.warningBackground
         case .success: return FridgeFitTheme.ColorToken.successBackground
-        case .danger: return FridgeFitTheme.ColorToken.accent.opacity(0.14)
+        case .danger: return FridgeFitTheme.ColorToken.errorBackground
         case .neutral: return FridgeFitTheme.ColorToken.disabledSurface
         }
     }
