@@ -111,16 +111,32 @@ struct SmartScanPreviewView: View {
                     isPresentingReceiptScanner = false
                 }
             }
-            .sheet(isPresented: $isPresentingLiveAICameraSetup) {
+            // Closing on a save is the whole point: the two-phone flow ends
+            // three screens deep inside this sheet, so without it a finished
+            // scan leaves the user on the camera with no sign of where the
+            // ingredients went. `onDismiss` then runs the same staged
+            // completion the other two scan modes use, so all three land on
+            // the success summary and from there on My Fridge.
+            .sheet(isPresented: $isPresentingLiveAICameraSetup, onDismiss: {
+                presentPendingSuccessIfNeeded()
+            }) {
                 NavigationStack {
-                    ConnectedDevicesView(identity: DeviceIdentity.current())
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button("Close") {
-                                    isPresentingLiveAICameraSetup = false
-                                }
+                    ConnectedDevicesView(
+                        identity: DeviceIdentity.current(),
+                        onIngredientsSaved: { summary in
+                            recordCompleteSave(summary) {
+                                onIngredientsFinished()
+                            }
+                            isPresentingLiveAICameraSetup = false
+                        }
+                    )
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") {
+                                isPresentingLiveAICameraSetup = false
                             }
                         }
+                    }
                 }
             }
             .sheet(isPresented: $isPresentingIngredientReview, onDismiss: {

@@ -475,7 +475,17 @@ struct ProfileView: View {
             Divider().overlay(FridgeFitTheme.ColorToken.border)
 
             NavigationLink {
-                ConnectedDevicesView(identity: DeviceIdentity.current())
+                // A scan started from here saves into the same pantry as the
+                // one in Smart Scan, so it ends the same way: reload the
+                // kitchen and switch to it. The tab keeps its own stack, so
+                // Connected Devices is still here on the way back.
+                ConnectedDevicesView(
+                    identity: DeviceIdentity.current(),
+                    onIngredientsSaved: { _ in
+                        Task { await inventory.load() }
+                        onOpenPantry()
+                    }
+                )
             } label: {
                 settingsRow(
                     title: "Connected Devices",
