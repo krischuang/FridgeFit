@@ -142,7 +142,7 @@ struct LoginView: View {
             focusedField = nil
             Task { await authViewModel.signInWithGoogle() }
         }
-        .frame(height: 52)
+        .frame(minHeight: 52)
         .disabled(authViewModel.isLoading)
     }
 

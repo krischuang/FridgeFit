@@ -469,12 +469,12 @@ private struct StitchQuantityControl: View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
             HStack(spacing: FridgeFitTheme.Spacing.medium) {
                 HStack(spacing: 0) {
-                    quantityButton("minus", action: decrement)
+                    quantityButton("minus", accessibilityLabel: "Decrease ingredient quantity", action: decrement)
                     Text(amountText)
                         .font(FridgeFitTheme.Typography.supporting.weight(.bold))
                         .monospacedDigit()
                         .frame(minWidth: 38, minHeight: 36)
-                    quantityButton("plus", action: increment)
+                    quantityButton("plus", accessibilityLabel: "Increase ingredient quantity", action: increment)
                 }
                 .background(FridgeFitTheme.ColorToken.disabledSurface.opacity(0.6), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.small, style: .continuous))
 
@@ -523,7 +523,11 @@ private struct StitchQuantityControl: View {
         .frame(minWidth: 44, minHeight: 44)
     }
 
-    private func quantityButton(_ systemImage: String, action: @escaping () -> Void) -> some View {
+    private func quantityButton(
+        _ systemImage: String,
+        accessibilityLabel: LocalizedStringKey,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.footnote.weight(.bold))
@@ -532,6 +536,7 @@ private struct StitchQuantityControl: View {
         }
         .buttonStyle(.plain)
         .frame(minWidth: 44, minHeight: 44)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private var amountText: String {

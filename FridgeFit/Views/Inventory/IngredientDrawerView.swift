@@ -216,7 +216,7 @@ struct IngredientDrawerView: View {
                 .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
 
             HStack(spacing: 0) {
-                RepeatButton(systemImage: "minus") {
+                RepeatButton(systemImage: "minus", accessibilityLabel: "Decrease amount used") {
                     changeUsedAmount(by: -1)
                 } onStart: {
                     startRepeating(delta: -1)
@@ -257,7 +257,7 @@ struct IngredientDrawerView: View {
 
                 Divider()
 
-                RepeatButton(systemImage: "plus") {
+                RepeatButton(systemImage: "plus", accessibilityLabel: "Increase amount used") {
                     changeUsedAmount(by: 1)
                 } onStart: {
                     startRepeating(delta: 1)
@@ -616,6 +616,7 @@ private struct DrawerInfoRow: View {
 
 private struct RepeatButton: View {
     let systemImage: String
+    let accessibilityLabel: LocalizedStringKey
     let action: () -> Void
     let onStart: () -> Void
     let onStop: () -> Void
@@ -629,6 +630,7 @@ private struct RepeatButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
         .onLongPressGesture(
             minimumDuration: 0.35,
             maximumDistance: 28,

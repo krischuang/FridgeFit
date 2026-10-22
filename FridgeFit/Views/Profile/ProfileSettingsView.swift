@@ -274,6 +274,7 @@ private struct ServingPreferenceRow: View {
                 Button { servings = max(1, servings - 1) } label: {
                     Image(systemName: "minus").frame(width: 44, height: 44)
                 }
+                .accessibilityLabel("Decrease default serving size")
                 .disabled(servings <= 1)
                 Spacer()
                 Text("\(servings) servings")
@@ -283,6 +284,7 @@ private struct ServingPreferenceRow: View {
                 Button { servings = min(12, servings + 1) } label: {
                     Image(systemName: "plus").frame(width: 44, height: 44)
                 }
+                .accessibilityLabel("Increase default serving size")
                 .disabled(servings >= 12)
             }
             .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)

@@ -56,6 +56,7 @@ struct AuthBrandHeader: View {
 
     private var logoMark: some View {
         Image(systemName: "refrigerator.fill")
+            .accessibilityHidden(true)
             .font(.system(size: 30, weight: .semibold))
             .foregroundStyle(FridgeFitTheme.ColorToken.primary)
             .frame(width: 72, height: 72)
@@ -65,6 +66,7 @@ struct AuthBrandHeader: View {
             )
             .overlay(alignment: .topTrailing) {
                 Image(systemName: "bolt.fill")
+                    .accessibilityHidden(true)
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
                     .frame(width: 24, height: 24)
@@ -115,7 +117,7 @@ struct AuthField<Content: View, TrailingLabel: View>: View {
                     .textFieldStyle(.plain)
             }
             .padding(.horizontal, FridgeFitTheme.Spacing.large)
-            .frame(height: 52)
+            .frame(minHeight: 52)
             .background(
                 FridgeFitTheme.ColorToken.card,
                 in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
@@ -234,23 +236,25 @@ struct AuthMessageBanner: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
-        .foregroundStyle(foreground)
+        .foregroundStyle(tone.foreground)
         .padding(FridgeFitTheme.Spacing.medium)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(background, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+        .background(tone.background, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
         .accessibilityElement(children: .combine)
     }
+}
 
-    private var foreground: Color {
-        switch tone {
-        case .error: return FridgeFitTheme.ColorToken.danger
+extension AuthMessageBanner.Tone {
+    var foreground: Color {
+        switch self {
+        case .error: return FridgeFitTheme.ColorToken.errorText
         case .confirmation: return FridgeFitTheme.ColorToken.primary
         }
     }
 
-    private var background: Color {
-        switch tone {
-        case .error: return FridgeFitTheme.ColorToken.danger.opacity(0.1)
+    var background: Color {
+        switch self {
+        case .error: return FridgeFitTheme.ColorToken.errorBackground
         case .confirmation: return FridgeFitTheme.ColorToken.successBackground
         }
     }

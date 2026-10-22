@@ -175,7 +175,7 @@ struct RegisterView: View {
                 if authViewModel.isAuthenticated { dismiss() }
             }
         }
-        .frame(height: 52)
+        .frame(minHeight: 52)
         .disabled(authViewModel.isLoading)
     }
 

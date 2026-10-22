@@ -125,7 +125,6 @@ struct FridgeFitPrimaryButtonStyle: ButtonStyle {
             )
             .opacity(configuration.isPressed ? 0.84 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
-            .accessibilityAddTraits(.isButton)
     }
 }
 
