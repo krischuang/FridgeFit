@@ -19,64 +19,77 @@ struct LoginView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                Image(systemName: "refrigerator")
-                    .font(.system(size: 56))
-                    .foregroundStyle(.tint)
+            ScrollView {
+                VStack(spacing: FridgeFitTheme.Spacing.xLarge) {
+                    Image(systemName: "refrigerator")
+                        .font(.system(size: 56))
+                        .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                        .accessibilityHidden(true)
 
-                Text("Welcome to FridgeFit")
-                    .font(.title2)
-                    .bold()
+                    Text("Welcome to FridgeFit")
+                        .font(FridgeFitTheme.Typography.screenTitle)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
 
-                VStack(spacing: 12) {
-                    TextField("Email", text: $email)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                        .autocorrectionDisabled()
+                    VStack(spacing: FridgeFitTheme.Spacing.medium) {
+                        TextField("Email", text: $email)
+                            .textFieldStyle(FridgeFitTextFieldStyle())
+                            .textInputAutocapitalization(.never)
+                            .keyboardType(.emailAddress)
+                            .autocorrectionDisabled()
 
-                    SecureField("Password", text: $password)
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                if let errorMessage = authViewModel.errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .multilineTextAlignment(.center)
-                }
-
-                Button {
-                    Task { await authViewModel.signIn(email: email, password: password) }
-                } label: {
-                    if authViewModel.isLoading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text("Log In")
-                            .frame(maxWidth: .infinity)
+                        SecureField("Password", text: $password)
+                            .textFieldStyle(FridgeFitTextFieldStyle())
                     }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!canSubmit)
 
-                HStack {
-                    VStack { Divider() }
-                    Text("or").font(.footnote).foregroundStyle(.secondary)
-                    VStack { Divider() }
-                }
+                    if let errorMessage = authViewModel.errorMessage {
+                        Text(errorMessage)
+                            .font(FridgeFitTheme.Typography.metadata)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.errorText)
+                            .multilineTextAlignment(.center)
+                            .padding(FridgeFitTheme.Spacing.medium)
+                            .frame(maxWidth: .infinity)
+                            .background(FridgeFitTheme.ColorToken.errorBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control))
+                    }
 
-                GoogleSignInButton {
-                    Task { await authViewModel.signInWithGoogle() }
-                }
-                .disabled(authViewModel.isLoading)
+                    Button {
+                        Task { await authViewModel.signIn(email: email, password: password) }
+                    } label: {
+                        if authViewModel.isLoading {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Log In")
+                        }
+                    }
+                    .buttonStyle(FridgeFitPrimaryButtonStyle())
+                    .disabled(!canSubmit)
 
-                Button("Don't have an account? Sign up") {
-                    showRegister = true
+                    HStack {
+                        Divider().overlay(FridgeFitTheme.ColorToken.border)
+                        Text("or")
+                            .font(FridgeFitTheme.Typography.metadata)
+                            .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                        Divider().overlay(FridgeFitTheme.ColorToken.border)
+                    }
+
+                    GoogleSignInButton {
+                        Task { await authViewModel.signInWithGoogle() }
+                    }
+                    .disabled(authViewModel.isLoading)
+
+                    Button("Don't have an account? Sign up") {
+                        showRegister = true
+                    }
+                    .font(FridgeFitTheme.Typography.metadata)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.primary)
                 }
-                .font(.footnote)
+                .padding(FridgeFitTheme.Spacing.xLarge)
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity)
             }
-            .padding()
+            .scrollDismissesKeyboard(.interactively)
+            .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
+            .tint(FridgeFitTheme.ColorToken.primary)
             .sheet(isPresented: $showRegister) {
                 RegisterView()
                     .environmentObject(authViewModel)

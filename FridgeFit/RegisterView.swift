@@ -26,62 +26,73 @@ struct RegisterView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                Text("Create Account")
-                    .font(.title2)
-                    .bold()
+            ScrollView {
+                VStack(spacing: FridgeFitTheme.Spacing.xLarge) {
+                    Text("Create Account")
+                        .font(FridgeFitTheme.Typography.screenTitle)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
 
-                VStack(spacing: 12) {
-                    TextField("Email", text: $email)
-                        .textFieldStyle(.roundedBorder)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                        .autocorrectionDisabled()
+                    VStack(spacing: FridgeFitTheme.Spacing.medium) {
+                        TextField("Email", text: $email)
+                            .textFieldStyle(FridgeFitTextFieldStyle())
+                            .textInputAutocapitalization(.never)
+                            .keyboardType(.emailAddress)
+                            .autocorrectionDisabled()
 
-                    SecureField("Password", text: $password)
-                        .textFieldStyle(.roundedBorder)
+                        SecureField("Password", text: $password)
+                            .textFieldStyle(FridgeFitTextFieldStyle())
 
-                    SecureField("Confirm Password", text: $confirmPassword)
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                if let validationError {
-                    Text(validationError)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                }
-
-                if let errorMessage = authViewModel.errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .multilineTextAlignment(.center)
-                }
-
-                Button {
-                    Task {
-                        await authViewModel.signUp(email: email, password: password)
-                        if authViewModel.isAuthenticated { dismiss() }
+                        SecureField("Confirm Password", text: $confirmPassword)
+                            .textFieldStyle(FridgeFitTextFieldStyle())
                     }
-                } label: {
-                    if authViewModel.isLoading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else {
-                        Text("Sign Up")
-                            .frame(maxWidth: .infinity)
+
+                    if let validationError {
+                        errorMessage(validationError)
                     }
+
+                    if let message = authViewModel.errorMessage {
+                        errorMessage(message)
+                    }
+
+                    Button {
+                        Task {
+                            await authViewModel.signUp(email: email, password: password)
+                            if authViewModel.isAuthenticated { dismiss() }
+                        }
+                    } label: {
+                        if authViewModel.isLoading {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Sign Up")
+                        }
+                    }
+                    .buttonStyle(FridgeFitPrimaryButtonStyle())
+                    .disabled(!canSubmit)
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(!canSubmit)
+                .padding(FridgeFitTheme.Spacing.xLarge)
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity)
             }
-            .padding()
+            .scrollDismissesKeyboard(.interactively)
+            .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
+            .tint(FridgeFitTheme.ColorToken.primary)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
             }
         }
+    }
+
+    private func errorMessage(_ message: String) -> some View {
+        Text(message)
+            .font(FridgeFitTheme.Typography.metadata)
+            .foregroundStyle(FridgeFitTheme.ColorToken.errorText)
+            .multilineTextAlignment(.center)
+            .padding(FridgeFitTheme.Spacing.medium)
+            .frame(maxWidth: .infinity)
+            .background(FridgeFitTheme.ColorToken.errorBackground, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control))
     }
 }
 
