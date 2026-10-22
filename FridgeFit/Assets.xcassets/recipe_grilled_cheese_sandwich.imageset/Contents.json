@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "recipe_grilled_cheese_sandwich.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

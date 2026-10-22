@@ -234,14 +234,22 @@ final class RecipeViewModel: ObservableObject {
     /// The decoded list-sized thumbnail of `recipe`'s stored photo, if it has
     /// one. What the catalogue rows draw.
     func thumbnail(for recipe: Recipe) -> UIImage? {
-        savedRecipeThumbnails[recipe.id]
+        savedRecipeThumbnails[recipe.id] ?? bundledPhoto(for: recipe)
     }
 
     /// The photo for the detail hero: the hero-sized copy once it is decoded,
     /// and the list thumbnail until then, so the screen never opens empty and
     /// then flashes.
     func heroImage(for recipe: Recipe) -> UIImage? {
-        savedRecipeHeroImages[recipe.id] ?? savedRecipeThumbnails[recipe.id]
+        savedRecipeHeroImages[recipe.id] ?? savedRecipeThumbnails[recipe.id] ?? bundledPhoto(for: recipe)
+    }
+
+    // bundled recipes get their photo from Assets.xcassets. anything with its own
+    // remote photo (saved from Discover) is left alone so the bundled one never
+    // shows in front of the real one while it's still loading
+    private func bundledPhoto(for recipe: Recipe) -> UIImage? {
+        guard recipe.imageURL == nil else { return nil }
+        return BundledPhotoAssets.recipePhoto(for: recipe)
     }
 
     /// Decodes `recipe`'s stored photo at hero resolution, once. Called by the
