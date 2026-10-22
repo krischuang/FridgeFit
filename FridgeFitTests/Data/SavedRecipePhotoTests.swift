@@ -81,7 +81,7 @@ final class SavedRecipePhotoTests: XCTestCase {
 
     private func makeRepository() -> SwiftDataSavedRecipeRepository {
         SwiftDataSavedRecipeRepository(
-            store: SwiftDataSavedRecipeStore(context: container.mainContext, ownerIDProvider: { [unowned self] in self.owner })
+            store: SwiftDataSavedRecipeStore(container: container.modelContainer, ownerIDProvider: { [unowned self] in self.owner })
         )
     }
 

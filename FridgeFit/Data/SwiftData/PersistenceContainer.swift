@@ -11,12 +11,19 @@ import SwiftData
 /// ## Why one container, built here
 ///
 /// Two containers over one store file is a staleness and corruption risk, so
-/// exactly one is created - by `AppDependencies`, at launch - and both
-/// SwiftData repositories are handed its `mainContext`. Sharing the context
-/// is not an optimisation: linking an `InventoryEventEntity` to its
-/// `PantryItemEntity` requires both objects to be managed by the *same*
+/// exactly one is created - by `AppDependencies`, at launch - and the pantry
+/// and inventory-event repositories are handed its `mainContext`. Sharing
+/// the context is not an optimisation: linking an `InventoryEventEntity` to
+/// its `PantryItemEntity` requires both objects to be managed by the *same*
 /// context, so two contexts would silently break the relationship that the
 /// activity history depends on.
+///
+/// `SwiftDataSavedRecipeStore` is the one exception, and takes the container
+/// rather than the context. Its two models relate to nothing else, so it
+/// gains nothing from sharing - and a shared context cannot give it what it
+/// needs, which is a `rollback()` that undoes a failed recipe write without
+/// discarding another feature's unsaved edits. One container still, so one
+/// store file and one copy of the data.
 ///
 /// ## Why `mainContext` and not `@ModelActor`
 ///

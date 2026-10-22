@@ -12,12 +12,13 @@ import SwiftData
 /// ## Why two types
 ///
 /// `SavedRecipeRepository` (and `RecipeRepository`, which
-/// `CompositeRecipeRepository` calls through) are `nonisolated`, but the
-/// store is the container's `mainContext`, which is not `Sendable` and must
-/// stay on the main actor - see `PersistenceContainer`. So the context lives
-/// in `SwiftDataSavedRecipeStore` (`@MainActor`), and this nonisolated
-/// wrapper forwards to it; each `await` hops to the main actor. Same one
-/// context as the pantry and event repositories.
+/// `CompositeRecipeRepository` calls through) are `nonisolated`, but a
+/// `ModelContext` is not `Sendable` and must stay on one actor - see
+/// `PersistenceContainer`. So the context lives in
+/// `SwiftDataSavedRecipeStore` (`@MainActor`), and this nonisolated wrapper
+/// forwards to it; each `await` hops to the main actor. The store makes its
+/// own context from the app's single container - see its documentation for
+/// why saved recipes do not share the `mainContext`.
 nonisolated final class SwiftDataSavedRecipeRepository: SavedRecipeRepository {
     private let store: SwiftDataSavedRecipeStore
 
@@ -63,16 +64,68 @@ nonisolated final class SwiftDataSavedRecipeRepository: SavedRecipeRepository {
 /// - Removing a recipe that isn't saved is not an error.
 /// - Store failures surface as `SaveOnlineRecipeError` (`loadFailed` /
 ///   `saveFailed` / `removeFailed`), never a raw SwiftData error.
+/// - A failed write leaves the store exactly as it was, and leaves no other
+///   feature's unsaved work affected either - see `context`.
 @MainActor
 final class SwiftDataSavedRecipeStore {
+
+    /// This feature's own context over the app's single `ModelContainer`.
+    ///
+    /// ## Why not the shared `mainContext`
+    ///
+    /// A failed write must leave nothing pending. A half-inserted recipe that
+    /// a later commit picks up is worse than the failure itself, and a pending
+    /// `delete` left behind by a failed `remove` would eventually drop a
+    /// recipe the user still has. What discards that work is
+    /// `ModelContext.rollback()` - and rollback is context-wide. On
+    /// `PersistenceContainer.mainContext` it would also throw away unsaved
+    /// pantry and inventory-event edits; the mirror image is just as bad,
+    /// since `save()` there commits *their* pending changes as a side effect
+    /// of saving a recipe. On a context of our own, both are exactly scoped.
+    ///
+    /// Saved recipes can afford their own context because they are a closed
+    /// island in the schema: `SavedRecipeEntity` relates only to
+    /// `SavedRecipeIngredientEntity`, and nothing else in the app writes
+    /// either. The constraint that makes `PersistenceContainer` hand one
+    /// shared context to the pantry and event repositories - an
+    /// `InventoryEventEntity` can only link to its `PantryItemEntity` when
+    /// both are managed by the same context - does not reach this feature.
+    /// Same container, so the same store file and the same data; only the
+    /// transaction boundary is ours.
+    ///
+    /// One long-lived context rather than one per call, deliberately: reads
+    /// then see this store's own committed writes without depending on
+    /// cross-context merge, and an abandoned context can never linger holding
+    /// a pending delete of rows a later call goes on to delete for real -
+    /// which SwiftData traps on (`This model instance was invalidated because
+    /// its backing data could no longer be found`).
+    ///
+    /// Autosave is off, so every commit is an explicit `save()` and nothing
+    /// is committed between one operation and the next.
     private let context: ModelContext
     private let ownerIDProvider: () -> String?
     private let now: () -> Date
+    private let willSave: () throws -> Void
 
-    init(context: ModelContext, ownerIDProvider: @escaping () -> String?, now: @escaping () -> Date = { Date() }) {
+    /// - Parameters:
+    ///   - container: the app's single container, not its `mainContext`. See
+    ///     `context` for why.
+    ///   - willSave: runs immediately before each `context.save()`. A no-op
+    ///     in the app; tests throw from it to drive the failure paths
+    ///     deterministically, which a real SwiftData store cannot be asked
+    ///     to do on demand.
+    init(
+        container: ModelContainer,
+        ownerIDProvider: @escaping () -> String?,
+        now: @escaping () -> Date = { Date() },
+        willSave: @escaping () throws -> Void = {}
+    ) {
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
         self.context = context
         self.ownerIDProvider = ownerIDProvider
         self.now = now
+        self.willSave = willSave
     }
 
     func fetchAll() throws -> [Recipe] {
@@ -114,12 +167,13 @@ final class SwiftDataSavedRecipeStore {
                 context.insert(line)
             }
             target.ingredients = lines
+            try willSave()
             try context.save()
         } catch let error as SaveOnlineRecipeError {
-            context.rollback()
+            discardPendingWork()
             throw error
         } catch {
-            context.rollback()
+            discardPendingWork()
             throw SaveOnlineRecipeError.saveFailed
         }
     }
@@ -158,16 +212,48 @@ final class SwiftDataSavedRecipeStore {
     func remove(id: UUID) throws {
         let ownerID = try requireOwnerID()
         do {
+            // Removing one that isn't saved is not an error.
             guard let existing = try entity(id: id, ownerID: ownerID) else { return }
+
+            // The lines are detached and deleted explicitly, so the recipe is
+            // childless by the time it is deleted and the `.cascade` rule has
+            // nothing left to do. This is not tidiness - it is what makes the
+            // failure path survivable. Deleting a recipe that still owns its
+            // lines leaves a pending cascade that cannot be undone: a
+            // `rollback()` traps inside SwiftData snapshotting lines that are
+            // still faults (`Unexpected backing data for snapshot creation:
+            // _FullFutureBackingData<SavedRecipeIngredientEntity>`), while
+            // abandoning the pending delete instead poisons the next attempt
+            // (`This model instance was invalidated because its backing data
+            // could no longer be found`). Detached, both the delete and its
+            // rollback are ordinary row operations.
+            //
+            // `delete(model:where:)` is not an option here: a batch delete
+            // cannot nullify the mandatory inverse and fails outright.
+            let lines = existing.ingredients
+            existing.ingredients = []
+            for line in lines {
+                context.delete(line)
+            }
             context.delete(existing)
+            try willSave()
             try context.save()
         } catch {
-            context.rollback()
+            // Without this the delete would stay pending and a later commit
+            // would drop a recipe the user still has.
+            discardPendingWork()
             throw SaveOnlineRecipeError.removeFailed
         }
     }
 
     // MARK: - Plumbing
+
+    /// Undoes everything the failed operation did, and only that: the context
+    /// is this store's own, so an unrelated pantry or inventory-event edit on
+    /// `mainContext` is not in scope. See `context`.
+    private func discardPendingWork() {
+        context.rollback()
+    }
 
     private func requireOwnerID() throws -> String {
         guard let ownerID = ownerIDProvider(), !ownerID.isEmpty else {

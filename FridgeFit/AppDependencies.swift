@@ -80,7 +80,7 @@ final class AppDependencies {
         case .swiftData:
             let container = try PersistenceContainer(storage: storage)
             persistenceContainer = container
-            // One context for both repositories. Required, not an
+            // One context for these two repositories. Required, not an
             // optimisation: an event can only be linked to its pantry item if
             // both objects are managed by the same context.
             pantryRepository = SwiftDataPantryRepository(
@@ -91,9 +91,14 @@ final class AppDependencies {
                 context: container.mainContext,
                 ownerIDProvider: ownerIDProvider
             )
+            // Saved recipes get the container, not the shared context: they
+            // relate to nothing outside their own two models, and their own
+            // context is what lets a failed write roll back without
+            // discarding unsaved pantry work. See
+            // `SwiftDataSavedRecipeStore.context`.
             savedRecipeRepository = SwiftDataSavedRecipeRepository(
                 store: SwiftDataSavedRecipeStore(
-                    context: container.mainContext,
+                    container: container.modelContainer,
                     ownerIDProvider: ownerIDProvider
                 )
             )

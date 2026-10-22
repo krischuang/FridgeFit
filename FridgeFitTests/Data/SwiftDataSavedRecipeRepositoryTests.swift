@@ -22,7 +22,7 @@ final class SwiftDataSavedRecipeRepositoryTests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         container = try PersistenceContainer(storage: .inMemory)
-        sut = makeRepository(context: container.mainContext)
+        sut = makeRepository()
     }
 
     override func tearDown() async throws {
@@ -31,14 +31,22 @@ final class SwiftDataSavedRecipeRepositoryTests: XCTestCase {
         try await super.tearDown()
     }
 
-    private func makeRepository(context: ModelContext) -> SwiftDataSavedRecipeRepository {
+    private func makeRepository(willSave: @escaping () throws -> Void = {}) -> SwiftDataSavedRecipeRepository {
         SwiftDataSavedRecipeRepository(
             store: SwiftDataSavedRecipeStore(
-                context: context,
+                container: container.modelContainer,
                 ownerIDProvider: { [unowned self] in self.currentOwner },
-                now: { [unowned self] in self.clock }
+                now: { [unowned self] in self.clock },
+                willSave: willSave
             )
         )
+    }
+
+    /// Reads the store itself, through a context that has never cached any of
+    /// these rows - the store writes through its own context now, so asserting
+    /// on `mainContext` would be asserting on a bystander's cache.
+    private func linesInStore() throws -> [SavedRecipeIngredientEntity] {
+        try ModelContext(container.modelContainer).fetch(FetchDescriptor<SavedRecipeIngredientEntity>())
     }
 
     private func recipe(
@@ -87,7 +95,7 @@ final class SwiftDataSavedRecipeRepositoryTests: XCTestCase {
     func test_savedRecipe_isReadableByAFreshRepository_withoutAnyProvider() async throws {
         try await sut.save(recipe(), sourceRecipeID: 716429)
 
-        let reopened = makeRepository(context: container.mainContext)
+        let reopened = makeRepository()
         let loaded = try await reopened.fetchAll()
 
         XCTAssertEqual(loaded.map(\.title), ["Garlic Pasta"])
@@ -106,7 +114,7 @@ final class SwiftDataSavedRecipeRepositoryTests: XCTestCase {
         XCTAssertEqual(loaded.first?.title, "Garlic Pasta v2")
         XCTAssertEqual(loaded.first?.ingredients.map(\.ingredient.name), ["Pasta", "Garlic"])
 
-        let orphanLines = try container.mainContext.fetch(FetchDescriptor<SavedRecipeIngredientEntity>())
+        let orphanLines = try linesInStore()
         XCTAssertEqual(orphanLines.count, 2, "Replaced lines must be deleted, not left orphaned")
     }
 
@@ -155,7 +163,7 @@ final class SwiftDataSavedRecipeRepositoryTests: XCTestCase {
 
         let remaining = try await sut.fetchAll()
         XCTAssertTrue(remaining.isEmpty)
-        XCTAssertTrue(try container.mainContext.fetch(FetchDescriptor<SavedRecipeIngredientEntity>()).isEmpty)
+        XCTAssertTrue(try linesInStore().isEmpty)
     }
 
     func test_remove_unknownRecipe_isNotAnError() async throws {
@@ -217,7 +225,7 @@ final class SwiftDataSavedRecipeRepositoryTests: XCTestCase {
         let reloaded = RecipeViewModel(
             recipeRepository: InMemoryRecipeRepository(recipes: []),
             pantryRepository: InMemoryPantryRepository(),
-            savedRecipeRepository: makeRepository(context: container.mainContext)
+            savedRecipeRepository: makeRepository()
         )
         await reloaded.loadRecipes()
         XCTAssertEqual(reloaded.savedRecipes.map(\.title), ["Saved Curry"])
