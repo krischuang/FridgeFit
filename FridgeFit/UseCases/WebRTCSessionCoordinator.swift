@@ -74,6 +74,18 @@ final class WebRTCSessionCoordinator {
     /// Dropping them instead of buffering them is a classic cause of
     /// "sometimes connects" flakiness.
     private var queuedRemoteCandidates: [IceCandidatePayload] = []
+    /// Our own candidates, held until the session document exists.
+    ///
+    /// Pre-gathering plus building the offer before the Firestore write means
+    /// ICE can start producing candidates while that write is still in
+    /// flight. Publishing them into a subcollection whose parent document
+    /// does not exist yet would work in Firestore and would be unreadable
+    /// debris if the write then failed, so they wait here instead. Nothing is
+    /// lost by waiting: the peer cannot use a candidate until it has seen the
+    /// session and applied the offer, which cannot happen before that write
+    /// lands.
+    private var pendingLocalCandidates: [IceCandidatePayload] = []
+    private var isSessionPublished = false
     private var hasRemoteDescription = false
     private var hasConfirmedVideo = false
     /// Guards `disconnect` so a peer `session_end`, an ICE failure and a user
@@ -137,6 +149,16 @@ final class WebRTCSessionCoordinator {
             assertionFailure("Only the callee listens for incoming sessions")
             return
         }
+        // Debris from a crashed or backgrounded run is cleared here rather
+        // than when someone starts a session. The sweep is a query plus a
+        // delete per leftover session, and it used to be awaited in the
+        // middle of `connect`, where every one of those round trips sat
+        // directly between the user's tap and the offer being written. Camera
+        // Mode is opened well before anyone calls, so the same work costs
+        // nothing here, and both devices share one sessions collection so
+        // either side sweeping is enough.
+        sweepExpiredSessions()
+
         incomingSubscription?.cancel()
         incomingSubscription = transport.observeIncomingSessions(
             calleeDeviceId: identity.deviceId,
@@ -179,6 +201,9 @@ final class WebRTCSessionCoordinator {
 
     private func accept(session: WebRTCSessionRecord, offer: SessionDescriptionPayload) async {
         sessionId = session.sessionId
+        // The caller already wrote the document this side is answering, so
+        // candidates may be published the moment they are gathered.
+        isSessionPublished = true
         peerDeviceId = session.callerDeviceId
         emit(.peerIdentified(deviceId: session.callerDeviceId, deviceName: session.callerDeviceName))
         update(status: .connecting)
@@ -219,47 +244,70 @@ final class WebRTCSessionCoordinator {
             return
         }
 
-        // No backend to run a cron sweep, so debris gets cleared whenever
-        // someone starts a session. Failure here is not worth aborting for.
-        do {
-            let removed = try await transport.deleteExpiredSessions(now: now())
-            if removed > 0 { logger.info("Swept \(removed) expired signaling session(s)") }
-        } catch {
-            logger.info("Expired-session sweep skipped: \(error.localizedDescription, privacy: .public)")
-        }
-
         let newSessionId = UUID().uuidString
-        let createdAt = now()
-        let record = WebRTCSessionRecord(
-            sessionId: newSessionId,
-            callerDeviceId: identity.deviceId,
-            callerDeviceName: identity.deviceName,
-            calleeDeviceId: cameraDeviceId,
-            calleeDeviceName: cameraDeviceName,
-            state: .creating,
-            offer: nil,
-            answer: nil,
-            createdAt: createdAt,
-            expiresAt: createdAt.addingTimeInterval(WebRTCSessionRecord.timeToLive)
-        )
-
         sessionId = newSessionId
         peerDeviceId = cameraDeviceId
         emit(.peerIdentified(deviceId: cameraDeviceId, deviceName: cameraDeviceName))
         update(status: .connecting)
 
         do {
-            try await transport.createSession(record)
+            // Everything local happens before anything is written. Building
+            // the peer connection and the offer costs no network, and
+            // `createOffer` is what starts ICE gathering - so by the time the
+            // single write below is acknowledged, candidates are usually
+            // already waiting in `pendingLocalCandidates`.
             let connection = try startPeerConnection()
 
-            observeSessionDocument()
+            // Candidates only. `observeSessionDocument` has to wait until the
+            // document exists: a Firestore document listener reports a
+            // missing document as a snapshot with `exists == false`, which
+            // this coordinator reads as the peer having cleaned up and
+            // answers by tearing the session down. The candidate listener has
+            // no such problem - an absent subcollection is simply empty.
             observePeerCandidates()
 
             let offer = try await connection.createOffer()
-            try await transport.setOffer(sessionId: newSessionId, offer: offer)
+
+            // One write, not two. The session used to be created empty at
+            // `.creating` and then updated with the offer, which cost a
+            // second acknowledged round trip and made the camera wake up for
+            // a snapshot it could only discard - `handleIncoming` ignores any
+            // state that is not `.offering`. Writing the offer with the
+            // document removes both.
+            let createdAt = now()
+            let record = WebRTCSessionRecord(
+                sessionId: newSessionId,
+                callerDeviceId: identity.deviceId,
+                callerDeviceName: identity.deviceName,
+                calleeDeviceId: cameraDeviceId,
+                calleeDeviceName: cameraDeviceName,
+                state: .offering,
+                offer: offer,
+                answer: nil,
+                createdAt: createdAt,
+                expiresAt: createdAt.addingTimeInterval(WebRTCSessionRecord.timeToLive)
+            )
+            try await transport.createSession(record)
+            observeSessionDocument()
+            publishPendingLocalCandidates()
             logger.info("Offered session \(newSessionId, privacy: .public)")
         } catch {
             await failSession(with: error)
+        }
+    }
+
+    /// Clears expired signaling sessions without holding anything up.
+    ///
+    /// Deliberately not awaited by any caller: it is best effort, its result
+    /// is only logged, and nothing in a negotiation depends on it.
+    private func sweepExpiredSessions() {
+        Task { [transport, now, logger] in
+            do {
+                let removed = try await transport.deleteExpiredSessions(now: now())
+                if removed > 0 { logger.info("Swept \(removed) expired signaling session(s)") }
+            } catch {
+                logger.info("Expired-session sweep skipped: \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 
@@ -359,6 +407,28 @@ final class WebRTCSessionCoordinator {
         }
     }
 
+    /// Flushes everything ICE produced while the session document was still
+    /// being written, and lets later candidates go straight out.
+    private func publishPendingLocalCandidates() {
+        isSessionPublished = true
+        let pending = pendingLocalCandidates
+        pendingLocalCandidates.removeAll()
+        for candidate in pending {
+            publish(localCandidate: candidate)
+        }
+    }
+
+    private func publish(localCandidate candidate: IceCandidatePayload) {
+        guard let sessionId else { return }
+        Task {
+            do {
+                try await self.transport.appendCandidate(candidate, sessionId: sessionId, from: self.role)
+            } catch {
+                self.logger.info("Could not publish a local ICE candidate: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
     private func drainQueuedCandidates(into connection: any PeerConnectionControlling) async throws {
         let queued = queuedRemoteCandidates
         queuedRemoteCandidates.removeAll()
@@ -370,14 +440,12 @@ final class WebRTCSessionCoordinator {
     private func handle(peerEvent event: PeerConnectionEvent) {
         switch event {
         case .localCandidate(let candidate):
-            guard let sessionId else { return }
-            Task {
-                do {
-                    try await self.transport.appendCandidate(candidate, sessionId: sessionId, from: self.role)
-                } catch {
-                    self.logger.info("Could not publish a local ICE candidate: \(error.localizedDescription, privacy: .public)")
-                }
+            guard sessionId != nil else { return }
+            guard isSessionPublished else {
+                pendingLocalCandidates.append(candidate)
+                return
             }
+            publish(localCandidate: candidate)
 
         case .connectionState(let state):
             handle(connectionState: state)
@@ -511,6 +579,8 @@ final class WebRTCSessionCoordinator {
         sessionId = nil
         peerDeviceId = nil
         queuedRemoteCandidates.removeAll()
+        pendingLocalCandidates.removeAll()
+        isSessionPublished = false
         hasRemoteDescription = false
         hasConfirmedVideo = false
 

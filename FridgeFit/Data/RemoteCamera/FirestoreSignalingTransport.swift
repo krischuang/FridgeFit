@@ -78,17 +78,6 @@ nonisolated final class FirestoreSignalingTransport: SignalingTransport {
         )
     }
 
-    func setOffer(sessionId: String, offer: SessionDescriptionPayload) async throws {
-        let uid = userIDProvider()
-        let document = try sessionDocument(sessionId)
-        try await FirestoreDiagnostics.perform(.update, path: sessionPath(sessionId), uid: uid) {
-            try await document.updateData([
-                WebRTCSessionRecord.Field.offer: offer.encoded,
-                WebRTCSessionRecord.Field.state: WebRTCSessionState.offering.rawValue,
-            ])
-        }
-    }
-
     func setAnswer(sessionId: String, answer: SessionDescriptionPayload) async throws {
         let uid = userIDProvider()
         let document = try sessionDocument(sessionId)
@@ -295,10 +284,17 @@ nonisolated final class FirestoreSignalingTransport: SignalingTransport {
     /// Subcollections are not removed by deleting the parent in Firestore, so
     /// skipping this would leave orphaned candidate documents that nothing
     /// will ever read or clean up.
+    ///
+    /// Batched rather than one delete at a time. A negotiation leaves a
+    /// candidate document per candidate, and deleting them in sequence meant
+    /// a round trip each: a session with ten candidates a side cost over
+    /// twenty, and the expiry sweep multiplied that by the number of stale
+    /// sessions. A batch commits in one.
     func deleteSession(sessionId: String) async throws {
         let uid = userIDProvider()
         let document = try sessionDocument(sessionId)
 
+        var references: [DocumentReference] = []
         for role in [SignalingRole.caller, .callee] {
             let collection = document.collection(role.candidateCollectionName)
             let candidates = try await FirestoreDiagnostics.perform(
@@ -306,19 +302,25 @@ nonisolated final class FirestoreSignalingTransport: SignalingTransport {
             ) {
                 try await collection.getDocuments()
             }
-            for candidate in candidates.documents {
-                try await FirestoreDiagnostics.perform(
-                    .delete, path: candidatesPath(sessionId, role), uid: uid
-                ) {
-                    try await candidate.reference.delete()
-                }
+            references.append(contentsOf: candidates.documents.map(\.reference))
+        }
+        references.append(document)
+
+        // Firestore caps a batch at 500 writes. Chunking keeps a session with
+        // an improbable number of candidates correct rather than throwing.
+        for chunk in stride(from: 0, to: references.count, by: Self.maximumBatchSize) {
+            let slice = references[chunk..<min(chunk + Self.maximumBatchSize, references.count)]
+            let batch = firestore.batch()
+            for reference in slice {
+                batch.deleteDocument(reference)
+            }
+            try await FirestoreDiagnostics.perform(.delete, path: sessionPath(sessionId), uid: uid) {
+                try await batch.commit()
             }
         }
-
-        try await FirestoreDiagnostics.perform(.delete, path: sessionPath(sessionId), uid: uid) {
-            try await document.delete()
-        }
     }
+
+    private static let maximumBatchSize = 500
 
     @discardableResult
     func deleteExpiredSessions(now: Date) async throws -> Int {

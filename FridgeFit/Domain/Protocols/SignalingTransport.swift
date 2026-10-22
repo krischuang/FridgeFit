@@ -15,12 +15,12 @@ import Foundation
 /// no network.
 nonisolated protocol SignalingTransport: AnyObject, Sendable {
     /// Writes a new session document. Fails if the ID is taken.
+    ///
+    /// The caller writes the offer with it, in one acknowledged round trip,
+    /// so there is no separate "set the offer" step.
     func createSession(_ session: WebRTCSessionRecord) async throws
 
     func fetchSession(sessionId: String) async throws -> WebRTCSessionRecord?
-
-    /// Writes the offer and moves the session to `.offering`.
-    func setOffer(sessionId: String, offer: SessionDescriptionPayload) async throws
 
     /// Writes the answer and moves the session to `.answering`.
     func setAnswer(sessionId: String, answer: SessionDescriptionPayload) async throws
@@ -64,9 +64,11 @@ nonisolated protocol SignalingTransport: AnyObject, Sendable {
 
     /// Deletes sessions whose `expiresAt` has passed.
     ///
-    /// Run opportunistically when a device starts a session - a prototype
+    /// Run opportunistically when a camera starts listening - a prototype
     /// with no backend has nowhere else to run a sweep, and leaving debris
-    /// would eventually make `observeIncomingSessions` noisy.
+    /// would eventually make `observeIncomingSessions` noisy. Deliberately
+    /// not run while connecting: its round trips would sit between the user's
+    /// tap and the offer.
     ///
     /// - Returns: how many were removed.
     @discardableResult
