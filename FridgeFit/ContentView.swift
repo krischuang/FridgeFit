@@ -151,11 +151,17 @@ struct ContentView: View {
         // Receipt scanning is two on-device stages: Vision reads the text,
         // Foundation Models interprets it. Neither sends anything off the
         // device, and the photo never reaches the language model.
+        //
+        // The recognition cache sits in front of that pair. It only ever
+        // answers for a photo that has already been through them and had its
+        // result verified in the DEBUG preparation screen; everything else
+        // misses and scans normally. See `ReceiptRecognitionCache`.
         _scannerViewModel = StateObject(
             wrappedValue: ReceiptScannerViewModel(
                 textRecognizer: VisionReceiptTextRecognizer(),
                 interpreter: AppleReceiptIngredientInterpreter(),
-                pantryRepository: pantryRepository
+                pantryRepository: pantryRepository,
+                recognitionCache: FileReceiptRecognitionCacheStore()
             )
         )
         _recipeSuggestionViewModel = StateObject(

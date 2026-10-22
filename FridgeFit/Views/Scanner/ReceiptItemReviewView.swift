@@ -103,6 +103,19 @@ struct ReceiptItemReviewView: View {
                     .font(FridgeFitTheme.Typography.caption)
                     .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
             }
+
+            // A replayed result must say so. Presenting a cached outcome
+            // with the same wording as a fresh one would tell the user the
+            // model just ran when it did not.
+            if viewModel.recognitionSource == .verifiedCache {
+                Label(
+                    "Reused the saved result from the last time this exact photo was analysed. You can still edit everything below.",
+                    systemImage: "clock.arrow.circlepath"
+                )
+                .font(FridgeFitTheme.Typography.caption)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(FridgeFitTheme.Spacing.medium)
         .fridgeFitCardSurface()

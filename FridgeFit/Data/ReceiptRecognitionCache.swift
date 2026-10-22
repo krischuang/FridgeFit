@@ -280,6 +280,13 @@ nonisolated final class InMemoryReceiptRecognitionCacheStore: ReceiptRecognition
         stored[entry.fingerprint.value] = entry
     }
 
+    /// Plants an entry without going through `save`'s checks, to stand in
+    /// for a cache file left behind by a build with a different pipeline.
+    /// `save` could not produce such an entry, which is the point.
+    func insertBypassingValidation(_ entry: ReceiptRecognitionCacheEntry) {
+        stored[entry.fingerprint.value] = entry
+    }
+
     func allEntries() -> [ReceiptRecognitionCacheEntry] {
         stored.values
             .filter { $0.isCompatible && $0.isUsable }

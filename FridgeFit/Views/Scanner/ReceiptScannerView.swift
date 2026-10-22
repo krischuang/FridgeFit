@@ -20,6 +20,9 @@ struct ReceiptScannerView: View {
     @State private var isLoadingPickedPhoto = false
     @State private var isPresentingTips = false
     @State private var cameraAccessMessage: String?
+    #if DEBUG
+    @State private var isPresentingDemoCachePreparation = false
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -46,6 +49,19 @@ struct ReceiptScannerView: View {
                     .accessibilityLabel("Close receipt scanner")
                 }
 
+                #if DEBUG
+                // Developer entry point for preparing the demonstration
+                // receipt's cache entry. Compiled out of Release builds.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isPresentingDemoCachePreparation = true
+                    } label: {
+                        Image(systemName: "hammer")
+                    }
+                    .accessibilityLabel("Prepare demo receipt cache")
+                }
+                #endif
+
                 ToolbarItem(placement: .confirmationAction) {
                     Image(systemName: "person")
                         .font(.subheadline.weight(.semibold))
@@ -55,6 +71,11 @@ struct ReceiptScannerView: View {
                         .accessibilityHidden(true)
                 }
             }
+            #if DEBUG
+            .sheet(isPresented: $isPresentingDemoCachePreparation) {
+                ReceiptDemoCachePreparationView()
+            }
+            #endif
             .sheet(isPresented: $viewModel.isPresentingReview) {
                 ReceiptItemReviewView(viewModel: viewModel) { summary in
                     onFinished(summary)

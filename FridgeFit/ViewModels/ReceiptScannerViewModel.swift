@@ -43,6 +43,13 @@ final class ReceiptScannerViewModel: ObservableObject {
     /// exposed only so a DEBUG build can inspect why something is missing.
     @Published private(set) var excludedItems: [ReceiptIngredientCandidate] = []
 
+    /// Where the current results came from, or `nil` when there are none.
+    ///
+    /// Carried through from `ReceiptScanOutcome` rather than guessed from
+    /// elapsed time, so the review screen can say plainly that it is showing
+    /// a reused result instead of implying the model just ran.
+    @Published private(set) var recognitionSource: ReceiptRecognitionSource?
+
     private let scanReceiptUseCase: ScanReceiptUseCase
     private let addDetectedIngredientsUseCase: AddDetectedIngredientsUseCase
 
@@ -63,13 +70,15 @@ final class ReceiptScannerViewModel: ObservableObject {
     convenience init(
         textRecognizer: ReceiptTextRecognizer,
         interpreter: ReceiptIngredientInterpreter,
-        pantryRepository: PantryRepository
+        pantryRepository: PantryRepository,
+        recognitionCache: ReceiptRecognitionCacheStoring? = nil
     ) {
         self.init(
             scanReceiptUseCase: ScanReceiptUseCase(
                 textRecognizer: textRecognizer,
                 interpreter: interpreter,
-                pantryRepository: pantryRepository
+                pantryRepository: pantryRepository,
+                recognitionCache: recognitionCache
             ),
             addDetectedIngredientsUseCase: AddDetectedIngredientsUseCase(pantryRepository: pantryRepository)
         )
@@ -81,7 +90,8 @@ final class ReceiptScannerViewModel: ObservableObject {
     /// recognition or persistence.
     convenience init(
         previewDrafts: [ReceiptItemDraft],
-        previewSummary: AddDetectedIngredientsSummary? = nil
+        previewSummary: AddDetectedIngredientsSummary? = nil,
+        previewSource: ReceiptRecognitionSource = .appleIntelligence
     ) {
         self.init(
             textRecognizer: MockReceiptTextRecognizer(lines: []),
@@ -90,6 +100,7 @@ final class ReceiptScannerViewModel: ObservableObject {
         )
         drafts = previewDrafts
         addSummary = previewSummary
+        recognitionSource = previewSource
         scanState = .completed
     }
     #endif
@@ -140,6 +151,7 @@ final class ReceiptScannerViewModel: ObservableObject {
         drafts = []
         excludedItems = []
         addSummary = nil
+        recognitionSource = nil
         scanState = .idle
     }
 
@@ -150,6 +162,7 @@ final class ReceiptScannerViewModel: ObservableObject {
         drafts = []
         excludedItems = []
         addSummary = nil
+        recognitionSource = nil
         scanState = .idle
     }
 
@@ -237,9 +250,13 @@ final class ReceiptScannerViewModel: ObservableObject {
 
             guard !outcome.pantryCandidates.isEmpty else {
                 drafts = []
+                recognitionSource = nil
                 scanState = .failed(message: ReceiptScanError.noFoodItemsFound.localizedDescription)
                 return
             }
+            // Set before the drafts so any observer that reacts to `drafts`
+            // already sees the right provenance.
+            recognitionSource = outcome.source
             drafts = outcome.pantryCandidates.map(ReceiptItemDraft.init(candidate:))
             scanState = .completed
             isPresentingReview = true
@@ -247,6 +264,7 @@ final class ReceiptScannerViewModel: ObservableObject {
         case .failure(let error):
             drafts = []
             excludedItems = []
+            recognitionSource = nil
             scanState = .failed(message: Self.userMessage(for: error))
         }
     }
@@ -353,6 +371,7 @@ final class ReceiptScannerViewModel: ObservableObject {
         drafts = []
         excludedItems = []
         addSummary = nil
+        recognitionSource = nil
         scanState = .idle
         isPresentingReview = false
     }

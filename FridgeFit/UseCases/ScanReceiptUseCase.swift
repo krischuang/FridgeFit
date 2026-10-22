@@ -30,19 +30,24 @@ nonisolated struct ScanReceiptUseCase {
     private let pantryRepository: PantryRepository
     private let parser: ReceiptLineParser
     private let normalizer: ReceiptItemNormalizer
+    /// Optional, and `nil` by default, so every existing construction of
+    /// this type behaves exactly as it did before the cache existed.
+    private let recognitionCache: ReceiptRecognitionCacheStoring?
 
     init(
         textRecognizer: ReceiptTextRecognizer,
         interpreter: ReceiptIngredientInterpreter,
         pantryRepository: PantryRepository,
         parser: ReceiptLineParser = ReceiptLineParser(),
-        normalizer: ReceiptItemNormalizer = ReceiptItemNormalizer()
+        normalizer: ReceiptItemNormalizer = ReceiptItemNormalizer(),
+        recognitionCache: ReceiptRecognitionCacheStoring? = nil
     ) {
         self.textRecognizer = textRecognizer
         self.interpreter = interpreter
         self.pantryRepository = pantryRepository
         self.parser = parser
         self.normalizer = normalizer
+        self.recognitionCache = recognitionCache
     }
 
     /// Whether a scan can be started right now.
@@ -59,6 +64,15 @@ nonisolated struct ScanReceiptUseCase {
         image: CGImage,
         orientation: CGImagePropertyOrientation = .up
     ) async throws -> ReceiptScanOutcome {
+        // The cache is consulted first, and only ever answers for a picture
+        // that has already been through the pipeline below and had its
+        // result verified. A miss - including an unreadable store, an entry
+        // from an older pipeline, or an image that cannot be fingerprinted
+        // at all - falls straight through to the full scan.
+        if let replayed = try await replayedOutcome(for: image, orientation: orientation) {
+            return replayed
+        }
+
         let availability = interpreter.availability
         guard availability.canScan else {
             throw ReceiptScanError.scanUnavailable(availability)
@@ -86,6 +100,47 @@ nonisolated struct ScanReceiptUseCase {
         return try await markingPantryMembership(of: outcome)
     }
 
+    /// Serves a previously verified result for this exact picture, if there
+    /// is one.
+    ///
+    /// Returns `nil` for every kind of miss, so the caller's next step is an
+    /// ordinary scan. In particular this never throws on the cache's
+    /// account: the one error it propagates is cancellation, because a
+    /// cancelled scan must not produce a result either way.
+    ///
+    /// Note what still happens on a hit. The replayed candidates go through
+    /// `markingPantryMembership` against the **live** pantry, exactly as a
+    /// fresh scan's would, because what the user already owns has very
+    /// likely changed since the result was recorded. That is also what keeps
+    /// a replay from offering to add something the pantry already holds.
+    private func replayedOutcome(
+        for image: CGImage,
+        orientation: CGImagePropertyOrientation
+    ) async throws -> ReceiptScanOutcome? {
+        guard let recognitionCache else { return nil }
+
+        // Several megabytes of pixels. `ReceiptImageFingerprint.make` is
+        // `nonisolated`, and this type is too, so it runs off the main actor
+        // even though the view model started the task from it.
+        guard let fingerprint = ReceiptImageFingerprint.make(of: image, orientation: orientation) else {
+            ReceiptScanDiagnostics.cacheUnavailable("the image could not be fingerprinted")
+            return nil
+        }
+        try Task.checkCancellation()
+
+        guard let entry = recognitionCache.entry(for: fingerprint) else {
+            ReceiptScanDiagnostics.cacheMiss(fingerprint)
+            return nil
+        }
+
+        ReceiptScanDiagnostics.engine("Verified cache replay. No model invocation: this result was produced by an earlier Apple Intelligence run over a pixel-identical photo.")
+        ReceiptScanDiagnostics.cacheHit(entry)
+
+        let outcome = entry.outcome.outcome
+        try Task.checkCancellation()
+        return try await markingPantryMembership(of: outcome)
+    }
+
     /// Flags candidates the user already has. A pantry read failure isn't
     /// worth losing a whole scan over - the candidates are still shown, and
     /// `AddPantryItemUseCase` will still catch any duplicate on insert.
@@ -95,11 +150,10 @@ nonisolated struct ScanReceiptUseCase {
         }
         try Task.checkCancellation()
 
-        let marked = outcome.pantryCandidates.map { candidate in
-            let isAlreadyInPantry = pantryItems.contains { $0.ingredient.matches(name: candidate.displayName) }
-            return candidate.markingAlreadyInPantry(isAlreadyInPantry)
+        // `markingPantryMembership(_:)` carries `source` across, so a
+        // replayed result stays labelled as a replay.
+        return outcome.markingPantryMembership { candidate in
+            pantryItems.contains { $0.ingredient.matches(name: candidate.displayName) }
         }
-
-        return ReceiptScanOutcome(pantryCandidates: marked, excluded: outcome.excluded)
     }
 }
