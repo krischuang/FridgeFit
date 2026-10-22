@@ -25,25 +25,37 @@ struct RemoteCameraView: View {
 
     private let initialCamera: RegisteredDevice?
     private let onPresentationChange: ((Bool) -> Void)?
+    /// Reports a completed save so the presenting flow can take the user
+    /// somewhere useful. The pantry has already been written to by the time
+    /// this runs - it carries the summary, it does not perform the save.
+    ///
+    /// `nil` leaves the screen exactly as it was: the camera stays open and
+    /// the saved-ingredients note below is the whole feedback. Both real
+    /// entry points pass one; previews and tests are what take the default.
+    private let onIngredientsSaved: ((AddDetectedIngredientsSummary) -> Void)?
 
     init(
         identity: DeviceIdentity,
         initialCamera: RegisteredDevice? = nil,
-        onPresentationChange: ((Bool) -> Void)? = nil
+        onPresentationChange: ((Bool) -> Void)? = nil,
+        onIngredientsSaved: ((AddDetectedIngredientsSummary) -> Void)? = nil
     ) {
         _viewModel = StateObject(wrappedValue: RemoteCameraViewModel(identity: identity))
         self.initialCamera = initialCamera
         self.onPresentationChange = onPresentationChange
+        self.onIngredientsSaved = onIngredientsSaved
     }
 
     init(
         viewModel: RemoteCameraViewModel,
         initialCamera: RegisteredDevice? = nil,
-        onPresentationChange: ((Bool) -> Void)? = nil
+        onPresentationChange: ((Bool) -> Void)? = nil,
+        onIngredientsSaved: ((AddDetectedIngredientsSummary) -> Void)? = nil
     ) {
         _viewModel = StateObject(wrappedValue: viewModel)
         self.initialCamera = initialCamera
         self.onPresentationChange = onPresentationChange
+        self.onIngredientsSaved = onIngredientsSaved
     }
 
     var body: some View {
@@ -102,6 +114,8 @@ struct RemoteCameraView: View {
                     )
                 ) { confirmed in
                     confirmedIngredients = confirmed
+                } onSaveCompleted: { summary in
+                    onIngredientsSaved?(summary)
                 }
             }
         }

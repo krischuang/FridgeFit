@@ -94,6 +94,11 @@ private extension UIColor {
 
 /// Filled action treatment for primary, task-completing buttons.
 struct FridgeFitPrimaryButtonStyle: ButtonStyle {
+    /// Fully rounds the button. The sign-in and sign-up screens call for a
+    /// pill CTA; every other caller keeps the control radius, so the default
+    /// leaves them untouched.
+    var isPill = false
+
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
@@ -104,7 +109,10 @@ struct FridgeFitPrimaryButtonStyle: ButtonStyle {
             .padding(.horizontal, FridgeFitTheme.Spacing.large)
             .background(
                 isEnabled ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.disabledSurface,
-                in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                in: RoundedRectangle(
+                    cornerRadius: isPill ? FridgeFitTheme.Radius.pill : FridgeFitTheme.Radius.control,
+                    style: .continuous
+                )
             )
             .opacity(configuration.isPressed ? 0.84 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)

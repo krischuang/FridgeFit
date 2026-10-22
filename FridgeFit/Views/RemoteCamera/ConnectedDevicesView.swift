@@ -13,14 +13,27 @@ struct ConnectedDevicesView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var isPresentingAvailableCameras = false
     @State private var isPresentingRemoteCamera = false
+    /// Forwarded to `RemoteCameraView`, so the flow that opened this setup
+    /// decides where a finished scan lands - Smart Scan closes itself down to
+    /// the success summary, Profile switches to the kitchen tab. `nil` leaves
+    /// the user on the camera, which is only right for previews and tests.
+    private let onIngredientsSaved: ((AddDetectedIngredientsSummary) -> Void)?
 
-    init(identity: DeviceIdentity) {
+    init(
+        identity: DeviceIdentity,
+        onIngredientsSaved: ((AddDetectedIngredientsSummary) -> Void)? = nil
+    ) {
         _viewModel = StateObject(wrappedValue: ConnectedDevicesViewModel(identity: identity))
+        self.onIngredientsSaved = onIngredientsSaved
     }
 
     /// For previews and tests, which supply an existing discovery model.
-    init(viewModel: ConnectedDevicesViewModel) {
+    init(
+        viewModel: ConnectedDevicesViewModel,
+        onIngredientsSaved: ((AddDetectedIngredientsSummary) -> Void)? = nil
+    ) {
         _viewModel = StateObject(wrappedValue: viewModel)
+        self.onIngredientsSaved = onIngredientsSaved
     }
 
     var body: some View {
@@ -40,7 +53,8 @@ struct ConnectedDevicesView: View {
                     RemoteCameraView(
                         identity: viewModel.identity,
                         initialCamera: camera,
-                        onPresentationChange: { isPresentingRemoteCamera = $0 }
+                        onPresentationChange: { isPresentingRemoteCamera = $0 },
+                        onIngredientsSaved: onIngredientsSaved
                     )
                 }
             }
