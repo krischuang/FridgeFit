@@ -16,6 +16,7 @@ required - listed here anyway so we know where each one came from).
 | `recipe_chicken_caesar_salad` | Recipe photo (list + detail) | https://images.unsplash.com/photo-1512852939750-1305098529bf |
 | `recipe_rice_and_beans` | Recipe photo (list + detail) | https://images.unsplash.com/photo-1762631383556-7fa1365898b7 |
 | `recipe_greek_yogurt_parfait` | Recipe photo (list + detail) | https://images.unsplash.com/photo-1571230389215-b34a89739ef1 |
+| `category_all` | My Fridge "All" tile | https://images.unsplash.com/photo-1606859191214-25806e8e2423 |
 | `category_produce` | My Fridge ingredient tile | https://images.unsplash.com/photo-1597362925123-77861d3fbac7 |
 | `category_dairy` | My Fridge ingredient tile | https://images.unsplash.com/photo-1550583724-b2692b85b150 |
 | `category_meat` | My Fridge ingredient tile | https://images.unsplash.com/photo-1603048297172-c92544798d5a |

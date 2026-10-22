@@ -20,6 +20,12 @@ enum BundledPhotoAssets {
         UIImage(named: "category_" + categoryKey(category))
     }
 
+    /// The My Fridge "All" tile. It spans every category, so there is no
+    /// `IngredientCategory` to look a photo up by and it gets its own name.
+    static func allCategoriesPhoto() -> UIImage? {
+        UIImage(named: "category_all")
+    }
+
     // spelled out rather than built from the raw value, because rawValues like
     // "Spice & Condiment" are display text and could change
     static func categoryKey(_ category: IngredientCategory) -> String {
