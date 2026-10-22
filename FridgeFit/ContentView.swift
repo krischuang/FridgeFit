@@ -301,6 +301,16 @@ struct ContentView: View {
         .onChange(of: recipesPath) { _, path in
             navigation.isBrowsingRecipes = path.last == .catalogue
         }
+        // Discover's results were matched against the pantry at search time.
+        // Re-check them locally (no API call) whenever the pantry changes or
+        // the user comes back to the tab, so "missing" is never stale.
+        .onChange(of: navigation.selectedTab) { _, tab in
+            guard tab == .discover else { return }
+            Task { await onlineRecipeSearchViewModel.refreshPantryMatch() }
+        }
+        .onChange(of: inventoryStore.items) { _, _ in
+            Task { await onlineRecipeSearchViewModel.refreshPantryMatch() }
+        }
         // Reaches the remote-camera review sheet, four levels down, without
         // adding a pantry parameter to ConnectedDevicesView and
         // RemoteCameraView - neither of which writes to the pantry itself,

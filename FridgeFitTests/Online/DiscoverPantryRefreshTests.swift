@@ -124,4 +124,30 @@ final class DiscoverPantryRefreshTests: XCTestCase {
         XCTAssertFalse(viewModel.hasSearched)
         XCTAssertTrue(service.receivedCriteria.isEmpty)
     }
+
+    // MARK: - Descriptor words
+
+    func test_namesMatch_ignoresLeadingDescriptors() {
+        XCTAssertTrue(OnlineRecipeExpiryRanking.namesMatch("mild cheddar cheese", "Cheddar Cheese"))
+        XCTAssertTrue(OnlineRecipeExpiryRanking.namesMatch("large eggs", "egg"))
+        XCTAssertTrue(OnlineRecipeExpiryRanking.namesMatch("cheddar cheese", "Mild Cheddar Cheese"))
+        XCTAssertTrue(OnlineRecipeExpiryRanking.namesMatch("freshly grated parmesan", "parmesan"))
+    }
+
+    func test_namesMatch_keepsWordsThatChangeTheIngredient() {
+        XCTAssertFalse(OnlineRecipeExpiryRanking.namesMatch("brown sugar", "sugar"))
+        XCTAssertFalse(OnlineRecipeExpiryRanking.namesMatch("sweet potato", "potato"))
+        XCTAssertFalse(OnlineRecipeExpiryRanking.namesMatch("cheddar cheese", "cheese"))
+    }
+
+    func test_reconcile_mildCheddar_isMatchedByPantryCheddar() {
+        var recipe = OnlineRecipeFixtures.recipe(id: 7, title: "Mac and Cheese")
+        recipe.ingredients = [line("mild cheddar cheese", id: 1009), line("macaroni", id: 20099)]
+        let match = OnlineRecipeMatch(recipe: recipe, usedIngredientNames: [], missedIngredients: recipe.ingredients)
+
+        let result = OnlineRecipePantryReconciler.reconciled(match, pantry: [item("Cheddar Cheese")])
+
+        XCTAssertEqual(result.usedIngredientNames, ["mild cheddar cheese"])
+        XCTAssertEqual(result.missedIngredients.map(\.name), ["macaroni"])
+    }
 }

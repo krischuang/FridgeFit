@@ -128,10 +128,36 @@ nonisolated enum OnlineRecipeExpiryRanking {
     }
 
     /// Provider names first lose parenthetical notes
-    /// (`OnlineIngredientName.normalized`), then go through the app-wide
-    /// rule (`IngredientNameMatching`), so Discover agrees with the pantry.
+    /// (`OnlineIngredientName.normalized`) and leading descriptor words
+    /// (`withoutLeadingDescriptors`), then go through the app-wide rule
+    /// (`IngredientNameMatching`), so Discover agrees with the pantry.
     static func matchKey(_ name: String) -> String {
-        IngredientNameMatching.matchKey(OnlineIngredientName.normalized(name))
+        IngredientNameMatching.matchKey(withoutLeadingDescriptors(OnlineIngredientName.normalized(name)))
+    }
+
+    /// Words that describe *how* an ingredient is bought or prepared, not
+    /// *which* ingredient it is - "mild cheddar cheese" is cheddar cheese,
+    /// "large eggs" are eggs. Deliberately excludes words that change the
+    /// ingredient ("brown" sugar, "sweet" potato, "green" onion, "light"
+    /// cream), so those still need an exact pantry match.
+    static let descriptorWords: Set<String> = [
+        "mild", "medium", "sharp", "mature", "aged", "extra", "extra-sharp",
+        "fresh", "freshly", "large", "small", "jumbo", "extra-large", "ripe",
+        "organic", "raw", "boneless", "skinless", "unsalted", "salted",
+        "chopped", "diced", "minced", "sliced", "grated", "shredded",
+        "crumbled", "softened", "melted", "cold", "warm", "frozen", "thawed",
+        "low-fat", "reduced-fat", "full-fat", "whole", "plain",
+    ]
+
+    /// Drops descriptor words from the front of `name`, keeping at least one
+    /// word, so a name made only of descriptors is left as it was.
+    static func withoutLeadingDescriptors(_ name: String) -> String {
+        var words = name.split(whereSeparator: \.isWhitespace).map(String.init)
+        while words.count > 1,
+              descriptorWords.contains(words[0].lowercased().trimmingCharacters(in: .punctuationCharacters.subtracting(["-"]))) {
+            words.removeFirst()
+        }
+        return words.joined(separator: " ")
     }
 
     private static func sortedByUrgency(_ uses: [UrgentIngredientUse]) -> [UrgentIngredientUse] {

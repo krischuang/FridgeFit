@@ -63,16 +63,7 @@ struct DiscoverRecipesView: View {
         // current pantry locally (no API call, no quota).
         .onAppear { Task { await viewModel.refreshPantryMatch() } }
         .navigationDestination(for: OnlineRecipeMatch.self) { pushed in
-            // The pushed value is a snapshot; show the latest version of the
-            // same recipe so an open detail screen follows pantry changes.
-            let match = viewModel.matches.first { $0.id == pushed.id } ?? pushed
-            OnlineRecipeDetailView(
-                match: match,
-                intolerances: viewModel.preferences.intolerances,
-                expiryUse: viewModel.expiryUse(for: match),
-                recipeViewModel: recipeViewModel
-            )
-            .onAppear { Task { await viewModel.refreshPantryMatch() } }
+            LiveOnlineRecipeDetail(pushed: pushed, viewModel: viewModel, recipeViewModel: recipeViewModel)
         }
         .sheet(isPresented: $isShowingFilters) {
             NavigationStack {
@@ -807,5 +798,26 @@ private struct DiscoverResultsPreview: View {
                 await searchViewModel.search()
             }
         }
+    }
+}
+
+/// The pushed `OnlineRecipeMatch` is a snapshot taken when the row was
+/// tapped. This wrapper observes the search view model itself, so an open
+/// detail screen shows the latest have/missing after the pantry changes,
+/// instead of relying on SwiftUI re-running the destination closure.
+private struct LiveOnlineRecipeDetail: View {
+    let pushed: OnlineRecipeMatch
+    @ObservedObject var viewModel: OnlineRecipeSearchViewModel
+    @ObservedObject var recipeViewModel: RecipeViewModel
+
+    var body: some View {
+        let match = viewModel.matches.first { $0.id == pushed.id } ?? pushed
+        OnlineRecipeDetailView(
+            match: match,
+            intolerances: viewModel.preferences.intolerances,
+            expiryUse: viewModel.expiryUse(for: match),
+            recipeViewModel: recipeViewModel
+        )
+        .onAppear { Task { await viewModel.refreshPantryMatch() } }
     }
 }
