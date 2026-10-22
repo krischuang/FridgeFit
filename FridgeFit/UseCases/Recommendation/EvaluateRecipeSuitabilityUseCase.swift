@@ -204,8 +204,11 @@ nonisolated struct EvaluateRecipeSuitabilityUseCase {
             // item that isn't really there.
             guard evaluation.availability != .missing else { continue }
 
+            // The same coverage rule feasibility used to mark this
+            // ingredient available - a stricter one here would fail to find
+            // the very item that was matched and silently drop the credit.
             guard let item = pantryItems.first(where: {
-                $0.ingredient.matches(name: evaluation.ingredient.name)
+                IngredientNameMatching.covers(pantryName: $0.ingredient.name, recipeName: evaluation.ingredient.name)
             }) else { continue }
 
             guard creditedItemIDs.insert(item.id).inserted else { continue }

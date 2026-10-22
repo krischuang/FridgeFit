@@ -49,7 +49,9 @@ nonisolated enum SubstitutionSuggestionValidator {
             )
         }
 
-        guard let pantryItem = pantryItems.first(where: { $0.ingredient.matches(name: trimmedName) }) else {
+        guard let pantryItem = pantryItems.first(where: {
+            IngredientNameMatching.covers(pantryName: $0.ingredient.name, recipeName: trimmedName)
+        }) else {
             return SubstitutionSuggestion(
                 ingredientName: trimmedName,
                 suggestedQuantity: raw.suggestedQuantity,

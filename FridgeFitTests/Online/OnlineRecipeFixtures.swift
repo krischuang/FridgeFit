@@ -61,6 +61,31 @@ enum OnlineRecipeFixtures {
         )
     }
 
+    /// One ingredient line, for suites that build a recipe's list by hand.
+    static func line(_ name: String, id: Int) -> OnlineRecipeIngredient {
+        OnlineRecipeIngredient(providerID: id, name: name, amount: 1, unit: .pieces, originalUnit: "")
+    }
+
+    /// Spoonacular's shape for the reported Discover bug: brown sugar is in
+    /// the ingredient list but in neither `used` nor `missed`, because the
+    /// provider assumes pantry staples are owned. Reconciling against a
+    /// pantry that holds only an egg must therefore read 1 matched, 3
+    /// missing - not the provider's 1 and 2.
+    static func bakedCustard() -> OnlineRecipeMatch {
+        var custard = recipe(id: 641_000, title: "Baked Custard")
+        custard.ingredients = [
+            line("eggs", id: 1123),
+            line("brown sugar", id: 19334),
+            line("milk", id: 1077),
+            line("vanilla extract", id: 2050),
+        ]
+        return OnlineRecipeMatch(
+            recipe: custard,
+            usedIngredientNames: ["eggs"],
+            missedIngredients: [line("milk", id: 1077), line("vanilla extract", id: 2050)]
+        )
+    }
+
     static func pantry(_ names: String...) -> InMemoryPantryRepository {
         InMemoryPantryRepository(seedItems: names.map {
             PantryItem(ingredient: Ingredient(name: $0, category: .other), quantity: 1, unit: .pieces)

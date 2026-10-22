@@ -19,10 +19,15 @@ nonisolated struct Ingredient: Identifiable, Hashable, Codable {
         self.category = category
     }
 
-    /// Whether this ingredient's name matches `otherName`, ignoring case,
-    /// whitespace and singular/plural - so "greek yogurt" matches
-    /// "Greek Yogurt" and "Egg" matches "Eggs". See `IngredientNameMatching`
-    /// for exactly what is (and isn't) treated as the same ingredient.
+    /// Whether this ingredient's name means the **same pantry entry** as
+    /// `otherName`, ignoring case, whitespace and singular/plural - so
+    /// "greek yogurt" matches "Greek Yogurt" and "Egg" matches "Eggs".
+    ///
+    /// This is the strict question, for duplicate checks and lookups. To ask
+    /// whether a pantry item *covers* what a recipe needs, use
+    /// `IngredientNameMatching.covers(pantryName:recipeName:)` - it also
+    /// folds leading descriptors. See `IngredientNameMatching` for why the
+    /// two differ.
     func matches(name otherName: String) -> Bool {
         IngredientNameMatching.matches(name, otherName)
     }

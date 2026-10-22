@@ -38,7 +38,14 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
     private let hiddenRecipeStore: HiddenOnlineRecipeStoring
     /// Team blocklist shipped in the bundle (`OnlineRecipeBlocklist`).
     private let blockedRecipeIDs: Set<Int>
+    /// Search generation. Bumped by every `search()` and by every filter
+    /// change, so a superseded search cannot publish.
     private var currentToken = 0
+    /// Local re-check generation, separate from `currentToken` because a
+    /// re-check must never invalidate an in-flight search - that search cost
+    /// API quota. Bumping this instead lets an older re-check be dropped
+    /// without touching the search it is racing.
+    private var refreshGeneration = 0
     /// The provider's raw results from the last successful search, so the
     /// pantry can be re-applied without another API call.
     private var providerMatches: [OnlineRecipeMatch] = []
@@ -141,8 +148,15 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
     /// **no API call**. Call when Discover reappears (e.g. after the user
     /// added food in My Fridge) so "matched" / "missing", the expiry badges
     /// and the order are up to date without pressing refresh.
+    ///
+    /// Only the newest re-check may publish. Reading the pantry is async, so
+    /// two re-checks started a moment apart can finish in either order; the
+    /// generation check below means the one that started last wins, not the
+    /// one that happened to finish last.
     func refreshPantryMatch() async {
         guard !isLoading, !providerMatches.isEmpty else { return }
+        refreshGeneration += 1
+        let generation = refreshGeneration
         let token = currentToken
         do {
             let result = try await useCase.reevaluate(
@@ -150,8 +164,15 @@ final class OnlineRecipeSearchViewModel: ObservableObject {
                 preferences: preferences,
                 excluding: blockedRecipeIDs.union(hiddenRecipeIDs)
             )
-            // A real search started meanwhile - its results win.
-            guard token == currentToken, !isLoading else { return }
+            // Superseded by: a newer re-check, a filter change or a real
+            // search (both bump `currentToken`), or a search now in flight.
+            // Any of those describes the pantry or the filters better than
+            // this result does.
+            guard generation == refreshGeneration,
+                  token == currentToken,
+                  !isLoading,
+                  !Task.isCancelled
+            else { return }
             apply(result)
         } catch {
             // Keep what is on screen; a failed local re-check is not worth

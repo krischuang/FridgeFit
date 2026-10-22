@@ -15,10 +15,11 @@ import Foundation
 ///   item sinks below everything else instead of rising - ranking it up
 ///   would be recommending someone eat food that has gone off. Same rule as
 ///   `GenerateContextAwareRecommendationsUseCase`.
-/// - **Conservative name matching.** The provider's used-ingredient names
-///   and pantry names are different vocabularies. They match only after
-///   `OnlineIngredientName.normalized`, case folding and a plural fold on the
-///   last word ("tomatoes" ↔ "Tomato"). No synonym or substring matching:
+/// - **Conservative name matching, shared with Recipes.** The provider's
+///   used-ingredient names and pantry names are different vocabularies.
+///   They match only after `OnlineIngredientName.normalized` and the
+///   app-wide coverage rule (`IngredientNameMatching.covers` - case, plural
+///   and leading descriptor folds). No synonym or substring matching:
 ///   "coconut milk" must never claim to use up the user's milk. Missing a
 ///   match just means no boost; a false match would be a false claim.
 /// - **No double counting.** Each pantry item is credited at most once per
@@ -127,37 +128,14 @@ nonisolated enum OnlineRecipeExpiryRanking {
         return !a.isEmpty && a == matchKey(pantryName)
     }
 
-    /// Provider names first lose parenthetical notes
-    /// (`OnlineIngredientName.normalized`) and leading descriptor words
-    /// (`withoutLeadingDescriptors`), then go through the app-wide rule
-    /// (`IngredientNameMatching`), so Discover agrees with the pantry.
+    /// Names first lose parenthetical notes
+    /// (`OnlineIngredientName.normalized`, a provider quirk the pantry never
+    /// has), then go through the app-wide coverage rule
+    /// (`IngredientNameMatching.coverageKey`) - the same rule Recipes uses
+    /// to decide whether the pantry holds an ingredient. Discover and
+    /// Recipes therefore give the same answer for the same two names.
     static func matchKey(_ name: String) -> String {
-        IngredientNameMatching.matchKey(withoutLeadingDescriptors(OnlineIngredientName.normalized(name)))
-    }
-
-    /// Words that describe *how* an ingredient is bought or prepared, not
-    /// *which* ingredient it is - "mild cheddar cheese" is cheddar cheese,
-    /// "large eggs" are eggs. Deliberately excludes words that change the
-    /// ingredient ("brown" sugar, "sweet" potato, "green" onion, "light"
-    /// cream), so those still need an exact pantry match.
-    static let descriptorWords: Set<String> = [
-        "mild", "medium", "sharp", "mature", "aged", "extra", "extra-sharp",
-        "fresh", "freshly", "large", "small", "jumbo", "extra-large", "ripe",
-        "organic", "raw", "boneless", "skinless", "unsalted", "salted",
-        "chopped", "diced", "minced", "sliced", "grated", "shredded",
-        "crumbled", "softened", "melted", "cold", "warm", "frozen", "thawed",
-        "low-fat", "reduced-fat", "full-fat", "whole", "plain",
-    ]
-
-    /// Drops descriptor words from the front of `name`, keeping at least one
-    /// word, so a name made only of descriptors is left as it was.
-    static func withoutLeadingDescriptors(_ name: String) -> String {
-        var words = name.split(whereSeparator: \.isWhitespace).map(String.init)
-        while words.count > 1,
-              descriptorWords.contains(words[0].lowercased().trimmingCharacters(in: .punctuationCharacters.subtracting(["-"]))) {
-            words.removeFirst()
-        }
-        return words.joined(separator: " ")
+        IngredientNameMatching.coverageKey(OnlineIngredientName.normalized(name))
     }
 
     private static func sortedByUrgency(_ uses: [UrgentIngredientUse]) -> [UrgentIngredientUse] {

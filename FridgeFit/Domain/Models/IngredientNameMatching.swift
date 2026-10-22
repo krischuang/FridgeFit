@@ -5,13 +5,35 @@
 
 import Foundation
 
-/// The one rule for "do these two names mean the same ingredient?".
+/// The app's ingredient-name vocabulary: one place that decides when two
+/// names mean the same food, and when a pantry item satisfies what a recipe
+/// asks for.
 ///
-/// Used by `Ingredient.matches(name:)` - so by feasibility, recommendations,
-/// substitution validation, receipt scanning and the pantry's duplicate
-/// check - and by the Discover expiry ranking, so every screen agrees.
+/// ## Two questions
 ///
-/// ## What it folds
+/// They are not the same question, so there are two entry points - but both
+/// are built from the folds below, and each question has exactly one answer
+/// everywhere in the app.
+///
+/// - **"Is this the same pantry entry?"** - `matches` / `matchKey`. Strict:
+///   no words dropped. Used by the pantry's duplicate check
+///   (`AddPantryItemUseCase`), receipt scanning (`ScanReceiptUseCase`,
+///   `IngredientCanonicalizer`) and the ingredient editor's lookup. Being
+///   strict here is deliberate: someone may want "fresh basil" and "dried
+///   basil" as separate entries with separate expiry dates.
+/// - **"Does the pantry cover this requirement?"** - `covers` /
+///   `coverageKey`. Everything `matchKey` folds, **plus leading descriptor
+///   words**. Used by `EvaluateRecipeFeasibilityUseCase` (Recipes, Saved
+///   Recipes, recommendations), `EvaluateRecipeSuitabilityUseCase`,
+///   `SuggestRecipesFromPantryUseCase`, `SubstitutionSuggestionValidator`
+///   and Discover (`OnlineRecipeExpiryRanking`,
+///   `OnlineRecipePantryReconciler`).
+///
+/// Every "do I have it?" surface goes through `covers`, so Discover and
+/// Recipes cannot disagree: a recipe whose ingredient reads "Matched" in
+/// Discover does not flip to "Missing" once it is saved.
+///
+/// ## What both fold
 ///
 /// Only differences that cannot change which food is meant:
 /// - letter case and surrounding / repeated whitespace,
@@ -19,14 +41,15 @@ import Foundation
 ///   "Cherry Tomatoes" = "cherry tomato", "berries" = "berry",
 ///   "bay leaves" = "bay leaf".
 ///
-/// ## What it deliberately does not fold
+/// ## What neither folds
 ///
-/// No synonyms and no dropped words. "fresh spinach" is not "spinach",
-/// "coconut milk" is not "milk", "green onion" is not "onion". Each of those
-/// would let the feasibility engine report an ingredient the user doesn't
-/// have - a false "you can make this". A missed match is visible (the
-/// recipe says it's missing); a false match is not. Synonym handling for
-/// receipts stays in `IngredientCanonicalizer`, which builds on this.
+/// No synonyms, and no dropped word that could change the food. "coconut
+/// milk" is not "milk", "green onion" is not "onion", "brown sugar" is not
+/// "sugar", "egg whites" are not "eggs". Each would let the feasibility
+/// engine report an ingredient the user doesn't have - a false "you can make
+/// this". A missed match is visible (the recipe says it's missing); a false
+/// match is not. Synonym handling for receipts stays in
+/// `IngredientCanonicalizer`, which builds on this.
 nonisolated enum IngredientNameMatching {
 
     static func matches(_ lhs: String, _ rhs: String) -> Bool {
@@ -40,6 +63,51 @@ nonisolated enum IngredientNameMatching {
             .split(whereSeparator: \.isWhitespace)
             .map { singularized(String($0)) }
             .joined(separator: " ")
+    }
+
+    // MARK: - Coverage
+
+    /// Whether a pantry item named `pantryName` satisfies a recipe asking
+    /// for `recipeName` - the "do I have it?" question. See the type's note
+    /// on the two questions.
+    ///
+    /// The parameter names document intent rather than a direction: the
+    /// comparison is symmetric, because either side may be the one carrying
+    /// the descriptor ("mild cheddar cheese" in the recipe and "Cheddar
+    /// Cheese" in the pantry, or the other way round).
+    static func covers(pantryName: String, recipeName: String) -> Bool {
+        let key = coverageKey(recipeName)
+        return !key.isEmpty && key == coverageKey(pantryName)
+    }
+
+    /// `matchKey` after dropping leading descriptor words.
+    static func coverageKey(_ name: String) -> String {
+        matchKey(withoutLeadingDescriptors(name))
+    }
+
+    /// Words that describe *how* an ingredient is bought or prepared, not
+    /// *which* ingredient it is - "mild cheddar cheese" is cheddar cheese,
+    /// "large eggs" are eggs. Deliberately excludes words that change the
+    /// ingredient ("brown" sugar, "sweet" potato, "green" onion, "light"
+    /// cream), so those still need an exact match on both questions.
+    static let descriptorWords: Set<String> = [
+        "mild", "medium", "sharp", "mature", "aged", "extra", "extra-sharp",
+        "fresh", "freshly", "large", "small", "jumbo", "extra-large", "ripe",
+        "organic", "raw", "boneless", "skinless", "unsalted", "salted",
+        "chopped", "diced", "minced", "sliced", "grated", "shredded",
+        "crumbled", "softened", "melted", "cold", "warm", "frozen", "thawed",
+        "low-fat", "reduced-fat", "full-fat", "whole", "plain",
+    ]
+
+    /// Drops descriptor words from the front of `name`, keeping at least one
+    /// word, so a name made only of descriptors is left as it was.
+    static func withoutLeadingDescriptors(_ name: String) -> String {
+        var words = name.split(whereSeparator: \.isWhitespace).map(String.init)
+        while words.count > 1,
+              descriptorWords.contains(words[0].lowercased().trimmingCharacters(in: .punctuationCharacters.subtracting(["-"]))) {
+            words.removeFirst()
+        }
+        return words.joined(separator: " ")
     }
 
     /// English plural → singular for food words. Rules, in order:
