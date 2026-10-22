@@ -81,6 +81,7 @@ struct RegisterView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(FridgeFitTheme.ColorToken.canvas, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .tint(FridgeFitTheme.ColorToken.primary)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
@@ -137,7 +138,7 @@ struct RegisterView: View {
                 .foregroundStyle(
                     validationError == nil
                         ? FridgeFitTheme.ColorToken.textSecondary
-                        : FridgeFitTheme.ColorToken.danger
+                        : FridgeFitTheme.ColorToken.errorText
                 )
                 .padding(.horizontal, FridgeFitTheme.Spacing.xSmall)
             }
@@ -148,7 +149,7 @@ struct RegisterView: View {
         Button(action: submit) {
             if authViewModel.isLoading {
                 ProgressView()
-                    .tint(FridgeFitTheme.ColorToken.card)
+                    .tint(.white)
                     .frame(maxWidth: .infinity)
             } else {
                 HStack(spacing: FridgeFitTheme.Spacing.small) {

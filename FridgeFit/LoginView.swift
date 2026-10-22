@@ -71,6 +71,7 @@ struct LoginView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
+            .tint(FridgeFitTheme.ColorToken.primary)
             .sheet(isPresented: $showRegister) {
                 RegisterView()
                     .environmentObject(authViewModel)
@@ -117,7 +118,7 @@ struct LoginView: View {
         Button(action: submit) {
             if authViewModel.isLoading {
                 ProgressView()
-                    .tint(FridgeFitTheme.ColorToken.card)
+                    .tint(.white)
                     .frame(maxWidth: .infinity)
             } else {
                 HStack(spacing: FridgeFitTheme.Spacing.small) {
