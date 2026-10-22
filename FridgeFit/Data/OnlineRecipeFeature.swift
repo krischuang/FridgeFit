@@ -35,8 +35,9 @@ import Foundation
 ///    as not configured rather than failing - no further code change is
 ///    needed to handle that.
 ///
-/// Enabling saved recipes is a separate step with its own prerequisite -
-/// see `savedRecipeStorage`.
+/// Saved recipes: in SwiftData mode (the default) they are stored on the
+/// device by `SwiftDataSavedRecipeRepository` and need no gate - see
+/// `AppDependencies`. `savedRecipeStorage` only governs Firebase mode.
 nonisolated enum OnlineRecipeFeature {
 
     /// Whether the live provider may be constructed and called.
@@ -49,6 +50,7 @@ nonisolated enum OnlineRecipeFeature {
     }
 
     /// Whether recipes saved from Discover may be written to Firestore.
+    /// Firebase mode only; SwiftData mode always stores them on the device.
     enum SavedRecipeStorageState: Equatable {
         /// No saved-recipe repository is built. The save action is not
         /// offered, and the Recipes tab shows no "Saved from Discover"
@@ -74,7 +76,7 @@ nonisolated enum OnlineRecipeFeature {
     /// `UnconfiguredOnlineRecipeService` path rather than issuing a request.
     static let provider: ProviderState = .enabled
 
-    /// Current saved-recipe storage state.
+    /// Current saved-recipe storage state **in Firebase mode**.
     ///
     /// Saved Discover recipes use the existing per-user Firestore collection.
     /// Repository errors remain visible in the UI and never hide bundled

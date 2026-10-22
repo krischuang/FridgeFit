@@ -43,6 +43,12 @@ final class AppDependencies {
 
     let pantryRepository: any PantryRepository
     let eventRepository: any InventoryEventRepository
+    /// Recipes saved from Discover. In SwiftData mode they live in the same
+    /// on-device store as the pantry, so a saved recipe is read back without
+    /// calling the recipe provider. In Firebase mode this follows
+    /// `OnlineRecipeFeature.savedRecipeStorage` and is `nil` until the
+    /// Firestore rules are deployed. `nil` means saving isn't offered.
+    let savedRecipeRepository: (any SavedRecipeRepository)?
 
     /// Retained for the lifetime of the app in SwiftData mode, `nil` in
     /// Firebase mode.
@@ -74,7 +80,7 @@ final class AppDependencies {
         case .swiftData:
             let container = try PersistenceContainer(storage: storage)
             persistenceContainer = container
-            // One context for both repositories. Required, not an
+            // One context for these two repositories. Required, not an
             // optimisation: an event can only be linked to its pantry item if
             // both objects are managed by the same context.
             pantryRepository = SwiftDataPantryRepository(
@@ -85,11 +91,23 @@ final class AppDependencies {
                 context: container.mainContext,
                 ownerIDProvider: ownerIDProvider
             )
+            // Saved recipes get the container, not the shared context: they
+            // relate to nothing outside their own two models, and their own
+            // context is what lets a failed write roll back without
+            // discarding unsaved pantry work. See
+            // `SwiftDataSavedRecipeStore.context`.
+            savedRecipeRepository = SwiftDataSavedRecipeRepository(
+                store: SwiftDataSavedRecipeStore(
+                    container: container.modelContainer,
+                    ownerIDProvider: ownerIDProvider
+                )
+            )
 
         case .firebase:
             persistenceContainer = nil
             pantryRepository = FirestorePantryRepository()
             eventRepository = FirestoreInventoryEventRepository()
+            savedRecipeRepository = OnlineRecipeFeature.makeSavedRecipeRepository()
         }
     }
 
@@ -97,11 +115,13 @@ final class AppDependencies {
     init(
         backend: PersistenceBackend,
         pantryRepository: any PantryRepository,
-        eventRepository: any InventoryEventRepository
+        eventRepository: any InventoryEventRepository,
+        savedRecipeRepository: (any SavedRecipeRepository)? = nil
     ) {
         self.backend = backend
         self.pantryRepository = pantryRepository
         self.eventRepository = eventRepository
+        self.savedRecipeRepository = savedRecipeRepository
         self.persistenceContainer = nil
     }
 }

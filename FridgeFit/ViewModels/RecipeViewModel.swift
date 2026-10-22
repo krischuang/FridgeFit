@@ -5,6 +5,7 @@
 
 import Combine
 import Foundation
+import UIKit
 
 /// Presentation state and actions for browsing recipes and checking each
 /// one's feasibility against the current pantry.
@@ -35,11 +36,30 @@ final class RecipeViewModel: ObservableObject {
     /// Last save/remove failure. Separate from `errorMessage` so it never
     /// shows up as "Couldn't Load Recipes".
     @Published var savedRecipeErrorMessage: String?
+    /// Decoded, display-ready thumbnails of saved recipes' stored photos, by
+    /// recipe id. Read from the saved-recipe store (never the network) and
+    /// decoded off the main thread; views only draw them. The JPEG bytes are
+    /// not kept here.
+    ///
+    /// List-sized (`RecipeThumbnailDecoder.listPixelSize`) - one of these per
+    /// saved recipe is held at once, so this is the size that decides how much
+    /// memory the screen costs. The detail hero gets its own larger copy, for
+    /// the one recipe that is open: see `savedRecipeHeroImages`.
+    @Published private(set) var savedRecipeThumbnails: [UUID: UIImage] = [:]
+    /// Hero-sized copies, decoded on demand for the recipe being viewed.
+    /// Bounded by `heroImageCache`, which holds only a handful - unlike the
+    /// list, the detail screen shows one photo at a time.
+    @Published private(set) var savedRecipeHeroImages: [UUID: UIImage] = [:]
     private(set) var hasLoaded = false
 
     private let recipeRepository: RecipeRepository
     private let evaluateFeasibilityUseCase: EvaluateRecipeFeasibilityUseCase
     private let savedRecipeRepository: SavedRecipeRepository?
+    private let thumbnailCache: RecipeThumbnailCache
+    private let heroImageCache: RecipeThumbnailCache
+    /// Saved recipes already checked and found to have no stored photo, so
+    /// a reload doesn't ask the store for them again.
+    private var recipeIDsWithoutPhoto: Set<UUID> = []
     private let saveOnlineRecipeUseCase: SaveOnlineRecipeUseCase?
     private let removeSavedRecipeUseCase: RemoveSavedRecipeUseCase?
 
@@ -69,12 +89,22 @@ final class RecipeViewModel: ObservableObject {
         recipeRepository: RecipeRepository,
         pantryRepository: PantryRepository,
         savedRecipeRepository: SavedRecipeRepository? = nil,
-        savedRecipeUnavailableExplanation: String? = nil
+        savedRecipeUnavailableExplanation: String? = nil,
+        imageDownloader: RecipeImageDownloading? = nil,
+        thumbnailCache: RecipeThumbnailCache = RecipeThumbnailCache(),
+        heroImageCache: RecipeThumbnailCache = RecipeThumbnailCache(
+            countLimit: 4,
+            totalCostLimit: 12 * 1024 * 1024
+        )
     ) {
         self.recipeRepository = recipeRepository
+        self.thumbnailCache = thumbnailCache
+        self.heroImageCache = heroImageCache
         self.evaluateFeasibilityUseCase = EvaluateRecipeFeasibilityUseCase(pantryRepository: pantryRepository)
         self.savedRecipeRepository = savedRecipeRepository
-        self.saveOnlineRecipeUseCase = savedRecipeRepository.map { SaveOnlineRecipeUseCase(repository: $0) }
+        self.saveOnlineRecipeUseCase = savedRecipeRepository.map {
+            SaveOnlineRecipeUseCase(repository: $0, imageDownloader: imageDownloader)
+        }
         self.removeSavedRecipeUseCase = savedRecipeRepository.map { RemoveSavedRecipeUseCase(repository: $0) }
         self.savedRecipeUnavailableExplanation = savedRecipeRepository == nil
             ? savedRecipeUnavailableExplanation
@@ -119,6 +149,7 @@ final class RecipeViewModel: ObservableObject {
             recipes = saved + bundled.filter { !savedIDs.contains($0.id) }
             savedRecipeIDs = savedIDs
             hasLoaded = true
+            await loadSavedRecipeImages(for: saved)
             await refreshFeasibility()
         } catch {
             errorMessage = error.localizedDescription
@@ -163,6 +194,14 @@ final class RecipeViewModel: ObservableObject {
             recipes.removeAll { $0.id == recipe.id }
             recipes.insert(recipe, at: 0)
             savedRecipeIDs.insert(recipe.id)
+            // A re-save may have stored a new photo: drop what we had.
+            thumbnailCache.remove(recipe.id)
+            heroImageCache.remove(recipe.id)
+            recipeIDsWithoutPhoto.remove(recipe.id)
+            savedRecipeThumbnails[recipe.id] = nil
+            savedRecipeHeroImages[recipe.id] = nil
+            let fresh = await thumbnails(for: [recipe.id])
+            savedRecipeThumbnails.merge(fresh) { _, new in new }
             if let result = try? await evaluateFeasibilityUseCase.execute(recipe: recipe) {
                 feasibilityResults[recipe.id] = result
             }
@@ -180,11 +219,94 @@ final class RecipeViewModel: ObservableObject {
             try await removeSavedRecipeUseCase.execute(id: recipe.id)
             recipes.removeAll { $0.id == recipe.id }
             savedRecipeIDs.remove(recipe.id)
+            savedRecipeThumbnails[recipe.id] = nil
+            savedRecipeHeroImages[recipe.id] = nil
+            thumbnailCache.remove(recipe.id)
+            heroImageCache.remove(recipe.id)
+            recipeIDsWithoutPhoto.remove(recipe.id)
             feasibilityResults[recipe.id] = nil
         } catch {
             savedRecipeErrorMessage = (error as? SaveOnlineRecipeError)?.errorDescription
                 ?? SaveOnlineRecipeError.removeFailed.errorDescription
         }
+    }
+
+    /// The decoded list-sized thumbnail of `recipe`'s stored photo, if it has
+    /// one. What the catalogue rows draw.
+    func thumbnail(for recipe: Recipe) -> UIImage? {
+        savedRecipeThumbnails[recipe.id]
+    }
+
+    /// The photo for the detail hero: the hero-sized copy once it is decoded,
+    /// and the list thumbnail until then, so the screen never opens empty and
+    /// then flashes.
+    func heroImage(for recipe: Recipe) -> UIImage? {
+        savedRecipeHeroImages[recipe.id] ?? savedRecipeThumbnails[recipe.id]
+    }
+
+    /// Decodes `recipe`'s stored photo at hero resolution, once. Called by the
+    /// detail screen; a no-op for bundled recipes, for a recipe with no stored
+    /// photo, and on every visit after the first.
+    func loadHeroImage(for recipe: Recipe) async {
+        guard let savedRecipeRepository,
+              savedRecipeIDs.contains(recipe.id),
+              savedRecipeHeroImages[recipe.id] == nil,
+              !recipeIDsWithoutPhoto.contains(recipe.id)
+        else { return }
+
+        if let cached = heroImageCache.image(for: recipe.id) {
+            savedRecipeHeroImages[recipe.id] = cached
+            return
+        }
+        guard let stored = try? await savedRecipeRepository.imageData(forRecipeID: recipe.id) else { return }
+        guard let image = await RecipeThumbnailDecoder.thumbnails(
+            from: [recipe.id: stored],
+            maxPixelSize: RecipeThumbnailDecoder.heroPixelSize
+        )[recipe.id] else { return }
+
+        heroImageCache.insert(image, for: recipe.id)
+        savedRecipeHeroImages[recipe.id] = image
+    }
+
+    private func loadSavedRecipeImages(for recipes: [Recipe]) async {
+        guard savedRecipeRepository != nil else {
+            savedRecipeThumbnails = [:]
+            savedRecipeHeroImages = [:]
+            return
+        }
+        savedRecipeThumbnails = await thumbnails(for: recipes.map(\.id))
+    }
+
+    /// Thumbnails for `ids`: cached ones are reused as-is; everything else is
+    /// read from the store in **one** batch call and decoded concurrently
+    /// off the main thread, then cached. Recipes known to have no photo are
+    /// not asked for again.
+    private func thumbnails(for ids: [UUID]) async -> [UUID: UIImage] {
+        guard let savedRecipeRepository else { return [:] }
+
+        var result: [UUID: UIImage] = [:]
+        var toFetch: [UUID] = []
+        for id in ids {
+            if let cached = thumbnailCache.image(for: id) {
+                result[id] = cached
+            } else if !recipeIDsWithoutPhoto.contains(id) {
+                toFetch.append(id)
+            }
+        }
+        guard !toFetch.isEmpty,
+              let stored = try? await savedRecipeRepository.imageData(forRecipeIDs: toFetch)
+        else { return result }
+
+        let decoded = await RecipeThumbnailDecoder.thumbnails(from: stored)
+        for id in toFetch {
+            if let image = decoded[id] {
+                thumbnailCache.insert(image, for: id)
+                result[id] = image
+            } else if stored[id] == nil {
+                recipeIDsWithoutPhoto.insert(id)
+            }
+        }
+        return result
     }
 
     /// Re-evaluates every already-loaded recipe against the current
