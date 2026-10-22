@@ -186,7 +186,10 @@ struct ContentView: View {
         let substitutionUseCase = GetIngredientSubstitutionsUseCase(
             substitutionService: AppleSubstitutionService(),
             pantryRepository: pantryRepository,
-            cache: SubstitutionCache()
+            // Persisted: on-device generation takes seconds, and without a
+            // store that outlives this instance the same ingredient is
+            // regenerated on every screen and after every relaunch.
+            cache: SubstitutionCache.persistent()
         )
         _substitutionViewModel = StateObject(wrappedValue: SubstitutionViewModel(useCase: substitutionUseCase))
 
