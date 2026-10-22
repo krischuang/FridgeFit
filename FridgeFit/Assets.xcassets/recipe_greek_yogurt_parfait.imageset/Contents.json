@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "recipe_greek_yogurt_parfait.jpg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

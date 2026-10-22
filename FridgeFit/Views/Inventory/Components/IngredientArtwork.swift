@@ -17,6 +17,21 @@ struct IngredientArtwork: View {
     var size: CGFloat = 34
 
     var body: some View {
+        // a real photo for the category if there's one in Assets, otherwise the
+        // old tinted symbol
+        if let photo = BundledPhotoAssets.categoryPhoto(for: category) {
+            Image(uiImage: photo)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size + 12, height: size + 12)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .accessibilityHidden(true)
+        } else {
+            symbol
+        }
+    }
+
+    private var symbol: some View {
         Image(systemName: category.symbolName)
             .font(.system(size: size * 0.48, weight: .semibold))
             .foregroundStyle(category.tint)
