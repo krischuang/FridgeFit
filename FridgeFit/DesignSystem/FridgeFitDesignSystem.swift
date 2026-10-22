@@ -16,19 +16,28 @@ import UIKit
 /// legible without defining a separate dark-mode design system.
 enum FridgeFitTheme {
     enum ColorToken {
-        static let canvas = adaptive(light: 0xF7F5EC, dark: 0x171B18)
-        static let card = adaptive(light: 0xFFFFFF, dark: 0x222824)
+        static let canvas = adaptive(light: 0xF7F5EC, dark: 0x202821)
+        static let secondaryBackground = adaptive(light: 0xEEF1E9, dark: 0x253027)
+        static let card = adaptive(light: 0xFFFFFF, dark: 0x2A342E)
         static let primary = adaptive(light: 0x356B52, dark: 0x8FC59B)
+        /// Filled brand surfaces need a darker green than `primary` in Dark
+        /// Mode so white button and hero text keeps sufficient contrast.
+        static let brandFill = adaptive(light: 0x356B52, dark: 0x3C7056)
         static let primaryMuted = adaptive(light: 0xA9C6A1, dark: 0x466B51)
         static let textPrimary = adaptive(light: 0x26352C, dark: 0xF1F4EF)
         static let textSecondary = adaptive(light: 0x637064, dark: 0xB9C3B9)
         static let border = adaptive(light: 0xDFE5DC, dark: 0x3B453E)
+        static let controlBorder = adaptive(light: 0x829086, dark: 0x708075)
         static let successBackground = adaptive(light: 0xE5EEE0, dark: 0x294332)
+        static let successText = adaptive(light: 0x356B52, dark: 0x8FC59B)
         static let warningBackground = adaptive(light: 0xFFF0D4, dark: 0x4B3A1D)
         static let warningText = adaptive(light: 0x926114, dark: 0xFFD58A)
         static let danger = adaptive(light: 0xC84F42, dark: 0xFF9C8C)
+        static let errorBackground = adaptive(light: 0xFCEBE7, dark: 0x453B34)
+        static let errorText = adaptive(light: 0xB43C31, dark: 0xFF9C8C)
         static let accent = adaptive(light: 0xED8066, dark: 0xFF9D88)
         static let disabledSurface = adaptive(light: 0xE8ECE6, dark: 0x343C36)
+        static let disabledText = adaptive(light: 0x5C685D, dark: 0xB9C3B9)
         /// Honey Yellow, the palette's second accent. Used for figures that
         /// need to read against the filled green surfaces, where neither
         /// `primary` nor `accent` has enough contrast.
@@ -104,11 +113,11 @@ struct FridgeFitPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(FridgeFitTheme.Typography.button)
-            .foregroundStyle(isEnabled ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.textSecondary)
+            .foregroundStyle(isEnabled ? .white : FridgeFitTheme.ColorToken.disabledText)
             .frame(maxWidth: .infinity, minHeight: 52)
             .padding(.horizontal, FridgeFitTheme.Spacing.large)
             .background(
-                isEnabled ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.disabledSurface,
+                isEnabled ? FridgeFitTheme.ColorToken.brandFill : FridgeFitTheme.ColorToken.disabledSurface,
                 in: RoundedRectangle(
                     cornerRadius: isPill ? FridgeFitTheme.Radius.pill : FridgeFitTheme.Radius.control,
                     style: .continuous
@@ -127,15 +136,18 @@ struct FridgeFitSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(FridgeFitTheme.Typography.button)
-            .foregroundStyle(isEnabled ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.textSecondary)
+            .foregroundStyle(isEnabled ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.disabledText)
             .frame(maxWidth: .infinity, minHeight: 44)
             .padding(.horizontal, FridgeFitTheme.Spacing.large)
-            .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+            .background(
+                isEnabled ? FridgeFitTheme.ColorToken.card : FridgeFitTheme.ColorToken.disabledSurface,
+                in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+            )
             .overlay {
                 RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
-                    .stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1)
+                    .stroke(FridgeFitTheme.ColorToken.controlBorder, lineWidth: 1)
             }
-            .opacity(configuration.isPressed ? 0.72 : (isEnabled ? 1 : 0.65))
+            .opacity(configuration.isPressed ? 0.72 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
             .accessibilityAddTraits(.isButton)
     }
@@ -168,7 +180,7 @@ struct FridgeFitChipStyle: ButtonStyle {
     }
 
     private var background: Color {
-        guard !isSelected else { return FridgeFitTheme.ColorToken.primary }
+        guard !isSelected else { return FridgeFitTheme.ColorToken.brandFill }
         switch tone {
         case .standard: return FridgeFitTheme.ColorToken.card
         case .success: return FridgeFitTheme.ColorToken.successBackground
@@ -177,7 +189,7 @@ struct FridgeFitChipStyle: ButtonStyle {
     }
 
     private var foreground: Color {
-        guard !isSelected else { return FridgeFitTheme.ColorToken.card }
+        guard !isSelected else { return .white }
         switch tone {
         case .standard, .success: return FridgeFitTheme.ColorToken.primary
         case .warning: return FridgeFitTheme.ColorToken.warningText
@@ -185,7 +197,7 @@ struct FridgeFitChipStyle: ButtonStyle {
     }
 
     private var border: Color {
-        isSelected ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.border
+        FridgeFitTheme.ColorToken.controlBorder
     }
 }
 
@@ -243,16 +255,16 @@ struct FridgeFitStatusBadge: View {
         case .success: return FridgeFitTheme.ColorToken.successBackground
         case .warning: return FridgeFitTheme.ColorToken.warningBackground
         case .neutral: return FridgeFitTheme.ColorToken.disabledSurface
-        case .danger: return FridgeFitTheme.ColorToken.accent.opacity(0.16)
+        case .danger: return FridgeFitTheme.ColorToken.errorBackground
         }
     }
 
     private var foreground: Color {
         switch tone {
-        case .success: return FridgeFitTheme.ColorToken.primary
+        case .success: return FridgeFitTheme.ColorToken.successText
         case .warning: return FridgeFitTheme.ColorToken.warningText
-        case .neutral: return FridgeFitTheme.ColorToken.textSecondary
-        case .danger: return FridgeFitTheme.ColorToken.danger
+        case .neutral: return FridgeFitTheme.ColorToken.disabledText
+        case .danger: return FridgeFitTheme.ColorToken.errorText
         }
     }
 }
@@ -268,10 +280,28 @@ struct FridgeFitIconButtonStyle: ButtonStyle {
             .frame(width: 44, height: 44)
             .background(FridgeFitTheme.ColorToken.card, in: Circle())
             .overlay {
-                Circle().stroke(FridgeFitTheme.ColorToken.border, lineWidth: 1)
+                Circle().stroke(FridgeFitTheme.ColorToken.controlBorder, lineWidth: 1)
             }
             .opacity(configuration.isPressed ? 0.7 : (isEnabled ? 1 : 0.65))
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
             .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// Botanical text fields with an explicit, accessible control boundary.
+struct FridgeFitTextFieldStyle: TextFieldStyle {
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        configuration
+            .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+            .padding(.horizontal, FridgeFitTheme.Spacing.medium)
+            .frame(minHeight: 44)
+            .background(
+                FridgeFitTheme.ColorToken.card,
+                in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                    .stroke(FridgeFitTheme.ColorToken.controlBorder, lineWidth: 1)
+            }
     }
 }
