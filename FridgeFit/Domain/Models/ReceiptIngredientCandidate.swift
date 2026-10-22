@@ -81,16 +81,37 @@ nonisolated struct ReceiptIngredientCandidate: Identifiable, Equatable {
 /// classification - but silently dropping half the receipt makes the feature
 /// impossible to debug, so the rejected items stay attached to the result
 /// and are surfaced in DEBUG diagnostics.
+/// `source` records whether the model actually ran for this result or
+/// whether a previously verified run was replayed. It travels with the
+/// outcome rather than being inferred later, so the UI can never present a
+/// replay as fresh analysis. It defaults to `.appleIntelligence` because
+/// that is what every producer of this type did before the cache existed.
 nonisolated struct ReceiptScanOutcome: Equatable {
     let pantryCandidates: [ReceiptIngredientCandidate]
     let excluded: [ReceiptIngredientCandidate]
+    let source: ReceiptRecognitionSource
 
-    init(pantryCandidates: [ReceiptIngredientCandidate], excluded: [ReceiptIngredientCandidate] = []) {
+    init(
+        pantryCandidates: [ReceiptIngredientCandidate],
+        excluded: [ReceiptIngredientCandidate] = [],
+        source: ReceiptRecognitionSource = .appleIntelligence
+    ) {
         self.pantryCandidates = pantryCandidates
         self.excluded = excluded
+        self.source = source
     }
 
     var isEmpty: Bool { pantryCandidates.isEmpty }
 
     static let empty = ReceiptScanOutcome(pantryCandidates: [], excluded: [])
+
+    /// Copy of this outcome with pantry membership applied to its
+    /// candidates, preserving everything else - including `source`.
+    func markingPantryMembership(_ isMember: (ReceiptIngredientCandidate) -> Bool) -> ReceiptScanOutcome {
+        ReceiptScanOutcome(
+            pantryCandidates: pantryCandidates.map { $0.markingAlreadyInPantry(isMember($0)) },
+            excluded: excluded,
+            source: source
+        )
+    }
 }

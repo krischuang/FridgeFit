@@ -104,6 +104,50 @@ nonisolated enum ReceiptScanDiagnostics {
         #endif
     }
 
+    // MARK: - Recognition cache
+
+    /// Records that a scan was answered from a verified earlier run rather
+    /// than by the model. Printed so a DEBUG session can tell the fast path
+    /// from a genuinely fast model run, which otherwise look identical from
+    /// the outside.
+    static func cacheHit(_ entry: ReceiptRecognitionCacheEntry) {
+        #if DEBUG
+        print("""
+
+            === RECOGNITION CACHE HIT ===
+              key:      \(entry.fingerprint.abbreviated)
+              prepared: \(entry.preparedAt.formatted(date: .abbreviated, time: .standard))
+              pipeline: \(entry.pipelineVersion) (schema \(entry.schemaVersion))
+              items:    \(entry.outcome.pantryCandidates.count) pantry, \(entry.outcome.excluded.count) excluded
+            """)
+        #endif
+    }
+
+    static func cacheMiss(_ fingerprint: ReceiptImageFingerprint) {
+        #if DEBUG
+        print("\n=== RECOGNITION CACHE MISS (\(fingerprint.abbreviated)) — running the full scan ===")
+        #endif
+    }
+
+    /// The cache could not even be consulted. Not an error: the scan simply
+    /// proceeds the way it always did.
+    static func cacheUnavailable(_ reason: String) {
+        #if DEBUG
+        print("\n=== RECOGNITION CACHE SKIPPED (\(reason)) — running the full scan ===")
+        #endif
+    }
+
+    /// The figure a demonstration is judged on: tap to review on screen.
+    static func reviewPresented(after duration: Duration, source: ReceiptRecognitionSource) {
+        #if DEBUG
+        print(String(
+            format: "\n=== REVIEW PRESENTED === %.3fs (%@)",
+            ReceiptScanMetrics.seconds(duration),
+            source.diagnosticLabel
+        ))
+        #endif
+    }
+
     #if DEBUG
     private static func formatted(_ value: Double) -> String {
         value.truncatingRemainder(dividingBy: 1) == 0
