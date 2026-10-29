@@ -19,6 +19,9 @@ import SwiftUI
 /// typo a second field guarded against is visible in the first one.
 struct RegisterView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
+    /// Google's button ships both schemes; picking the one that matches
+    /// the appearance keeps a white card from glowing on a dark screen.
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
 
     private enum Field: Hashable {
@@ -31,6 +34,9 @@ struct RegisterView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var isPasswordRevealed = false
+    /// Set once the email field has been touched, so the validation message
+    /// never appears on an untouched form.
+    @State private var hasEditedEmail = false
     @FocusState private var focusedField: Field?
 
     /// The rule the design states under the field: at least 8 characters
@@ -43,8 +49,22 @@ struct RegisterView: View {
         return nil
     }
 
+    /// Why the typed email can't be submitted, or `nil` if it can. Shown
+    /// only after the field loses focus, so a correct address is never
+    /// flagged halfway through being typed.
+    private var emailValidationError: String? {
+        guard hasEditedEmail, focusedField != .email else { return nil }
+        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return AuthEmailValidator.isValid(trimmed) ? nil : "Enter a valid email address."
+    }
+
     private var canSubmit: Bool {
-        !email.isEmpty && !password.isEmpty && validationError == nil && !authViewModel.isLoading
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        return AuthEmailValidator.isValid(trimmedEmail)
+            && !password.isEmpty
+            && validationError == nil
+            && !authViewModel.isLoading
     }
 
     var body: some View {
@@ -106,15 +126,26 @@ struct RegisterView: View {
                     .onSubmit { focusedField = .email }
             }
 
-            AuthField(label: "Email Address", systemImage: "envelope", isFocused: focusedField == .email) {
-                TextField("", text: $email, prompt: AuthFieldPrompt.text("alex@fridgefit.app"))
-                    .textContentType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.emailAddress)
-                    .autocorrectionDisabled()
-                    .submitLabel(.next)
-                    .focused($focusedField, equals: .email)
-                    .onSubmit { focusedField = .password }
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+                AuthField(label: "Email Address", systemImage: "envelope", isFocused: focusedField == .email) {
+                    TextField("", text: $email, prompt: AuthFieldPrompt.text("alex@fridgefit.app"))
+                        .textContentType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                        .autocorrectionDisabled()
+                        .submitLabel(.next)
+                        .focused($focusedField, equals: .email)
+                        .onChange(of: email) { _, _ in hasEditedEmail = true }
+                        .onSubmit { focusedField = .password }
+                }
+
+                if let emailValidationError {
+                    Label(emailValidationError, systemImage: "exclamationmark.circle")
+                        .font(FridgeFitTheme.Typography.caption)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.errorText)
+                        .padding(.horizontal, FridgeFitTheme.Spacing.xSmall)
+                        .accessibilityLabel("Error. \(emailValidationError)")
+                }
             }
 
             VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
@@ -168,7 +199,7 @@ struct RegisterView: View {
     /// Signing up and signing in with Google are the same call: Firebase
     /// creates the account on first use.
     private var googleButton: some View {
-        GoogleSignInButton(scheme: .light, style: .wide, state: .normal) {
+        GoogleSignInButton(scheme: colorScheme == .dark ? .dark : .light, style: .wide, state: .normal) {
             focusedField = nil
             Task {
                 await authViewModel.signInWithGoogle()
