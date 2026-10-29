@@ -29,24 +29,30 @@ nonisolated final class InMemoryBudgetStore: BudgetStore {
 
     func activeBudget() -> FoodBudget? { budget }
 
-    func saveBudget(_ budget: FoodBudget) {
+    @discardableResult
+    func saveBudget(_ budget: FoodBudget) async throws -> FundsWriteOutcome {
         self.budget = budget
+        return .committed
     }
 
     // MARK: Spends
 
     func allSpends() -> [GrocerySpend] { spends }
 
-    func addSpend(_ spend: GrocerySpend) {
+    @discardableResult
+    func addSpend(_ spend: GrocerySpend) async throws -> FundsWriteOutcome {
         spends.append(spend)
+        return .committed
     }
 
     // MARK: Waste
 
     func allWasteCosts() -> [WastedFoodCost] { wasteCosts }
 
-    func addWasteCost(_ cost: WastedFoodCost) {
+    @discardableResult
+    func addWasteCost(_ cost: WastedFoodCost) async throws -> FundsWriteOutcome {
         wasteCosts.append(cost)
+        return .committed
     }
 
     func wasteAlreadyRecorded(for itemID: PantryItemID, on day: Date) -> Bool {

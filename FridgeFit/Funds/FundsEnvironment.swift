@@ -4,6 +4,10 @@
 //
 
 import Foundation
+// For the `ModelContext` the on-device factory takes. This type still names
+// no store type in its own stored properties; the factories at the bottom
+// do, which is the same arrangement `AppDependencies` has with the pantry.
+import SwiftData
 
 /// Composition root for the money side of FridgeFit (FridgeFunds).
 ///
@@ -20,13 +24,16 @@ import Foundation
 /// it already owns, and hands it down through `\.fundsEnvironment`. It is
 /// the same shape as `\.pantryRepository`.
 ///
-/// ## Difference from `feature/fridge-funds`
+/// ## Which factory the app uses
 ///
-/// The source branch also had SwiftData-backed stores and resolved the
-/// backend through an `AppDependencies` composition root. Neither exists on
-/// this branch - persistence here is Firestore - so those two factories are
-/// deliberately left out rather than dragged in with a persistence layer
-/// this branch does not have.
+/// `AppDependencies.fundsEnvironment` picks one, from the same
+/// `PersistenceBackend` it uses to pick the pantry repository:
+/// `.swiftData(...)` in the shipping configuration, `.firestore(...)` in
+/// Firebase mode. `ContentView` is handed the result and constructs nothing.
+///
+/// It used to call `.firestore(...)` itself, unconditionally, which both put
+/// a backend decision inside a `View` and - because the compiled default is
+/// `.swiftData` - put the money side of a local app in the cloud.
 final class FundsEnvironment {
     let budgetStore: BudgetStore
     let pantry: PantryReading
@@ -98,15 +105,65 @@ final class FundsEnvironment {
 
     /// Every time a price is recorded, the price book remembers it under the
     /// ingredient's name too.
-    func rememberPrice(of name: String, unit: String, unitCost: Money, on date: Date = Date()) {
-        priceBook.record(PriceBookEntry(displayName: name, unitCost: unitCost, unit: unit, recordedOn: date))
+    ///
+    /// `async throws` because the write is: this used to be a fire-and-forget
+    /// call whose failure nothing could observe, so a price could be shown as
+    /// remembered when the write had been refused.
+    @discardableResult
+    func rememberPrice(
+        of name: String,
+        unit: String,
+        unitCost: Money,
+        on date: Date = Date()
+    ) async throws -> FundsWriteOutcome {
+        try await priceBook.record(
+            PriceBookEntry(displayName: name, unitCost: unitCost, unit: unit, recordedOn: date)
+        )
     }
 }
 
 extension FundsEnvironment {
-    /// The real thing: FridgeFit's own pantry, with budget, spends, waste and
-    /// prices saved per user in Firestore under the same `users/{uid}` root
-    /// the pantry already uses.
+    /// The shipping configuration: budget, spends, waste and prices in the
+    /// *same on-device store* as the pantry they value.
+    ///
+    /// This is what `ContentView` used to get wrong. It called
+    /// `.firestore(pantryRepository:)` unconditionally, so a build whose
+    /// pantry was a local SwiftData database kept the prices of that pantry's
+    /// contents in Firestore - and `AppDependencies`, the one object allowed
+    /// to pick a backend, was not consulted at all.
+    ///
+    /// - Parameters:
+    ///   - context: the app's shared `ModelContext`, so a budget and the
+    ///     pantry it values are in one store file and one transaction
+    ///     boundary.
+    ///   - ownerIDProvider: the same uid source the pantry repository uses,
+    ///     so an account's money and an account's food agree on whose they
+    ///     are.
+    @MainActor
+    static func swiftData(
+        pantryRepository: PantryRepository,
+        context: ModelContext,
+        ownerIDProvider: @escaping () -> String?
+    ) -> FundsEnvironment {
+        let budgetStore = SwiftDataBudgetStore(context: context, ownerIDProvider: ownerIDProvider)
+        let priceStore = SwiftDataItemPriceStore(context: context, ownerIDProvider: ownerIDProvider)
+        let priceBook = SwiftDataPriceBookStore(context: context, ownerIDProvider: ownerIDProvider)
+        let pantry = FridgeFitPantryReading(repository: pantryRepository, priceStore: priceStore)
+        return FundsEnvironment(
+            budgetStore: budgetStore,
+            pantry: pantry,
+            priceStore: priceStore,
+            priceBook: priceBook
+        ) {
+            try await budgetStore.load()
+            try await priceStore.load()
+            try await priceBook.load()
+            try await pantry.refresh()
+        }
+    }
+
+    /// Firebase mode: budget, spends, waste and prices saved per user in
+    /// Firestore under the same `users/{uid}` root the pantry uses.
     static func firestore(pantryRepository: PantryRepository) -> FundsEnvironment {
         let budgetStore = FirestoreBudgetStore()
         let priceStore = FirestoreItemPriceStore()

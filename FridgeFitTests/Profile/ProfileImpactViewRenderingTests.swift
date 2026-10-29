@@ -17,8 +17,27 @@ import XCTest
 @MainActor
 final class ProfileImpactViewRenderingTests: XCTestCase {
 
-    func test_rendersWithNothingRecorded() {
-        assertRenders(makeView(funds: .inMemory(pantryRepository: InMemoryPantryRepository())))
+    /// The empty state, rendered from a *loaded* environment like its three
+    /// siblings.
+    ///
+    /// This used to build the environment inline and render it synchronously,
+    /// and it crashed the whole test run with `malloc: pointer being freed
+    /// was not allocated` - taking every test scheduled after it down with
+    /// it, because the runner restarts and reports the bundle as failed even
+    /// though no assertion failed.
+    ///
+    /// The cause is the `.task` on `ProfileImpactView`: it starts
+    /// `inventory.load()` and a view-model refresh as soon as the hosting
+    /// controller lays out. A synchronous test method returns the instant
+    /// `assertRenders` finishes, so XCTest tore the host down while that work
+    /// was still in flight. Awaiting the environment first gives the view a
+    /// settled state to render and the test an async context to be awaited
+    /// in, which is why the other three never hit this.
+    func test_rendersWithNothingRecorded() async {
+        let funds = FundsEnvironment.inMemory(pantryRepository: InMemoryPantryRepository())
+        await funds.reload()
+
+        assertRenders(makeView(funds: funds))
     }
 
     func test_rendersWithoutFridgeFundsWiredIn() {
@@ -33,11 +52,13 @@ final class ProfileImpactViewRenderingTests: XCTestCase {
             item("Rice", category: .grain, quantity: 2, expiresInDays: 180),
         ])
         let funds = FundsEnvironment.inMemory(pantryRepository: pantry)
-        funds.budgetStore.saveBudget(FoodBudget(limit: Money(320, .aud), cadence: .fortnightly, startDate: .now))
-        funds.budgetStore.addSpend(GrocerySpend(amount: Money(Decimal(string: "214.50")!, .aud), spentOn: .now))
+        try await funds.budgetStore.saveBudget(FoodBudget(limit: Money(320, .aud), cadence: .fortnightly, startDate: .now))
+        try await funds.budgetStore.addSpend(GrocerySpend(amount: Money(Decimal(string: "214.50")!, .aud), spentOn: .now))
         await funds.reload()
         for snapshot in funds.pantry.allItems() where snapshot.name != "Rice" {
-            funds.priceStore.save(ItemPriceInfo(pantryItemID: snapshot.id, unitCost: Money(Decimal(string: "3.80")!, .aud)))
+            try await funds.priceStore.save(
+                ItemPriceInfo(pantryItemID: snapshot.id, unitCost: Money(Decimal(string: "3.80")!, .aud))
+            )
         }
 
         assertRenders(makeView(funds: funds))

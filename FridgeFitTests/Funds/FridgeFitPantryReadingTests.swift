@@ -43,7 +43,7 @@ final class FridgeFitPantryReadingTests: XCTestCase {
         try await reading.refresh()
 
         let id = FridgeFitPantryReading.id(for: eggs)
-        prices.save(ItemPriceInfo(pantryItemID: id, unitCost: Money(Decimal(string: "0.5")!, .aud), expiryDate: TestDates.day(3)))
+        try await prices.save(ItemPriceInfo(pantryItemID: id, unitCost: Money(Decimal(string: "0.5")!, .aud), expiryDate: TestDates.day(3)))
 
         let snapshot = try XCTUnwrap(reading.item(withID: id))
         XCTAssertEqual(snapshot.unitCost, Money(Decimal(string: "0.5")!, .aud))
@@ -59,7 +59,7 @@ final class FridgeFitPantryReadingTests: XCTestCase {
                                              priceStore: prices)
         try await reading.refresh()
         // an old FridgeFunds-side expiry from before the pantry had the field
-        prices.save(ItemPriceInfo(pantryItemID: FridgeFitPantryReading.id(for: yoghurt), expiryDate: TestDates.day(9)))
+        try await prices.save(ItemPriceInfo(pantryItemID: FridgeFitPantryReading.id(for: yoghurt), expiryDate: TestDates.day(9)))
 
         XCTAssertEqual(reading.allItems().first?.expiryDate, TestDates.day(2))
     }
@@ -69,7 +69,7 @@ final class FridgeFitPantryReadingTests: XCTestCase {
         let reading = FridgeFitPantryReading(repository: InMemoryPantryRepository(seedItems: [milk]),
                                              priceStore: prices)
         try await reading.refresh()
-        prices.save(ItemPriceInfo(pantryItemID: FridgeFitPantryReading.id(for: milk), expiryDate: TestDates.day(4)))
+        try await prices.save(ItemPriceInfo(pantryItemID: FridgeFitPantryReading.id(for: milk), expiryDate: TestDates.day(4)))
 
         XCTAssertEqual(reading.allItems().first?.expiryDate, TestDates.day(4))
     }
@@ -91,12 +91,12 @@ final class FridgeFitPantryReadingTests: XCTestCase {
         let reading = FridgeFitPantryReading(repository: repository, priceStore: prices)
         try await reading.refresh()
         let id = FridgeFitPantryReading.id(for: eggs)
-        prices.save(ItemPriceInfo(pantryItemID: id, unitCost: Money(1, .aud)))
+        try await prices.save(ItemPriceInfo(pantryItemID: id, unitCost: Money(1, .aud)))
 
         let useCase = RecordDiscardedItemCostUseCase(pantry: reading, budgetStore: InMemoryBudgetStore())
-        let cost = try useCase.execute(itemID: id, quantityDiscarded: 2, reason: .spoiled)
+        let recorded = try await useCase.execute(itemID: id, quantityDiscarded: 2, reason: .spoiled)
 
-        XCTAssertEqual(cost.lostAmount, Money(2, .aud))
+        XCTAssertEqual(recorded.cost.lostAmount, Money(2, .aud))
         // still 6 eggs in FridgeFit's pantry - FridgeFunds only reads it
         let stored = try await repository.fetchAll()
         XCTAssertEqual(stored.first?.quantity, 6)

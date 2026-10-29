@@ -10,7 +10,8 @@ import Foundation
 protocol PriceBookStore: AnyObject {
     func entry(forIngredientNamed name: String) -> PriceBookEntry?
     // replaces whatever was there for that name - latest price wins
-    func record(_ entry: PriceBookEntry)
+    @discardableResult
+    func record(_ entry: PriceBookEntry) async throws -> FundsWriteOutcome
 }
 
 nonisolated final class InMemoryPriceBookStore: PriceBookStore {
@@ -24,7 +25,9 @@ nonisolated final class InMemoryPriceBookStore: PriceBookStore {
         byKey[PriceBookEntry.key(for: name)]
     }
 
-    func record(_ entry: PriceBookEntry) {
+    @discardableResult
+    func record(_ entry: PriceBookEntry) async throws -> FundsWriteOutcome {
         byKey[entry.key] = entry
+        return .committed
     }
 }

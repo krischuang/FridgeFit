@@ -51,8 +51,33 @@ struct ProfileImpactView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.section) {
-            if let message = viewModel.summary.loadError ?? viewModel.actionError {
-                ImpactCallout(symbol: "exclamationmark.triangle.fill", title: "Figures may be out of date", message: message, tone: .danger)
+            // A write that was refused and a load that failed are different
+            // facts, and the write failure is the one with an action
+            // attached, so it is titled for what it is rather than sharing
+            // "Figures may be out of date".
+            if let actionError = viewModel.actionError {
+                ImpactCallout(
+                    symbol: "exclamationmark.triangle.fill",
+                    title: "Not saved",
+                    message: actionError,
+                    tone: .danger
+                )
+            } else if let message = viewModel.summary.loadError {
+                ImpactCallout(
+                    symbol: "exclamationmark.triangle.fill",
+                    title: "Figures may be out of date",
+                    message: message,
+                    tone: .danger
+                )
+            } else if let pending = viewModel.pendingSyncNotice {
+                // Durably stored, just not confirmed. Reported as
+                // information, not as a problem - see `FundsWriteOutcome`.
+                ImpactCallout(
+                    symbol: "clock.arrow.2.circlepath",
+                    title: "Waiting to sync",
+                    message: pending,
+                    tone: .neutral
+                )
             }
 
             ImpactHeroCard(
@@ -85,17 +110,26 @@ struct ProfileImpactView: View {
                     existing: viewModel.activeBudget,
                     defaultCurrency: viewModel.currency
                 ) { limit, currency, cadence, startDate in
-                    viewModel.saveBudget(
-                        limit: limit,
-                        currency: currency,
-                        cadence: cadence,
-                        startDate: startDate,
-                        events: inventory.events
-                    )
+                    Task {
+                        await viewModel.saveBudget(
+                            limit: limit,
+                            currency: currency,
+                            cadence: cadence,
+                            startDate: startDate,
+                            events: inventory.events
+                        )
+                    }
                 }
             case .spend:
                 LogGrocerySpendSheet(currency: viewModel.currency) { amount, date, store in
-                    viewModel.logSpend(amount: amount, spentOn: date, store: store, events: inventory.events)
+                    Task {
+                        await viewModel.logSpend(
+                            amount: amount,
+                            spentOn: date,
+                            store: store,
+                            events: inventory.events
+                        )
+                    }
                 }
             case .price(let item):
                 ItemPriceSheet(
@@ -105,7 +139,14 @@ struct ProfileImpactView: View {
                     currency: viewModel.currency,
                     suggestion: viewModel.suggestedUnitCost(forIngredientNamed: item.name)
                 ) { unitCost in
-                    viewModel.savePrice(for: item, unitCost: unitCost, unit: item.unit, events: inventory.events)
+                    Task {
+                        await viewModel.savePrice(
+                            for: item,
+                            unitCost: unitCost,
+                            unit: item.unit,
+                            events: inventory.events
+                        )
+                    }
                 }
             }
         }

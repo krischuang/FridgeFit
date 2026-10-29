@@ -8,7 +8,7 @@ import Foundation
 // "last time you bought milk it was $2.25 per L". kept by ingredient name rather
 // than pantry item id, so it's still around after the milk is used up - that's
 // what lets a recipe guess what the missing stuff will cost to buy.
-struct PriceBookEntry: Hashable, Codable, Sendable {
+nonisolated struct PriceBookEntry: Hashable, Codable, Sendable {
     // normalised name, see `key(for:)`
     let key: String
     // how the user wrote it, for showing

@@ -9,16 +9,16 @@ import XCTest
 // The price book: every recorded price also lands here under the ingredient's
 // name, so it survives the pantry item being used up.
 //
-// Adapted from `feature/fridge-funds`. The SwiftData cases from that branch
-// are not carried over - this branch has no SwiftData persistence layer, so
-// there is no `SwiftDataPriceBookStore` to exercise.
+// Adapted from `feature/fridge-funds`. The SwiftData cases are now covered
+// too, in `SwiftDataFundsStoreTests` - this branch gained the on-device funds
+// stores it previously lacked, so `SwiftDataPriceBookStore` does exist.
 @MainActor
 final class PriceBookTests: XCTestCase {
 
-    func test_inMemory_latestPriceWins_andNameMatchIgnoresCase() {
+    func test_inMemory_latestPriceWins_andNameMatchIgnoresCase() async throws {
         let book = InMemoryPriceBookStore()
-        book.record(PriceBookEntry(displayName: "Milk", unitCost: aud(2), unit: "L"))
-        book.record(PriceBookEntry(displayName: "milk ", unitCost: Money(Decimal(string: "2.25")!, .aud), unit: "L"))
+        try await book.record(PriceBookEntry(displayName: "Milk", unitCost: aud(2), unit: "L"))
+        try await book.record(PriceBookEntry(displayName: "milk ", unitCost: Money(Decimal(string: "2.25")!, .aud), unit: "L"))
 
         XCTAssertEqual(book.entry(forIngredientNamed: "MILK")?.unitCost, Money(Decimal(string: "2.25")!, .aud))
     }
@@ -50,7 +50,7 @@ final class PriceBookTests: XCTestCase {
         let environment = FundsEnvironment.inMemory(pantryRepository: pantry)
         await environment.reload()
 
-        environment.rememberPrice(of: "Milk", unit: "L", unitCost: Money(Decimal(string: "2.25")!, .aud))
+        try await environment.rememberPrice(of: "Milk", unit: "L", unitCost: Money(Decimal(string: "2.25")!, .aud))
 
         try await pantry.remove(id: milk.id)
         await environment.reload()

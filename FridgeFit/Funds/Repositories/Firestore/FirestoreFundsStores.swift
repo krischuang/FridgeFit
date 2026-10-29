@@ -8,11 +8,9 @@ import FirebaseFirestore
 import Foundation
 import OSLog
 
-// Firestore versions of BudgetStore / ItemPriceStore. the protocols are sync (that's
-// how the FridgeFunds use cases were written), Firestore isn't - so each store keeps
-// a local copy: load() fills it once, reads come straight from it, and every write
-// updates the copy right away and then saves to Firestore in the background.
-// Firestore queues writes itself when offline, so nothing gets lost that way.
+// Firestore versions of BudgetStore / ItemPriceStore / PriceBookStore. Reads are sync
+// (that's how the FridgeFunds use cases were written), Firestore isn't - so each store
+// keeps a local copy: load() fills it once and reads come straight from it.
 //
 // everything lives under the signed-in user, next to the pantry:
 //   users/{uid}/fundsBudget/current
@@ -20,17 +18,78 @@ import OSLog
 //   users/{uid}/fundsWaste/{wasteId}
 //   users/{uid}/fundsItemPrices/{pantryItemId}
 //   users/{uid}/fundsPriceBook/{encoded ingredient name}
+//
+// ## What changed about the writes, and why
+//
+// Every write used to look like this:
+//
+//     func saveBudget(_ budget: FoodBudget) {
+//         self.budget = budget                                  // local copy, now
+//         guard let user = try? userDocument(...) else { return }   // <- swallowed
+//         user.collection("fundsBudget").document("current")
+//             .setData(encode(budget), completion: logIfFailed("budget"))  // <- swallowed
+//     }
+//
+// Three separate ways for a failed save to look like a successful one:
+//
+//  1. `try?` on user resolution. A signed-out user (or one whose token had expired)
+//     returned early, having already updated the local copy. The screen showed the new
+//     budget; nothing was ever sent anywhere.
+//  2. `logIfFailed` as the completion handler. A permission-denied or
+//     unauthenticated write wrote a line to the console and nothing else. The user saw
+//     a saved budget the backend had refused.
+//  3. No rollback. In both cases the in-memory copy kept the value, so even a *reload*
+//     would not correct the display until the process restarted.
+//
+// Now: the user is resolved with `try` so a signed-out write throws, the write is
+// awaited so its real result is propagated, and the local copy is only kept if the
+// write was accepted - otherwise it is rolled back to what it was.
+//
+// ## The offline subtlety
+//
+// `setData`'s completion fires on *server* acknowledgement. Offline, Firestore
+// persists the write to a durable local queue and sends it later, which can be much
+// later - so awaiting it without a bound would hang Save for the whole time a device
+// was off the network. The wait is therefore bounded: past the bound the write is
+// still safely queued, and the store reports `.pendingSync` rather than claiming a
+// server round trip it has not had. See `FundsWriteOutcome`.
 
 private let logger = Logger(subsystem: "com.fridgefit.app", category: "FridgeFunds")
+
+/// How long to wait for the server before calling a write queued rather than
+/// committed. Short enough that Save never feels stuck, long enough that a
+/// healthy connection reports the truthful `.committed`.
+private let acknowledgementTimeout: Duration = .seconds(5)
 
 private func userDocument(_ firestore: Firestore, _ uid: () -> String?) throws -> DocumentReference {
     guard let uid = uid(), !uid.isEmpty else { throw PantryRepositoryError.notAuthenticated }
     return firestore.collection("users").document(uid)
 }
 
-private func logIfFailed(_ what: String) -> (Error?) -> Void {
-    { error in
-        if let error { logger.error("Saving \(what, privacy: .public) failed: \(error.localizedDescription, privacy: .public)") }
+/// Marker for "the bound elapsed", never surfaced to a caller.
+private struct AcknowledgementPending: Error {}
+
+/// Writes `data` to `document` and reports whether the server confirmed it.
+///
+/// - Throws: whatever Firestore rejected the write with. A thrown error means
+///   the write will never land, so the caller must roll its local copy back.
+private func commit(_ data: [String: Any], to document: DocumentReference, describing what: String) async throws -> FundsWriteOutcome {
+    do {
+        try await BoundedWork.run(
+            timeout: acknowledgementTimeout,
+            timeoutError: { AcknowledgementPending() }
+        ) {
+            try await document.setData(data)
+        }
+        return .committed
+    } catch is AcknowledgementPending {
+        // Not a failure. Firestore has it on disk and will deliver it; we
+        // simply have not heard back yet.
+        logger.notice("\(what, privacy: .public) is queued for sync, not yet acknowledged")
+        return .pendingSync
+    } catch {
+        logger.error("Saving \(what, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+        throw error
     }
 }
 
@@ -63,29 +122,61 @@ final class FirestoreBudgetStore: BudgetStore {
 
     func activeBudget() -> FoodBudget? { budget }
 
-    func saveBudget(_ budget: FoodBudget) {
+    /// Resolved before the local copy is touched, so a signed-out write
+    /// changes nothing at all rather than updating the screen and returning.
+    @discardableResult
+    func saveBudget(_ budget: FoodBudget) async throws -> FundsWriteOutcome {
+        let user = try userDocument(firestore, userIDProvider)
+        let previous = self.budget
         self.budget = budget
-        guard let user = try? userDocument(firestore, userIDProvider) else { return }
-        user.collection("fundsBudget").document("current")
-            .setData(FundsFirestoreMapping.encode(budget), completion: logIfFailed("budget"))
+        do {
+            return try await commit(
+                FundsFirestoreMapping.encode(budget),
+                to: user.collection("fundsBudget").document("current"),
+                describing: "budget"
+            )
+        } catch {
+            self.budget = previous
+            throw error
+        }
     }
 
     func allSpends() -> [GrocerySpend] { spends }
 
-    func addSpend(_ spend: GrocerySpend) {
+    /// Keyed by the spend's own id, so a retry after a failure overwrites one
+    /// document rather than appending a second identical spend.
+    @discardableResult
+    func addSpend(_ spend: GrocerySpend) async throws -> FundsWriteOutcome {
+        let user = try userDocument(firestore, userIDProvider)
         spends.append(spend)
-        guard let user = try? userDocument(firestore, userIDProvider) else { return }
-        user.collection("fundsSpends").document(spend.id.uuidString)
-            .setData(FundsFirestoreMapping.encode(spend), completion: logIfFailed("spend"))
+        do {
+            return try await commit(
+                FundsFirestoreMapping.encode(spend),
+                to: user.collection("fundsSpends").document(spend.id.uuidString),
+                describing: "spend"
+            )
+        } catch {
+            spends.removeAll { $0.id == spend.id }
+            throw error
+        }
     }
 
     func allWasteCosts() -> [WastedFoodCost] { wasteCosts }
 
-    func addWasteCost(_ cost: WastedFoodCost) {
+    @discardableResult
+    func addWasteCost(_ cost: WastedFoodCost) async throws -> FundsWriteOutcome {
+        let user = try userDocument(firestore, userIDProvider)
         wasteCosts.append(cost)
-        guard let user = try? userDocument(firestore, userIDProvider) else { return }
-        user.collection("fundsWaste").document(cost.id.uuidString)
-            .setData(FundsFirestoreMapping.encode(cost), completion: logIfFailed("waste"))
+        do {
+            return try await commit(
+                FundsFirestoreMapping.encode(cost),
+                to: user.collection("fundsWaste").document(cost.id.uuidString),
+                describing: "waste"
+            )
+        } catch {
+            wasteCosts.removeAll { $0.id == cost.id }
+            throw error
+        }
     }
 
     func wasteAlreadyRecorded(for itemID: PantryItemID, on day: Date) -> Bool {
@@ -116,11 +207,21 @@ final class FirestoreItemPriceStore: ItemPriceStore {
 
     func info(for itemID: PantryItemID) -> ItemPriceInfo? { byID[itemID] }
 
-    func save(_ info: ItemPriceInfo) {
+    @discardableResult
+    func save(_ info: ItemPriceInfo) async throws -> FundsWriteOutcome {
+        let user = try userDocument(firestore, userIDProvider)
+        let previous = byID[info.pantryItemID]
         byID[info.pantryItemID] = info
-        guard let user = try? userDocument(firestore, userIDProvider) else { return }
-        user.collection("fundsItemPrices").document(info.pantryItemID.rawValue)
-            .setData(FundsFirestoreMapping.encode(info), completion: logIfFailed("item price"))
+        do {
+            return try await commit(
+                FundsFirestoreMapping.encode(info),
+                to: user.collection("fundsItemPrices").document(info.pantryItemID.rawValue),
+                describing: "item price"
+            )
+        } catch {
+            byID[info.pantryItemID] = previous
+            throw error
+        }
     }
 }
 
@@ -147,11 +248,22 @@ final class FirestorePriceBookStore: PriceBookStore {
         byKey[PriceBookEntry.key(for: name)]
     }
 
-    func record(_ entry: PriceBookEntry) {
+    @discardableResult
+    func record(_ entry: PriceBookEntry) async throws -> FundsWriteOutcome {
+        let user = try userDocument(firestore, userIDProvider)
+        let previous = byKey[entry.key]
         byKey[entry.key] = entry
-        guard let user = try? userDocument(firestore, userIDProvider) else { return }
-        user.collection("fundsPriceBook").document(FundsFirestoreMapping.documentID(forPriceBookKey: entry.key))
-            .setData(FundsFirestoreMapping.encode(entry), completion: logIfFailed("price book"))
+        do {
+            return try await commit(
+                FundsFirestoreMapping.encode(entry),
+                to: user.collection("fundsPriceBook")
+                    .document(FundsFirestoreMapping.documentID(forPriceBookKey: entry.key)),
+                describing: "price book"
+            )
+        } catch {
+            byKey[entry.key] = previous
+            throw error
+        }
     }
 }
 

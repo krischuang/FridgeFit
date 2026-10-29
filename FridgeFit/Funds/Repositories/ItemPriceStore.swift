@@ -6,10 +6,11 @@
 import Foundation
 
 // where the price + expiry we attach to pantry items lives. same idea as BudgetStore:
-// sync reads so the existing use cases don't change, storage hidden behind a protocol.
+// sync reads from a loaded snapshot, async writes that report what actually happened.
 protocol ItemPriceStore: AnyObject {
     func info(for itemID: PantryItemID) -> ItemPriceInfo?
-    func save(_ info: ItemPriceInfo)
+    @discardableResult
+    func save(_ info: ItemPriceInfo) async throws -> FundsWriteOutcome
 }
 
 nonisolated final class InMemoryItemPriceStore: ItemPriceStore {
@@ -21,7 +22,10 @@ nonisolated final class InMemoryItemPriceStore: ItemPriceStore {
 
     func info(for itemID: PantryItemID) -> ItemPriceInfo? { byID[itemID] }
 
-    func save(_ info: ItemPriceInfo) {
+    @discardableResult
+    func save(_ info: ItemPriceInfo) async throws -> FundsWriteOutcome {
         byID[info.pantryItemID] = info
+        // Nowhere else for it to go, so it is as committed as it will ever be.
+        return .committed
     }
 }

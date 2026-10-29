@@ -6,7 +6,7 @@
 import Foundation
 
 // Why a pantry item left the fridge without being eaten.
-enum DiscardReason: String, Codable, CaseIterable, Sendable {
+nonisolated enum DiscardReason: String, Codable, CaseIterable, Sendable {
     case expired
     case spoiled
     case discardedByUser
@@ -21,7 +21,7 @@ enum DiscardReason: String, Codable, CaseIterable, Sendable {
 }
 
 // The money value of one wasted pantry item, derived from its recorded cost.
-struct WastedFoodCost: Identifiable, Hashable, Codable, Sendable {
+nonisolated struct WastedFoodCost: Identifiable, Hashable, Codable, Sendable {
     let id: UUID
     let pantryItemID: PantryItemID
     // How much of the item, in its own unit, was discarded.

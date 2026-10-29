@@ -45,14 +45,21 @@ struct RecordDiscardedItemCostUseCase {
         }
     }
 
+    // What happened to a recorded waste cost.
+    nonisolated struct Recorded: Equatable {
+        let cost: WastedFoodCost
+        let outcome: FundsWriteOutcome
+    }
+
     // Values and records a food-waste event.
-    // - Returns: the persisted ``WastedFoodCost``.
-    // - Throws: ``Failure`` when the waste cannot be recorded.
+    // - Returns: the ``WastedFoodCost`` and the write's real outcome.
+    // - Throws: ``Failure`` when the waste is invalid, or the store's own
+    //   error when it could not be written.
     @discardableResult
     func execute(itemID: PantryItemID,
                  quantityDiscarded: Double,
                  reason: DiscardReason,
-                 discardedOn: Date = Date()) throws -> WastedFoodCost {
+                 discardedOn: Date = Date()) async throws -> Recorded {
         guard let item = pantry.item(withID: itemID) else {
             throw Failure.itemNotInPantry
         }
@@ -73,7 +80,7 @@ struct RecordDiscardedItemCostUseCase {
                                   lostAmount: lostAmount,
                                   discardedOn: discardedOn,
                                   reason: reason)
-        budgetStore.addWasteCost(cost)
-        return cost
+        let outcome = try await budgetStore.addWasteCost(cost)
+        return Recorded(cost: cost, outcome: outcome)
     }
 }
