@@ -24,6 +24,13 @@ nonisolated enum RecipeSuggestionError: LocalizedError, Equatable {
     case requestNotAllowed
     /// The model was asked for too much at once, or is busy.
     case modelBusy
+    /// Generation ran past the time FridgeFit is willing to wait.
+    ///
+    /// Enforced by FridgeFit, not reported by the SDK - see
+    /// `AppleRecipeSuggestionService` and `BoundedWork`. The browsable
+    /// recipe catalogue is unaffected by this, which is what makes it a
+    /// recoverable state rather than a dead end.
+    case timeout
 
     var errorDescription: String? {
         switch self {
@@ -36,6 +43,8 @@ nonisolated enum RecipeSuggestionError: LocalizedError, Equatable {
             return "FridgeFit couldn't suggest recipes for those ingredients."
         case .modelBusy:
             return "Apple Intelligence is busy right now. Please try again in a moment."
+        case .timeout:
+            return "Coming up with recipe ideas took too long, so FridgeFit stopped. Try again, or browse the recipe catalogue instead."
         }
     }
 }
