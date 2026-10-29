@@ -126,9 +126,17 @@ struct MyKitchenView: View {
 
                 if viewModel.hasResults {
                     inventoryDashboard
-                    recentlyAddedSection
-                    ingredientList
-                        .padding(.top, -FridgeFitTheme.Spacing.xSmall)
+
+                    // Inside this branch, not beside it: the tiles are the
+                    // only way back to All, so an empty category has to be
+                    // reported underneath them rather than in their place.
+                    if viewModel.hasVisibleItems {
+                        recentlyAddedSection
+                        ingredientList
+                            .padding(.top, -FridgeFitTheme.Spacing.xSmall)
+                    } else {
+                        emptyCategoryState
+                    }
                 } else if inventory.isLoading {
                     ProgressView()
                         .frame(maxWidth: .infinity, minHeight: 260)
@@ -374,6 +382,41 @@ struct MyKitchenView: View {
         .fridgeFitCardSurface()
     }
 
+    /// Shown when the storage filter has items but the chosen category has
+    /// none of them. Offers the way out rather than only naming the problem,
+    /// since the tile that caused it is already selected.
+    private var emptyCategoryState: some View {
+        VStack(spacing: FridgeFitTheme.Spacing.small) {
+            Image(systemName: "line.3.horizontal.decrease.circle")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                .frame(width: 52, height: 52)
+                .background(FridgeFitTheme.ColorToken.successBackground, in: Circle())
+                .accessibilityHidden(true)
+
+            Text("No \(viewModel.selectedCategory.title.lowercased()) here")
+                .font(FridgeFitTheme.Typography.sectionTitle)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+
+            Text("Nothing in this category matches what you are looking at.")
+                .font(FridgeFitTheme.Typography.supporting)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .multilineTextAlignment(.center)
+
+            Button("Show all categories") {
+                withAnimation(.snappy) {
+                    viewModel.selectCategory(.all)
+                }
+            }
+            .font(FridgeFitTheme.Typography.supporting.weight(.semibold))
+            .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+            .frame(minHeight: 44)
+        }
+        .frame(maxWidth: .infinity, minHeight: 180)
+        .padding(FridgeFitTheme.Spacing.large)
+        .fridgeFitCardSurface()
+    }
+
     private var filteredEmptyTitle: String {
         if !viewModel.searchText.isEmpty {
             return "No results for \"\(viewModel.searchText)\""
@@ -497,35 +540,55 @@ struct MyKitchenView: View {
         .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
     }
 
+    /// One category tile, which narrows the list below to that kind of food.
+    ///
+    /// The selected tile is the one ringed in the brand colour. That ring
+    /// used to mark All unconditionally, which read as "All is selected"
+    /// while nothing on the screen could change it - the tiles looked like a
+    /// four-way control and behaved like a caption.
     private func summaryTile(_ summary: InventoryCategorySummary) -> some View {
-        let isAll = summary == .all
-        return ZStack(alignment: .bottomLeading) {
-            InventoryArtworkBackdrop(category: summary.representativeCategory, allItems: isAll)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(summary.title)
-                    .font(FridgeFitTheme.Typography.caption.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(categoryItemCount(for: summary))
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.84))
-                    .lineLimit(1)
+        let isSelected = viewModel.selectedCategory == summary
+        let count = viewModel.itemCount(for: summary)
+        return Button {
+            withAnimation(.snappy) {
+                viewModel.selectCategory(summary)
             }
-            .padding(FridgeFitTheme.Spacing.small)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background { PhotoCaptionScrim() }
+        } label: {
+            ZStack(alignment: .bottomLeading) {
+                InventoryArtworkBackdrop(category: summary.representativeCategory, allItems: summary == .all)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(summary.title)
+                        .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(itemCountText(count))
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.84))
+                        .lineLimit(1)
+                }
+                .padding(FridgeFitTheme.Spacing.small)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background { PhotoCaptionScrim() }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+            .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
+                    .stroke(
+                        isSelected ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.controlBorder,
+                        lineWidth: isSelected ? 2 : 1
+                    )
+            }
+            .contentShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-        .clipShape(RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous)
-                .stroke(isAll ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.controlBorder, lineWidth: isAll ? 2 : 1)
-        }
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(summary.title), \(categoryItemCount(for: summary))")
+        .accessibilityLabel("\(summary.title), \(itemCountText(count))")
+        .accessibilityHint(isSelected ? "Shows all categories again" : "Shows only \(summary.title.lowercased())")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     /// What arrived in the last three hours, above the full list.
@@ -654,9 +717,8 @@ struct MyKitchenView: View {
         viewModel.useFirstItems.first
     }
 
-    private func categoryItemCount(for summary: InventoryCategorySummary) -> String {
-        let count = inventory.items.filter { summary.includes($0.ingredient.category) }.count
-        return count == 1 ? "1 item" : "\(count) items"
+    private func itemCountText(_ count: Int) -> String {
+        count == 1 ? "1 item" : "\(count) items"
     }
 
     private func expiryText(for item: PantryItem) -> String {
@@ -818,62 +880,6 @@ private struct EmptyFridgeQuickAdds: View {
                     .accessibilityHint("Opens ingredient details before saving")
                 }
             }
-        }
-    }
-}
-
-/// Stitch's four summary cards mapped onto FridgeFit's real ingredient
-/// categories. They are informational: storage selection remains the only
-/// inventory filter on this screen.
-private enum InventoryCategorySummary: CaseIterable, Identifiable {
-    case all
-    case produce
-    case proteins
-    case dairyAndPantry
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .all: return "All"
-        case .produce: return "Produce"
-        case .proteins: return "Proteins"
-        case .dairyAndPantry: return "Dairy & Pantry"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .all: return "square.grid.2x2"
-        case .produce: return IngredientCategory.produce.symbolName
-        case .proteins: return IngredientCategory.meat.symbolName
-        case .dairyAndPantry: return "cabinet"
-        }
-    }
-
-    var representativeCategory: IngredientCategory? {
-        switch self {
-        case .all:
-            return nil
-        case .produce:
-            return .produce
-        case .proteins:
-            return .meat
-        case .dairyAndPantry:
-            return .dairy
-        }
-    }
-
-    func includes(_ category: IngredientCategory) -> Bool {
-        switch self {
-        case .all:
-            return true
-        case .produce:
-            return category == .produce
-        case .proteins:
-            return category == .meat
-        case .dairyAndPantry:
-            return [.dairy, .grain, .spice].contains(category)
         }
     }
 }

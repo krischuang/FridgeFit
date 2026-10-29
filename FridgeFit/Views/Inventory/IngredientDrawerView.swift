@@ -38,6 +38,12 @@ struct IngredientDrawerView: View {
     /// the store is a plain object, not observable, so nothing else would
     /// tell the row its value changed.
     @State private var priceRevision = 0
+    /// Why the last price write failed, if it did. Shown rather than logged:
+    /// a price that was refused must not leave the drawer looking priced.
+    @State private var priceError: String?
+    /// Set when the price is stored on the device but not yet confirmed by
+    /// the server. Not a failure - see `FundsWriteOutcome`.
+    @State private var priceNotice: String?
 
     init(
         itemID: UUID,
@@ -98,6 +104,7 @@ struct IngredientDrawerView: View {
         } message: {
             Text("This removes the item and its record from your kitchen.")
         }
+        .numericKeyboardDoneButton()
         .alert("Kitchen update failed", isPresented: Binding(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }
@@ -289,7 +296,10 @@ struct IngredientDrawerView: View {
                     stopRepeating()
                 }
             }
-            .frame(height: 48)
+            // minHeight, not height: the amount is `.title3`, which at the
+            // accessibility sizes is taller than 48pt and would be clipped by
+            // a fixed box.
+            .frame(minHeight: 48)
             .background(FridgeFitTheme.ColorToken.disabledSurface.opacity(0.65), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
 
             Text("Left \(draft.remainingQuantity.displayText)")
@@ -314,7 +324,8 @@ struct IngredientDrawerView: View {
             }
             .foregroundStyle(draft.finished ? FridgeFitTheme.ColorToken.primary : FridgeFitTheme.ColorToken.textPrimary)
             .padding(.horizontal, FridgeFitTheme.Spacing.medium)
-            .frame(height: 52)
+            .padding(.vertical, FridgeFitTheme.Spacing.small)
+            .frame(minHeight: 52)
             .background(draft.finished ? FridgeFitTheme.ColorToken.successBackground : FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
             .overlay { RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous).stroke(FridgeFitTheme.ColorToken.controlBorder, lineWidth: 1) }
         }
@@ -403,6 +414,19 @@ struct IngredientDrawerView: View {
             }
             if funds != nil {
                 DrawerInfoRow(title: "Price", value: priceDetail, systemImage: "tag")
+
+                if let priceError {
+                    Text(priceError)
+                        .font(FridgeFitTheme.Typography.caption)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.errorText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel("Price not saved. \(priceError)")
+                } else if let priceNotice {
+                    Text(priceNotice)
+                        .font(FridgeFitTheme.Typography.caption)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
         .drawerPanel()
@@ -433,16 +457,39 @@ struct IngredientDrawerView: View {
     /// Deliberately the same two calls `ImpactBudgetViewModel.savePrice`
     /// makes. The pantry item is not touched: a price is FridgeFunds' fact
     /// about an item, not part of the item.
+    ///
+    /// Both writes are awaited, and a failure is shown rather than dropped.
+    /// This used to call the two stores and return - so a refused write left
+    /// the drawer showing a price that had not been stored, and
+    /// `priceRevision` was bumped regardless of whether anything had been
+    /// saved.
     private func savePrice(_ unitCost: Decimal) {
         guard let funds, let item = viewModel.visibleItem, unitCost > 0 else { return }
         let id = FridgeFitPantryReading.id(for: item)
         let money = Money(unitCost, funds.displayCurrency)
         let existing = funds.priceStore.info(for: id)
-        funds.priceStore.save(
-            ItemPriceInfo(pantryItemID: id, unitCost: money, expiryDate: existing?.expiryDate)
-        )
-        funds.rememberPrice(of: item.name, unit: item.unit.symbol, unitCost: money)
-        priceRevision += 1
+        let name = item.name
+        let unit = item.unit.symbol
+
+        Task {
+            do {
+                let priced = try await funds.priceStore.save(
+                    ItemPriceInfo(pantryItemID: id, unitCost: money, expiryDate: existing?.expiryDate)
+                )
+                let remembered = try await funds.rememberPrice(of: name, unit: unit, unitCost: money)
+                priceError = nil
+                priceNotice = (priced == .committed && remembered == .committed)
+                    ? nil
+                    : FundsWriteOutcome.pendingSync.statusDescription
+                // Bumped only now, so the row re-reads a price that is
+                // genuinely in the store.
+                priceRevision += 1
+            } catch {
+                priceNotice = nil
+                priceError = (error as? LocalizedError)?.errorDescription
+                    ?? "That price couldn't be saved. Please try again."
+            }
+        }
     }
 
     private func correctQuantityEditor() -> some View {
@@ -724,7 +771,9 @@ private extension View {
         font(FridgeFitTheme.Typography.button)
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity)
-            .frame(height: 48)
+            // minHeight so the label grows with Dynamic Type rather than
+            // being cut off, matching `FridgeFitPrimaryButtonStyle`.
+            .frame(minHeight: 48)
             .background(FridgeFitTheme.ColorToken.brandFill, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
     }
 
@@ -732,7 +781,7 @@ private extension View {
         font(FridgeFitTheme.Typography.button)
             .foregroundStyle(FridgeFitTheme.ColorToken.primary)
             .frame(maxWidth: .infinity)
-            .frame(height: 44)
+            .frame(minHeight: 44)
             .background(FridgeFitTheme.ColorToken.card, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
     }
 

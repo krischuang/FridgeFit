@@ -8,8 +8,8 @@ substitutions.
 
 **Features**
 
-- **Pantry** — add, update and remove ingredients, synced per-user through
-  Cloud Firestore.
+- **Pantry** — add, update and remove ingredients, stored per-account in an
+  on-device SwiftData database.
 - **Receipt scanning** — Vision reads the receipt text, Foundation Models
   interprets it into ingredients with quantities and units. Entirely
   on-device; the photo never leaves the phone and never reaches a server.
@@ -20,11 +20,42 @@ substitutions.
 - **Substitutions** — for any ingredient you're short on, on-device Apple
   Intelligence proposes alternatives, validated against your pantry before
   being shown.
-- **Accounts** — Firebase Authentication, including Google Sign-In.
+- **Budget & impact** — a food budget, logged grocery spends, valued waste
+  and a per-ingredient price book, stored beside the pantry they describe.
+- **Accounts** — Firebase Authentication, with email/password and Google
+  Sign-In, plus in-app account deletion that removes the cloud data, the
+  on-device data and the sign-in itself.
 
 Architecture is layered: `Domain` (models, protocols, errors) → `UseCases`
-→ `Data` (Firestore, Vision, Foundation Models) → `ViewModels`
-→ `Views`. 240 unit tests cover the domain, use-case and view-model layers.
+→ `Data` (SwiftData, Firestore, Vision, Foundation Models) → `ViewModels`
+→ `Views`. 1,820 unit tests cover the domain, use-case, persistence and
+view-model layers, plus 129 Firebase emulator tests (86 Firestore
+security-rules, 43 Cloud Functions account-deletion) run against the local
+emulator suite.
+
+A TypeScript Cloud Functions backend for server-side account deletion lives
+in `functions/`. It is complete and emulator-tested but **not deployed** —
+deploying needs the Blaze plan — so the shipping app uses its on-device
+deletion path. See `docs/assessment4-final-production-verification.md`.
+
+### Where your data actually lives
+
+Worth stating plainly, because it is easy to assume otherwise from the
+Firebase dependency:
+
+| Data | Where | Synced between devices? |
+|---|---|---|
+| Pantry, kitchen activity, saved recipes | On device (SwiftData) | No |
+| Budget, spends, waste, saved prices | On device (SwiftData) | No |
+| Your email address / sign-in | Firebase Authentication | — |
+| Remote-camera pairing + WebRTC signalling | Firestore, under `users/{uid}` | — |
+| Fridge photos, receipt photos, camera video | Never uploaded | — |
+
+FridgeFit uses **no iCloud and no CloudKit**, and does not sync your kitchen
+between devices. `PersistenceConfiguration.compiledDefault` selects
+SwiftData; a `-persistence firebase` launch argument switches the business
+data to Firestore, and Profile → Settings states whichever one is live (see
+`StorageDisclosure`).
 
 ---
 
@@ -262,7 +293,7 @@ Xcode older than 26.1. Update Xcode.
 FridgeFit/              App source (file-system-synchronized group)
   Domain/               Models, protocols, errors — no framework imports
   UseCases/             Business rules
-  Data/                 Firestore, Vision, Foundation Models, Spoonacular
+  Data/                 SwiftData, Firestore, Vision, Foundation Models, Spoonacular
   ViewModels/           Observable state for the views
   Views/                SwiftUI screens
   GoogleService-Info.plist   Firebase config (committed on purpose)

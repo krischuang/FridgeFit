@@ -92,6 +92,7 @@ struct IngredientEditorView: View {
         .background(FridgeFitTheme.ColorToken.canvas.ignoresSafeArea())
         .navigationTitle(isAdding ? "Add Ingredient" : "Edit Ingredient")
         .navigationBarTitleDisplayMode(.inline)
+        .numericKeyboardDoneButton()
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }

@@ -38,7 +38,7 @@ final class DiscoverRefreshConcurrencyTests: XCTestCase {
     ) async {
         let search = Task { await viewModel.search() }
         await repository.waitForParkedFetches(1)
-        await repository.release(call: 1, with: pantry)
+        repository.release(call: 1, with: pantry)
         await search.value
     }
 
@@ -57,12 +57,12 @@ final class DiscoverRefreshConcurrencyTests: XCTestCase {
         let newer = Task { await viewModel.refreshPantryMatch() }
         await repository.waitForParkedFetches(2)
 
-        await repository.release(call: 3, with: [item("egg"), item("milk"), item("vanilla extract")])
+        repository.release(call: 3, with: [item("egg"), item("milk"), item("vanilla extract")])
         await newer.value
         XCTAssertEqual(viewModel.matches.first?.missedIngredients.map(\.name), ["brown sugar"])
 
         // The older re-check finishes last. Its pantry is the stale one.
-        await repository.release(call: 2, with: [item("egg")])
+        repository.release(call: 2, with: [item("egg")])
         await older.value
 
         XCTAssertEqual(
@@ -70,7 +70,7 @@ final class DiscoverRefreshConcurrencyTests: XCTestCase {
             ["brown sugar"],
             "The re-check that started last describes the pantry best, whatever order they finished in"
         )
-        let reads = await repository.fetchAllCount
+        let reads = repository.fetchAllCount
         XCTAssertEqual(reads, 3, "One pantry read per request, no retries")
         XCTAssertEqual(service.receivedCriteria.count, 1, "Re-checks must never spend API quota")
     }
@@ -87,7 +87,7 @@ final class DiscoverRefreshConcurrencyTests: XCTestCase {
         await repository.waitForParkedFetches(1)
 
         viewModel.updatePreferences(OnlineRecipePreferences(diet: .vegetarian))
-        await repository.release(call: 2, with: [item("egg"), item("milk")])
+        repository.release(call: 2, with: [item("egg"), item("milk")])
         await pending.value
 
         XCTAssertTrue(viewModel.matches.isEmpty, "Results cleared by a filter change must stay cleared")
@@ -109,12 +109,12 @@ final class DiscoverRefreshConcurrencyTests: XCTestCase {
         await repository.waitForParkedFetches(2)
 
         // The re-check completes first, with a pantry that has milk.
-        await repository.release(call: 2, with: [item("egg"), item("milk")])
+        repository.release(call: 2, with: [item("egg"), item("milk")])
         await pendingRefresh.value
         XCTAssertTrue(viewModel.isLoading, "The search is still running")
 
         // Then the search lands, on an egg-only pantry.
-        await repository.release(call: 3, with: [item("egg")])
+        repository.release(call: 3, with: [item("egg")])
         await search.value
 
         XCTAssertEqual(

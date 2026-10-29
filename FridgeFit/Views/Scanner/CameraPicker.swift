@@ -100,14 +100,24 @@ enum CameraAccess {
         }
     }
 
-    var explanation: String? {
+    /// Whether iOS Settings can change this state.
+    ///
+    /// Only a declined permission can. `.unavailable` means there is no
+    /// capture device at all, which no switch in Settings will conjure up.
+    var isResolvableInSettings: Bool {
         switch self {
-        case .granted:
-            return nil
         case .denied:
-            return "FridgeFit needs camera access to photograph your fridge. You can turn it on in Settings, or choose a photo from your library instead."
-        case .unavailable:
-            return "This device doesn't have a camera available. Choose a photo from your library instead."
+            return true
+        case .granted, .unavailable:
+            return false
         }
+    }
+
+    /// What to show the user, or `nil` when there is nothing to say.
+    ///
+    /// See `CameraAccessPrompt` for the wording and for why only one of the
+    /// two failing cases offers a route into Settings.
+    var prompt: CameraAccessPrompt? {
+        CameraAccessPrompt(self)
     }
 }

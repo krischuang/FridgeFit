@@ -207,7 +207,9 @@ private struct IngredientBox: View {
 
             HStack(spacing: 3) {
                 Image(systemName: ingredient.category.symbolName)
-                    .font(.system(size: 8, weight: .bold))
+                    // Matches the label beside it so the two scale together
+                    // instead of the glyph staying 8pt while the text grows.
+                    .font(.caption2.weight(.bold))
                 Text(ingredient.overlayLabel)
                     .font(.caption2.weight(.semibold))
             }
