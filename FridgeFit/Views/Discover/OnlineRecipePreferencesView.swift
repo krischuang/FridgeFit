@@ -45,7 +45,16 @@ struct OnlineRecipePreferencesView: View {
             } header: {
                 Text("Avoid")
             } footer: {
-                Text("Recipes that contain these - or whose ingredients couldn't be screened at all - are hidden. The screen reads ingredient names only.")
+                // The second sentence was missing, and its absence was
+                // misleading: "the screen reads ingredient names only"
+                // describes the *local* pass over returned recipes, which
+                // reads as though the list never leaves the device. It does -
+                // `SpoonacularRecipeService` sends it as the `intolerances`
+                // query parameter, exactly as the Diet section already says
+                // of the diet. Saying so here is the difference between a
+                // truthful screen and one that implies on-device-only
+                // handling of what is, for some users, a medical fact.
+                Text("Recipes that contain these - or whose ingredients couldn't be screened at all - are hidden. The screen reads ingredient names only. This list is also sent to the recipe service to narrow the search; it isn't linked to your account.")
             }
 
             unassessableSection
