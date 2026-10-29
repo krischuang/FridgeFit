@@ -45,10 +45,13 @@ final class AuthViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            let result = try await Auth.auth().signIn(withEmail: email, password: password)
+            let result = try await Auth.auth().signIn(
+                withEmail: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                password: password
+            )
             user = result.user
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = AuthErrorMessage.text(for: error)
         }
     }
 
@@ -62,7 +65,10 @@ final class AuthViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            let result = try await Auth.auth().createUser(withEmail: email, password: password)
+            let result = try await Auth.auth().createUser(
+                withEmail: email.trimmingCharacters(in: .whitespacesAndNewlines),
+                password: password
+            )
             let trimmedName = fullName.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmedName.isEmpty {
                 let request = result.user.createProfileChangeRequest()
@@ -74,7 +80,7 @@ final class AuthViewModel: ObservableObject {
             }
             user = result.user
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = AuthErrorMessage.text(for: error)
         }
     }
 
@@ -101,7 +107,7 @@ final class AuthViewModel: ObservableObject {
         } catch let error as NSError where error.code == AuthErrorCode.userNotFound.rawValue {
             infoMessage = "If an account exists for \(trimmedEmail), a reset link is on its way."
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = AuthErrorMessage.text(for: error)
         }
     }
 
@@ -133,7 +139,10 @@ final class AuthViewModel: ObservableObject {
             let authResult = try await Auth.auth().signIn(with: credential)
             user = authResult.user
         } catch {
-            errorMessage = error.localizedDescription
+            // A user who backs out of Google's sheet has not hit an error,
+            // so nothing is shown for that case.
+            guard AuthErrorMessage.isWorthReporting(error) else { return }
+            errorMessage = AuthErrorMessage.text(for: error)
         }
     }
 
@@ -143,7 +152,7 @@ final class AuthViewModel: ObservableObject {
             GIDSignIn.sharedInstance.signOut()
             user = nil
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = AuthErrorMessage.text(for: error)
         }
     }
 }

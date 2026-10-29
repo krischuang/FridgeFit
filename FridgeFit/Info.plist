@@ -13,6 +13,26 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>FridgeFit uses the camera to photograph the inside of your fridge, and - if you turn on Camera Mode - to stream a live view to another iPhone signed into your own FridgeFit account. Photos and video are sent directly between your devices, never uploaded to FridgeFit.</string>
+	<!--
+	  Required by Camera Mode.
+
+	  WebRTC gathers "host" ICE candidates - this device's own LAN addresses -
+	  and when both iPhones are on the same Wi-Fi the video connection is made
+	  directly to a local address such as 192.168.x.x. On iOS 14 and later any
+	  app that sends traffic to the local network must declare this key, and
+	  iOS shows this string in the permission prompt. Without it the prompt
+	  appears with no explanation at all and App Review flags the omission.
+
+	  See WebRTCConfiguration ("Same Wi-Fi: works, usually on a host (LAN)
+	  candidate") and WebRTCClient's candidate gathering.
+
+	  Deliberately NOT accompanied by NSBonjourServices: FridgeFit does not
+	  browse or advertise a Bonjour service. The two devices find each other
+	  through Firestore signalling, not mDNS, so declaring a service type
+	  would claim discovery behaviour the app does not perform.
+	-->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>FridgeFit uses your local network so Camera Mode can stream video directly between two iPhones signed into your own FridgeFit account when they're on the same Wi-Fi. The video goes straight between your devices and is never uploaded to FridgeFit.</string>
 	<key>TURN_CREDENTIAL</key>
 	<string>$(TURN_CREDENTIAL)</string>
 	<key>TURN_URL</key>

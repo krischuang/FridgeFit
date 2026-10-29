@@ -65,6 +65,7 @@ struct IngredientReviewView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(FridgeFitTheme.ColorToken.canvas, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .numericKeyboardDoneButton()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {

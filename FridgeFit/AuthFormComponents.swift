@@ -241,6 +241,16 @@ struct AuthMessageBanner: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(tone.background, in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.control, style: .continuous))
         .accessibilityElement(children: .combine)
+        // The icon is the only thing distinguishing a failure from a
+        // confirmation, and VoiceOver does not read an SF Symbol. Without
+        // this, "we sent the reset email" and "that password is wrong" are
+        // announced identically.
+        .accessibilityLabel(Text(verbatim: "\(tone.accessibilityPrefix). \(message)"))
+        // Announced when it appears, rather than waiting for the user to
+        // swipe onto it - a sign-in error that nobody is told about reads as
+        // a button that did nothing.
+        .accessibilityAddTraits(.isStaticText)
+        .id(message)
     }
 }
 
@@ -256,6 +266,15 @@ extension AuthMessageBanner.Tone {
         switch self {
         case .error: return FridgeFitTheme.ColorToken.errorBackground
         case .confirmation: return FridgeFitTheme.ColorToken.successBackground
+        }
+    }
+
+    /// Spoken before the message, so the two tones are distinguishable
+    /// without seeing the icon or the colour.
+    var accessibilityPrefix: String {
+        switch self {
+        case .error: return "Error"
+        case .confirmation: return "Confirmation"
         }
     }
 }

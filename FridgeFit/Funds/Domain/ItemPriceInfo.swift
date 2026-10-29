@@ -8,7 +8,7 @@ import Foundation
 // FridgeFit's pantry only knows name/quantity/unit, so the money side (what you paid,
 // when it goes off) is kept here instead, keyed by the pantry item's id. that way
 // FridgeFunds still never writes to the pantry itself.
-struct ItemPriceInfo: Hashable, Codable, Sendable {
+nonisolated struct ItemPriceInfo: Hashable, Codable, Sendable {
     let pantryItemID: PantryItemID
     // Cost per one unit of the item, in whatever unit the pantry uses for it.
     let unitCost: Money?

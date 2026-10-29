@@ -58,7 +58,8 @@ nonisolated enum RemoteCameraError: Error, Equatable, Sendable {
         case .cameraPermissionDenied:
             return """
             FridgeFit needs camera access to stream to your other device. \
-            You can turn it on in Settings.
+            Turn on Camera for FridgeFit in Settings, then come back to this \
+            screen.
             """
         case .cameraUnavailable:
             return "This device doesn't have a camera available, so it can't act as a remote camera."
@@ -93,6 +94,22 @@ nonisolated enum RemoteCameraError: Error, Equatable, Sendable {
             // people to the Firebase console to fix something that isn't
             // broken.
             return "Couldn't reach the signaling service: \(reason)"
+        }
+    }
+
+    /// Whether iOS Settings can change what caused this.
+    ///
+    /// Only a declined camera permission can. Everything else here is a
+    /// missing device, a network path, or the other phone's state, and sending
+    /// someone to Settings for those would waste the trip.
+    var isResolvableInSettings: Bool {
+        switch self {
+        case .cameraPermissionDenied:
+            return true
+        case .noCameraDevicesFound, .notAuthenticated, .sessionNotAddressedToThisDevice,
+             .sessionExpired, .cameraUnavailable, .iceNegotiationFailed, .connectionLost,
+             .peerLeft, .mediaNeverArrived, .snapshotTransferFailed, .signalingUnavailable:
+            return false
         }
     }
 

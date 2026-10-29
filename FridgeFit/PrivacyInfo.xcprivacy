@@ -13,12 +13,28 @@
 	  XCFrameworks, which Xcode aggregates into the privacy report at archive
 	  time - they are deliberately not restated here.
 
-	  VERIFY BEFORE SUBMITTING: the collected-data entries must match what the
-	  shipping configuration actually does. In the SwiftData configuration the
-	  pantry never leaves the device, so "Other User Content" is collected only
-	  when the app is built against the Firebase backend. It is declared here
-	  because declaring collection that does not occur is safe, while omitting
-	  collection that does occur is not.
+	  WHAT THE SHIPPING CONFIGURATION ACTUALLY DOES
+	  (PersistenceConfiguration.compiledDefault == .swiftData):
+
+	    - Pantry, kitchen activity, saved recipes, budget, grocery spends,
+	      waste records and saved prices: ON DEVICE ONLY, in SwiftData. None
+	      of it is uploaded. See StorageDisclosure, which is the same
+	      statement rendered in Profile -> Settings.
+	    - Email address: Firebase Authentication. Always.
+	    - Remote-camera device names and WebRTC signalling messages:
+	      Firestore, under users/{uid}. Always, because two devices cannot
+	      find each other through a local database.
+
+	  "Other User Content" is declared anyway. In the .firebase build
+	  configuration the pantry and the FridgeFunds figures are stored in
+	  Firestore, and the remote-camera device registry stores a user-chosen
+	  device name in every configuration. Declaring collection that may not
+	  occur is safe; omitting collection that does occur is not.
+
+	  Account deletion: users/{uid} and every collection beneath it, plus the
+	  local SwiftData rows and on-device caches, are removed by the in-app
+	  Delete Account flow. See FirestoreAccountDataDeleter and
+	  SwiftDataAccountDataDeleter.
 	-->
 
 	<!-- No tracking. Nothing is shared with data brokers, and there is no
@@ -49,16 +65,75 @@
 			</array>
 		</dict>
 		<!--
-		  The pantry itself - ingredient names, amounts, expiry dates and the
-		  kitchen activity log - when the app is configured against the
-		  Firebase backend. Stored under the signed-in user's own uid and
-		  readable by nobody else (see firestore.rules).
+		  Other user content, covering two things:
+
+		  1. The pantry, the kitchen activity log, saved recipes and the
+		     FridgeFunds figures - ONLY when the app is built against the
+		     Firebase backend. In the shipping SwiftData configuration none
+		     of this leaves the device.
+		  2. The remote-camera device name, in every configuration, so a
+		     user can tell their two iPhones apart when pairing.
+
+		  Both are stored under the signed-in user's own uid and are readable
+		  by nobody else (see firestore.rules).
 		-->
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
 			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!--
+		  Food intolerances, and the pantry ingredient names searched with
+		  them, when the Discover tab performs an online recipe search.
+
+		  Traced, not assumed: SpoonacularRecipeService builds the query with
+		  `intolerances` (FoodIntolerance: dairy, egg, gluten, grain, peanut,
+		  seafood, sesame, shellfish, soy, sulfite, tree nut, wheat), `diet`
+		  and `includeIngredients` (the pantry names), and sends them to
+		  api.spoonacular.com. OnlineRecipeFeature.provider is `.enabled`, so
+		  this path is live in any build configured with a key.
+
+		  Declared as Health because a food intolerance is user-provided
+		  health information, and NOT linked to the user because the request
+		  carries no uid, account, email or device identifier - only the
+		  developer's API key. Searches are not used for tracking and are
+		  never joined to a FridgeFit account.
+
+		  Spoonacular's own retention is outside FridgeFit's control and is
+		  recorded as an external requirement in
+		  docs/assessment4-privacy-compliance-audit.md. Declaring it here is
+		  the safe side of that uncertainty.
+		-->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeHealth</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!--
+		  Search contents: the ingredient names and the time limit sent with
+		  the same request. Separate from the pantry entry above because that
+		  one is linked (it is stored under users/{uid} in Firebase mode) and
+		  this one is not - the search leaves no identifier behind.
+		-->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeSearchHistory</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
 			<false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>
@@ -81,11 +156,17 @@
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 		<!--
-		  UserDefaults. Three uses, all of them this app's own settings:
+		  UserDefaults. Five uses, all of them this app's own settings:
 		  the Discover tab's search filters (OnlineRecipePreferencesStore),
-		  this device's remote-camera identity (DeviceIdentity), and the
+		  hidden Discover results (HiddenOnlineRecipeStore), the Profile
+		  measurement/serving preferences (ProfileSettingsStore), this
+		  device's remote-camera identity (DeviceIdentity), and the
 		  persistence backend launch argument (PersistenceConfiguration).
 		  Reason CA92.1 - access to the app's own defaults.
+
+		  The first three are cleared by the in-app Delete Account flow; see
+		  LocalStateAccountDataDeleter, which also documents why the device
+		  identity is deliberately kept.
 		-->
 		<dict>
 			<key>NSPrivacyAccessedAPIType</key>

@@ -37,16 +37,28 @@ struct RecordGrocerySpendUseCase {
         }
     }
 
+    // What happened to a recorded spend: the spend itself, and whether the
+    // store has it confirmed or queued.
+    nonisolated struct Recorded: Equatable {
+        let spend: GrocerySpend
+        let outcome: FundsWriteOutcome
+    }
+
     // Validates and records a grocery spend.
-    // - Returns: the persisted ``GrocerySpend``.
-    // - Throws: ``Failure`` when the spend cannot be recorded.
+    // - Returns: the ``GrocerySpend`` and the write's real outcome. `async`
+    //   because the write is: this used to return the moment the store had
+    //   updated its in-memory copy, which for Firestore was before the write
+    //   had been accepted - so a rejected spend still counted against the
+    //   budget on screen.
+    // - Throws: ``Failure`` when the spend is invalid, or the store's own
+    //   error when it could not be written at all.
     @discardableResult
     func execute(amount: Money,
                  spentOn: Date = Date(),
                  store storeName: String? = nil,
                  purchasedItemIDs: [PantryItemID] = [],
                  note: String? = nil,
-                 now: Date = Date()) throws -> GrocerySpend {
+                 now: Date = Date()) async throws -> Recorded {
         guard amount.isPositive else { throw Failure.amountNotPositive }
         guard let budget = budgetStore.activeBudget() else { throw Failure.noActiveBudgetPeriod }
         guard amount.currency == budget.currency else {
@@ -62,7 +74,7 @@ struct RecordGrocerySpendUseCase {
                                  store: storeName,
                                  purchasedItemIDs: purchasedItemIDs,
                                  note: note)
-        budgetStore.addSpend(spend)
-        return spend
+        let outcome = try await budgetStore.addSpend(spend)
+        return Recorded(spend: spend, outcome: outcome)
     }
 }

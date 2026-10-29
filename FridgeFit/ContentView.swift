@@ -86,6 +86,14 @@ struct ContentView: View {
     /// `\.fundsEnvironment`, the same way the pantry reaches the camera
     /// review sheet.
     private let fundsEnvironment: FundsEnvironment
+    /// Which store everything above came from, so Profile → Settings can
+    /// state it rather than claim a backend. Data, not a switch - see
+    /// `StorageDisclosure`.
+    private let persistenceBackend: PersistenceBackend
+    /// Builds the account-deletion use case when Profile → Settings asks for
+    /// one. Held as a factory because the use case closes over a
+    /// `ModelContext` that no screen should keep alive.
+    private let deleteAccountUseCaseFactory: DeleteAccountUseCaseFactory
 
     /// Takes its repositories from the composition root rather than building
     /// them.
@@ -100,7 +108,16 @@ struct ContentView: View {
     init(dependencies: AppDependencies) {
         let pantryRepository = dependencies.pantryRepository
         self.pantryRepository = pantryRepository
-        self.fundsEnvironment = .firestore(pantryRepository: pantryRepository)
+        // Taken from the composition root rather than constructed here. This
+        // line used to read `.firestore(pantryRepository:)`, which put a
+        // concrete backend choice inside a `View` and - worse - hard-wired
+        // *Firestore* into a build whose pantry is a local database. See
+        // `AppDependencies.fundsEnvironment`.
+        self.fundsEnvironment = dependencies.fundsEnvironment
+        self.persistenceBackend = dependencies.backend
+        self.deleteAccountUseCaseFactory = DeleteAccountUseCaseFactory {
+            dependencies.makeDeleteAccountUseCase()
+        }
         let bundledRecipeRepository = BundledRecipeRepository()
 
         // Chosen by `AppDependencies` with the rest of the persistence graph:
@@ -343,6 +360,12 @@ struct ContentView: View {
         // Firestore dependency of its own. `nil` in previews and tests, in
         // which case the money cards render their unavailable state.
         .environment(\.fundsEnvironment, fundsEnvironment)
+        // Reaches Profile → Settings, which states where the user's data is
+        // and offers account deletion. Both travel as data from the
+        // composition root for the same reason the two above do: the screen
+        // must not be able to pick a backend or build a Firebase client.
+        .environment(\.persistenceBackend, persistenceBackend)
+        .environment(\.deleteAccountUseCaseFactory, deleteAccountUseCaseFactory)
     }
 
     private func showRecipeRoute(_ route: RecipesRoute) {

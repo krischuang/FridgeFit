@@ -634,3 +634,122 @@ describe("FridgeFunds", () => {
     await assertFails(setDoc(doc(asUser(ALICE), `users/${ALICE}/fundsAnythingElse/x`), { a: 1 }));
   });
 });
+
+// The account-deletion write lock.
+//
+// While a server-side deletion job is running, the Cloud Function writes
+// deletionLocks/{uid}. Its presence must make every user write fail, or the
+// app could add data into a subtree that is halfway through being deleted
+// and the account would be reported as deleted while still owning data.
+//
+// Reads are deliberately still allowed: a user whose deletion is in flight
+// may still have the app open, and rendering what is there is better than
+// erroring.
+describe("account deletion write lock", () => {
+  /** Writes the lock as the Cloud Function would (Admin SDK, bypassing rules). */
+  const lock = (uid) =>
+    testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `deletionLocks/${uid}`), {
+        uid,
+        reason: "accountDeletion",
+      });
+    });
+
+  // One representative document per rule block, so a lock that was added to
+  // some blocks and forgotten in others is caught.
+  const writablePaths = (uid) => [
+    `users/${uid}/pantry/item-1`,
+    `users/${uid}/inventoryEvents/event-1`,
+    `users/${uid}/savedRecipes/recipe-1`,
+    `users/${uid}/devices/${DEVICE_A}`,
+    `users/${uid}/webrtcSessions/${SESSION}`,
+    `users/${uid}/webrtcSessions/${SESSION}/callerCandidates/candidate-1`,
+    `users/${uid}/fundsBudget/current`,
+    `users/${uid}/fundsSpends/spend-1`,
+    `users/${uid}/fundsWaste/waste-1`,
+    `users/${uid}/fundsItemPrices/item-1`,
+    `users/${uid}/fundsPriceBook/milk`,
+  ];
+
+  it("allows every user write when no deletion is in flight", async () => {
+    const db = asUser(ALICE);
+    for (const path of writablePaths(ALICE)) {
+      await assertSucceeds(setDoc(doc(db, path), { a: 1 }));
+    }
+  });
+
+  it("denies every user write while the lock is present", async () => {
+    await lock(ALICE);
+    const db = asUser(ALICE);
+    for (const path of writablePaths(ALICE)) {
+      await assertFails(setDoc(doc(db, path), { a: 1 }));
+    }
+  });
+
+  it("still allows reads while the lock is present", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `users/${ALICE}/pantry/item-1`), { name: "Milk" });
+    });
+    await lock(ALICE);
+
+    await assertSucceeds(getDoc(doc(asUser(ALICE), `users/${ALICE}/pantry/item-1`)));
+  });
+
+  it("denies deletes as well as creates while locked", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `users/${ALICE}/pantry/item-1`), { name: "Milk" });
+    });
+    await lock(ALICE);
+
+    await assertFails(deleteDoc(doc(asUser(ALICE), `users/${ALICE}/pantry/item-1`)));
+  });
+
+  it("locks only the named user, never everyone", async () => {
+    await lock(ALICE);
+
+    // Bob is unaffected by Alice's deletion.
+    await assertSucceeds(setDoc(doc(asUser(BOB), `users/${BOB}/pantry/item-1`), { a: 1 }));
+  });
+
+  it("lets a user read their own lock and job, so the app can explain the state", async () => {
+    await lock(ALICE);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `deletionJobs/${ALICE}`), {
+        uid: ALICE,
+        state: "deletingData",
+      });
+    });
+
+    await assertSucceeds(getDoc(doc(asUser(ALICE), `deletionLocks/${ALICE}`)));
+    await assertSucceeds(getDoc(doc(asUser(ALICE), `deletionJobs/${ALICE}`)));
+  });
+
+  it("never lets a client write the lock or the job", async () => {
+    // A client that could delete its own lock could write into a subtree
+    // mid-deletion; one that could edit its own job could mark itself
+    // "completed" without anything having happened.
+    const db = asUser(ALICE);
+    await assertFails(setDoc(doc(db, `deletionLocks/${ALICE}`), { uid: ALICE }));
+    await assertFails(setDoc(doc(db, `deletionJobs/${ALICE}`), { state: "completed" }));
+
+    await lock(ALICE);
+    await assertFails(deleteDoc(doc(db, `deletionLocks/${ALICE}`)));
+  });
+
+  it("never lets a client read another user's lock or job", async () => {
+    await lock(ALICE);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `deletionJobs/${ALICE}`), { state: "completed" });
+    });
+
+    const db = asUser(BOB);
+    await assertFails(getDoc(doc(db, `deletionLocks/${ALICE}`)));
+    await assertFails(getDoc(doc(db, `deletionJobs/${ALICE}`)));
+  });
+
+  it("denies signed-out access to the lock and the job", async () => {
+    await lock(ALICE);
+    await assertFails(getDoc(doc(asAnonymous(), `deletionLocks/${ALICE}`)));
+    await assertFails(getDoc(doc(asAnonymous(), `deletionJobs/${ALICE}`)));
+  });
+});

@@ -80,6 +80,7 @@ struct BudgetSetupSheet: View {
             }
             .navigationTitle(existing == nil ? "Set food budget" : "Edit food budget")
             .navigationBarTitleDisplayMode(.inline)
+            .numericKeyboardDoneButton()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -132,6 +133,7 @@ struct LogGrocerySpendSheet: View {
             }
             .navigationTitle("Log grocery spend")
             .navigationBarTitleDisplayMode(.inline)
+            .numericKeyboardDoneButton()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -212,6 +214,7 @@ struct ItemPriceSheet: View {
             }
             .navigationTitle(itemName)
             .navigationBarTitleDisplayMode(.inline)
+            .numericKeyboardDoneButton()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

@@ -170,11 +170,15 @@ nonisolated struct AppleSubstitutionService: SubstitutionService {
     /// Runs `operation`, throwing `SubstitutionServiceError.timeout` if it
     /// hasn't finished within `duration`.
     ///
-    /// Whichever child finishes first wins and the other is cancelled, so a
-    /// completed generation is never discarded because the timer was close
-    /// behind, and a timed-out generation doesn't keep the model busy.
-    /// External cancellation propagates: `group.next()` rethrows the
-    /// `CancellationError` from the sleeping child.
+    /// Delegates to `BoundedWork.run`, which is where the reason this
+    /// is not a `withThrowingTaskGroup` race is written down. The short
+    /// version: this function used to be that race, and a task group awaits
+    /// its remaining children when its body returns. `cancelAll()` only
+    /// *flags* a child, so a `respond` call that never returns - exactly what
+    /// happens where the model reports itself available with no assets
+    /// installed - kept the group's scope open and the caller suspended. The
+    /// timeout fired and nobody could receive it, so the spinner the bound
+    /// existed to prevent ran forever anyway.
     ///
     /// Internal rather than private, and generic over any operation, so the
     /// timeout and cancellation behaviour can be tested with a plain `async`
@@ -185,18 +189,10 @@ nonisolated struct AppleSubstitutionService: SubstitutionService {
         _ duration: Duration,
         operation: @escaping @Sendable () async throws -> T
     ) async throws -> T {
-        try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask { try await operation() }
-            group.addTask {
-                try await Task.sleep(for: duration)
-                throw SubstitutionServiceError.timeout
-            }
-
-            defer { group.cancelAll() }
-            guard let result = try await group.next() else {
-                throw SubstitutionServiceError.timeout
-            }
-            return result
-        }
+        try await BoundedWork.run(
+            timeout: duration,
+            timeoutError: { SubstitutionServiceError.timeout },
+            operation: operation
+        )
     }
 }

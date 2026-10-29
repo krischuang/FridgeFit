@@ -16,11 +16,18 @@ import SwiftUI
 /// - **No community stat pill.** "32 ingredients rescued in your community
 ///   today" is a number FridgeFit does not have. Rendering it would be
 ///   presenting a made-up figure as a live one.
-/// - **No "Protected by iCloud Sync" line.** FridgeFit syncs through Firebase,
-///   not iCloud, so the line as written would be false. The trust line kept
-///   below says only what the Firestore rules actually enforce.
+/// - **No "Protected by iCloud Sync" line.** FridgeFit has no iCloud, no
+///   CloudKit and no cross-device sync of any kind. In the shipping
+///   configuration the kitchen is a local SwiftData store that never leaves
+///   the device; what *is* in the cloud is the account itself and
+///   remote-camera pairing. The trust line kept below says only what is
+///   actually true, and Profile → Settings states the full picture - see
+///   `StorageDisclosure`.
 struct LoginView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
+    /// Google's button ships both schemes; picking the one that matches
+    /// the appearance keeps a white card from glowing on a dark screen.
+    @Environment(\.colorScheme) private var colorScheme
 
     private enum Field: Hashable {
         case email
@@ -31,10 +38,26 @@ struct LoginView: View {
     @State private var password = ""
     @State private var isPasswordRevealed = false
     @State private var showRegister = false
+    /// Set once the email field has been touched, so the validation message
+    /// never appears on a form the user has not started filling in.
+    @State private var hasEditedEmail = false
     @FocusState private var focusedField: Field?
 
+    /// Why the typed email can't be submitted, or `nil` if it can.
+    ///
+    /// Shown only once the user has moved on from the field, so a correct
+    /// address is never flagged halfway through being typed.
+    private var emailValidationError: String? {
+        guard hasEditedEmail, focusedField != .email else { return nil }
+        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return AuthEmailValidator.isValid(trimmed) ? nil : "Enter a valid email address."
+    }
+
     private var canSubmit: Bool {
-        !email.isEmpty && !password.isEmpty && !authViewModel.isLoading
+        !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !password.isEmpty
+            && !authViewModel.isLoading
     }
 
     var body: some View {
@@ -81,15 +104,26 @@ struct LoginView: View {
 
     private var credentialFields: some View {
         VStack(spacing: FridgeFitTheme.Spacing.large) {
-            AuthField(label: "Email Address", systemImage: "envelope", isFocused: focusedField == .email) {
-                TextField("", text: $email, prompt: AuthFieldPrompt.text("alex@fridgefit.app"))
-                    .textContentType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.emailAddress)
-                    .autocorrectionDisabled()
-                    .submitLabel(.next)
-                    .focused($focusedField, equals: .email)
-                    .onSubmit { focusedField = .password }
+            VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.small) {
+                AuthField(label: "Email Address", systemImage: "envelope", isFocused: focusedField == .email) {
+                    TextField("", text: $email, prompt: AuthFieldPrompt.text("alex@fridgefit.app"))
+                        .textContentType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                        .autocorrectionDisabled()
+                        .submitLabel(.next)
+                        .focused($focusedField, equals: .email)
+                        .onChange(of: email) { _, _ in hasEditedEmail = true }
+                        .onSubmit { focusedField = .password }
+                }
+
+                if let emailValidationError {
+                    Label(emailValidationError, systemImage: "exclamationmark.circle")
+                        .font(FridgeFitTheme.Typography.caption)
+                        .foregroundStyle(FridgeFitTheme.ColorToken.errorText)
+                        .padding(.horizontal, FridgeFitTheme.Spacing.xSmall)
+                        .accessibilityLabel("Error. \(emailValidationError)")
+                }
             }
 
             AuthField(label: "Password", systemImage: "lock", isFocused: focusedField == .password) {
@@ -138,7 +172,7 @@ struct LoginView: View {
     /// that button may look, and `GoogleSignInButton` is the version that
     /// stays compliant on its own.
     private var googleButton: some View {
-        GoogleSignInButton(scheme: .light, style: .wide, state: .normal) {
+        GoogleSignInButton(scheme: colorScheme == .dark ? .dark : .light, style: .wide, state: .normal) {
             focusedField = nil
             Task { await authViewModel.signInWithGoogle() }
         }

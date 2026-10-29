@@ -6,7 +6,7 @@
 import Foundation
 
 // How often a food budget resets.
-enum BudgetCadence: String, Codable, CaseIterable, Sendable {
+nonisolated enum BudgetCadence: String, Codable, CaseIterable, Sendable {
     case weekly
     case fortnightly
 
@@ -29,7 +29,7 @@ enum BudgetCadence: String, Codable, CaseIterable, Sendable {
 // A user's food-spending limit for one budget period. The limit must be greater
 // than zero, and only one budget is active at a time — its window runs from
 // `startDate` for `cadence.lengthInDays` days.
-struct FoodBudget: Identifiable, Hashable, Codable, Sendable {
+nonisolated struct FoodBudget: Identifiable, Hashable, Codable, Sendable {
     let id: UUID
     let limit: Money
     let cadence: BudgetCadence

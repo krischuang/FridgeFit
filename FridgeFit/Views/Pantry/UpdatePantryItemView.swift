@@ -45,6 +45,7 @@ struct UpdatePantryItemView: View {
                 }
             }
             .navigationTitle("Update Quantity")
+            .numericKeyboardDoneButton()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

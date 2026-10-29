@@ -29,7 +29,14 @@ final class CameraModeViewModel: ObservableObject {
     /// it is streaming.
     @Published private(set) var isReceivingFrames = false
     @Published private(set) var lastCaptureSummary: String?
-    @Published var errorMessage: String?
+    /// Written only through `report(_:)` and `clearError()`, so
+    /// `errorIsResolvableInSettings` can never describe a different error than
+    /// the one on screen.
+    @Published private(set) var errorMessage: String?
+    /// True when the current error is one the user can fix in iOS Settings,
+    /// so the error card can offer to take them there instead of only naming
+    /// the place.
+    @Published private(set) var errorIsResolvableInSettings = false
 
     /// The local track, for the preview. `nil` until capture starts.
     @Published private(set) var localVideoTrack: RTCVideoTrack?
@@ -69,6 +76,26 @@ final class CameraModeViewModel: ObservableObject {
 
     var connectivityCaveat: String { WebRTCConfiguration.current.connectivityCaveat }
 
+    // MARK: - Error reporting
+
+    /// Shows a domain error, carrying over whether Settings can resolve it.
+    private func report(_ error: RemoteCameraError) {
+        errorMessage = error.message
+        errorIsResolvableInSettings = error.isResolvableInSettings
+    }
+
+    /// Shows a message that describes a failure no Settings switch can fix -
+    /// a capture session that would not start, a transfer that failed.
+    private func report(_ message: String) {
+        errorMessage = message
+        errorIsResolvableInSettings = false
+    }
+
+    private func clearError() {
+        errorMessage = nil
+        errorIsResolvableInSettings = false
+    }
+
     var canSwitchCamera: Bool {
         guard let cameraSource else { return false }
         return CameraVideoSource.hasCamera(at: cameraSource.position.other)
@@ -80,20 +107,20 @@ final class CameraModeViewModel: ObservableObject {
     /// as an available camera.
     func activate() async {
         guard !isActive else { return }
-        errorMessage = nil
+        clearError()
 
         guard CameraVideoSource.isCameraAvailable else {
-            errorMessage = RemoteCameraError.cameraUnavailable.message
+            report(RemoteCameraError.cameraUnavailable)
             return
         }
         switch await CameraAccess.request() {
         case .granted:
             break
         case .denied:
-            errorMessage = RemoteCameraError.cameraPermissionDenied.message
+            report(RemoteCameraError.cameraPermissionDenied)
             return
         case .unavailable:
-            errorMessage = RemoteCameraError.cameraUnavailable.message
+            report(RemoteCameraError.cameraUnavailable)
             return
         }
 
@@ -101,10 +128,10 @@ final class CameraModeViewModel: ObservableObject {
         do {
             try await source.start(position: .back)
         } catch let error as CameraVideoSource.CaptureError {
-            errorMessage = "Couldn't start the camera: \(error.describedReason)"
+            report("Couldn't start the camera: \(error.describedReason)")
             return
         } catch {
-            errorMessage = "Couldn't start the camera: \(error.localizedDescription)"
+            report("Couldn't start the camera: \(error.localizedDescription)")
             return
         }
 
@@ -147,7 +174,7 @@ final class CameraModeViewModel: ObservableObject {
         do {
             try await registry.register(device: identity.asRegisteredDevice(role: .camera))
         } catch {
-            errorMessage = ConnectedDevicesViewModel.describe(error)
+            report(ConnectedDevicesViewModel.describe(error))
         }
     }
 
@@ -206,7 +233,7 @@ final class CameraModeViewModel: ObservableObject {
             break
 
         case .failed(let error):
-            errorMessage = error.message
+            report(error)
 
         case .ended(let reason):
             connectedControllerName = nil
@@ -270,7 +297,7 @@ final class CameraModeViewModel: ObservableObject {
         } catch {
             let reason = Self.describeCaptureFailure(error)
             try? coordinator.send(.captureFailed(requestId: requestId, reason: reason))
-            errorMessage = "Couldn't send the photo: \(reason)"
+            report("Couldn't send the photo: \(reason)")
             logger.error("Snapshot send failed: \(reason, privacy: .public)")
         }
     }
@@ -284,9 +311,9 @@ final class CameraModeViewModel: ObservableObject {
                 try? coordinator?.send(.cameraSwitched(position: newPosition))
             }
         } catch let error as CameraVideoSource.CaptureError {
-            errorMessage = "Couldn't switch camera: \(error.describedReason)"
+            report("Couldn't switch camera: \(error.describedReason)")
         } catch {
-            errorMessage = "Couldn't switch camera: \(error.localizedDescription)"
+            report("Couldn't switch camera: \(error.localizedDescription)")
         }
     }
 

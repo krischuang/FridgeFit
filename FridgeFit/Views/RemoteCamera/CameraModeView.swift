@@ -15,6 +15,7 @@ struct CameraModeView: View {
     @StateObject private var viewModel: CameraModeViewModel
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     init(identity: DeviceIdentity) {
         _viewModel = StateObject(wrappedValue: CameraModeViewModel(identity: identity))
@@ -223,12 +224,25 @@ struct CameraModeView: View {
                     .font(FridgeFitTheme.Typography.metadata)
                     .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                // Only for the one failure a Settings switch can fix. See
+                // `RemoteCameraError.isResolvableInSettings`.
+                if viewModel.errorIsResolvableInSettings, let settings = SystemSettings.appSettings {
+                    Button("Open Settings") { openURL(settings) }
+                        .font(FridgeFitTheme.Typography.metadata.weight(.semibold))
+                        .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                        .accessibilityHint("Opens FridgeFit's permissions in the Settings app")
+                }
             }
         }
         .padding(FridgeFitTheme.Spacing.medium)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(FridgeFitTheme.ColorToken.warningBackground.opacity(0.72), in: RoundedRectangle(cornerRadius: FridgeFitTheme.Radius.card, style: .continuous))
-        .accessibilityElement(children: .combine)
+        // Combining would swallow the button, so the text is grouped and the
+        // button stays its own element.
+        .accessibilityElement(children: .contain)
     }
 
     private var cameraStatusTitle: String {

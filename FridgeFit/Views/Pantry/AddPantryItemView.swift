@@ -62,6 +62,7 @@ struct AddPantryItemView: View {
                 }
             }
             .navigationTitle("Add to Pantry")
+            .numericKeyboardDoneButton()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

@@ -19,7 +19,7 @@ struct ReceiptScannerView: View {
     @State private var isPresentingCamera = false
     @State private var isLoadingPickedPhoto = false
     @State private var isPresentingTips = false
-    @State private var cameraAccessMessage: String?
+    @State private var cameraAccessPrompt: CameraAccessPrompt?
     #if DEBUG
     @State private var isPresentingDemoCachePreparation = false
     #endif
@@ -93,17 +93,7 @@ struct ReceiptScannerView: View {
                 )
                 .ignoresSafeArea()
             }
-            .alert(
-                "Camera Unavailable",
-                isPresented: Binding(
-                    get: { cameraAccessMessage != nil },
-                    set: { if !$0 { cameraAccessMessage = nil } }
-                )
-            ) {
-                Button("OK") { cameraAccessMessage = nil }
-            } message: {
-                Text(cameraAccessMessage ?? "")
-            }
+            .cameraAccessAlert($cameraAccessPrompt)
             .onChange(of: photoItem) { _, newItem in
                 guard let newItem else { return }
                 loadPickedPhoto(newItem)
@@ -426,7 +416,9 @@ struct ReceiptScannerView: View {
             case .granted:
                 isPresentingCamera = true
             case .denied, .unavailable:
-                cameraAccessMessage = access.explanation
+                // Explains what happened and, for a declined permission,
+                // offers to open Settings rather than only naming it.
+                cameraAccessPrompt = access.prompt
             }
         }
     }

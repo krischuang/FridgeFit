@@ -6,7 +6,7 @@
 import Foundation
 
 // A single grocery purchase logged against the active budget.
-struct GrocerySpend: Identifiable, Hashable, Codable, Sendable {
+nonisolated struct GrocerySpend: Identifiable, Hashable, Codable, Sendable {
     let id: UUID
     let amount: Money
     let spentOn: Date

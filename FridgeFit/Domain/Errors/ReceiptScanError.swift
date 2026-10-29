@@ -33,6 +33,14 @@ nonisolated enum ReceiptScanError: LocalizedError, Equatable {
     case requestNotAllowed
     /// The model was asked for too much at once, or is busy.
     case modelBusy
+    /// Interpretation ran past the time FridgeFit is willing to wait.
+    ///
+    /// Enforced by FridgeFit, not reported by the SDK: a `respond` call on a
+    /// device that claims a model it has no assets for never returns at all,
+    /// so without an explicit bound this is an indefinite spinner rather
+    /// than an error. See `AppleReceiptIngredientInterpreter` and
+    /// `BoundedWork`.
+    case timeout
 
     var errorDescription: String? {
         switch self {
@@ -55,6 +63,8 @@ nonisolated enum ReceiptScanError: LocalizedError, Equatable {
             return "FridgeFit couldn't read that receipt. Try a different photo."
         case .modelBusy:
             return "Apple Intelligence is busy right now. Please try again in a moment."
+        case .timeout:
+            return "Reading that receipt took too long, so FridgeFit stopped. Try again, or add the items to your pantry by hand."
         }
     }
 }

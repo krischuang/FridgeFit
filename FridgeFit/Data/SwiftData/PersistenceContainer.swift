@@ -65,11 +65,23 @@ final class PersistenceContainer {
     /// A type missing here is not a compile error - it is a crash the first
     /// time something tries to fetch it, so the list is kept beside the
     /// container rather than inline at each call site.
+    /// Adding types here is a SwiftData *lightweight* migration: new tables
+    /// are created, existing rows are not rewritten, and a store written by
+    /// an earlier build opens unchanged. That is what made it safe to bring
+    /// the five FridgeFunds models into the shipping store rather than
+    /// leaving the money side in the cloud - no existing pantry had to be
+    /// migrated or risked. `SwiftDataPersistenceRetentionTests` covers the
+    /// reopen.
     static let schema = Schema([
         PantryItemEntity.self,
         InventoryEventEntity.self,
         SavedRecipeEntity.self,
         SavedRecipeIngredientEntity.self,
+        FoodBudgetEntity.self,
+        GrocerySpendEntity.self,
+        WastedFoodCostEntity.self,
+        ItemPriceEntity.self,
+        PriceBookEntryEntity.self,
     ])
 
     let modelContainer: ModelContainer
