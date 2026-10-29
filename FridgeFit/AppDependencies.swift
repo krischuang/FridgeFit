@@ -5,6 +5,7 @@
 
 import FirebaseAuth
 import Foundation
+import SwiftData
 
 /// The application's composition root.
 ///
@@ -49,6 +50,17 @@ final class AppDependencies {
     /// `OnlineRecipeFeature.savedRecipeStorage` and is `nil` until the
     /// Firestore rules are deployed. `nil` means saving isn't offered.
     let savedRecipeRepository: (any SavedRecipeRepository)?
+
+    /// The money side: budget, logged spends, valued waste, per-item prices
+    /// and the price book.
+    ///
+    /// Resolved here, from the same `backend` as the pantry, so the two
+    /// cannot disagree about where the user's data is. `ContentView` used to
+    /// build `FundsEnvironment.firestore(pantryRepository:)` itself, which
+    /// meant the shipping build - whose `compiledDefault` is `.swiftData` -
+    /// kept the pantry on the device and the prices of that pantry's contents
+    /// in the cloud.
+    let fundsEnvironment: FundsEnvironment
 
     /// Retained for the lifetime of the app in SwiftData mode, `nil` in
     /// Firebase mode.
@@ -102,26 +114,125 @@ final class AppDependencies {
                     ownerIDProvider: ownerIDProvider
                 )
             )
+            // Same context and the same owner source as the pantry above, so
+            // an ingredient and its price are one account's data in one
+            // store file.
+            fundsEnvironment = .swiftData(
+                pantryRepository: pantryRepository,
+                context: container.mainContext,
+                ownerIDProvider: ownerIDProvider
+            )
 
         case .firebase:
             persistenceContainer = nil
             pantryRepository = FirestorePantryRepository()
             eventRepository = FirestoreInventoryEventRepository()
             savedRecipeRepository = OnlineRecipeFeature.makeSavedRecipeRepository()
+            fundsEnvironment = .firestore(pantryRepository: pantryRepository)
         }
     }
 
     /// Builds the graph from an already-made pair, for previews and tests.
+    ///
+    /// - Parameter fundsEnvironment: defaults to the in-memory money stores
+    ///   over the supplied pantry. Deliberately not the sample data: a
+    ///   preview showing invented budget figures as the user's own is the
+    ///   failure `FundsEnvironment.sample` is kept separate to prevent.
     init(
         backend: PersistenceBackend,
         pantryRepository: any PantryRepository,
         eventRepository: any InventoryEventRepository,
-        savedRecipeRepository: (any SavedRecipeRepository)? = nil
+        savedRecipeRepository: (any SavedRecipeRepository)? = nil,
+        fundsEnvironment: FundsEnvironment? = nil
     ) {
         self.backend = backend
         self.pantryRepository = pantryRepository
         self.eventRepository = eventRepository
         self.savedRecipeRepository = savedRecipeRepository
+        self.fundsEnvironment = fundsEnvironment ?? .inMemory(pantryRepository: pantryRepository)
         self.persistenceContainer = nil
+    }
+
+    // MARK: - Account deletion
+
+    /// Builds the account-deletion use case.
+    ///
+    /// ## Why Firestore is always a stage, even in SwiftData mode
+    ///
+    /// `PersistenceBackend` only decides where *business data* lives.
+    /// Authentication, the remote-camera device registry and WebRTC
+    /// signalling are always Firebase (see `PersistenceConfiguration`), so a
+    /// SwiftData build still writes `users/{uid}/devices` and
+    /// `users/{uid}/webrtcSessions`. On top of that, a user who ever ran a
+    /// Firebase-backed build has a pantry up there too. Skipping the remote
+    /// stage would therefore leave real data behind on a "deleted" account,
+    /// so it runs unconditionally - and deleting collections that are already
+    /// empty costs one query each.
+    ///
+    /// ## Order
+    ///
+    /// Remote, then local store, then on-device caches. The first must happen
+    /// while the auth token is still valid; `DeleteAccountUseCase` explains
+    /// why that forces data-before-login.
+    func makeDeleteAccountUseCase() -> DeleteAccountUseCase {
+        var stages: [any AccountDataDeleting] = [FirestoreAccountDataDeleter()]
+
+        if let persistenceContainer {
+            stages.append(
+                SwiftDataAccountDataDeleter(
+                    // The pantry and event repositories read through this
+                    // context, so deleting through it too means their live
+                    // objects are updated rather than invalidated behind
+                    // their backs.
+                    context: persistenceContainer.mainContext,
+                    // Saved recipes are written through a context of their
+                    // own (see `SwiftDataSavedRecipeStore.context`), which is
+                    // private to that store, so deletion gets its own
+                    // context over the same container - same store file,
+                    // same rows.
+                    savedRecipeContext: ModelContext(persistenceContainer.modelContainer)
+                )
+            )
+        }
+
+        stages.append(LocalStateAccountDataDeleter())
+
+        // `nil` unless a backend is configured, which it is not by default -
+        // see `AccountDeletionBackendConfiguration` for why. With `nil` the
+        // use case takes the on-device path, exactly as before.
+        let backend = AccountDeletionBackendConfiguration.baseURL.map {
+            CallableAccountDeletionBackend(baseURL: $0)
+        }
+
+        return DeleteAccountUseCase(
+            auth: FirebaseAccountAuthenticator(),
+            data: CompositeAccountDataDeleter(stages: stages),
+            backend: backend,
+            localData: makeLocalAccountDataDeleter()
+        )
+    }
+
+    /// Everything **this device** holds for one account, with no cloud stage.
+    ///
+    /// Two callers. On the backend deletion path the server owns the
+    /// Firestore side, so the client's only remaining job is the local copy.
+    /// And `AppGraphEndToEndTests` uses it to delete one account's local data
+    /// through the same construction the app uses, rather than reaching into
+    /// the container - which would mean the test proved something about a
+    /// hand-built deleter instead of the real one.
+    func makeLocalAccountDataDeleter() -> any AccountDataDeleting {
+        var stages: [any AccountDataDeleting] = []
+
+        if let persistenceContainer {
+            stages.append(
+                SwiftDataAccountDataDeleter(
+                    context: persistenceContainer.mainContext,
+                    savedRecipeContext: ModelContext(persistenceContainer.modelContainer)
+                )
+            )
+        }
+        stages.append(LocalStateAccountDataDeleter())
+
+        return CompositeAccountDataDeleter(stages: stages)
     }
 }

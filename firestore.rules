@@ -39,11 +39,58 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
+    // --- The account-deletion write lock ----------------------------------
+    //
+    // While a server-side deletion job is in flight, the Cloud Function
+    // writes deletionLocks/{uid}. Its presence makes every write below fail.
+    //
+    // Why this is needed: deleting a user's data is not instantaneous, and
+    // without this the app could add a pantry item into a subtree that is
+    // halfway through being deleted. The item would then survive the
+    // deletion that was supposed to remove everything, and the account would
+    // be reported as deleted while still owning data.
+    //
+    // Reads are deliberately left alone. A user whose deletion is running
+    // may still have the app open, and letting it render what is there -
+    // while refusing to add to it - is better than the screen erroring.
+    //
+    // Cost: one extra `exists()` on each user write. Writes in this app are
+    // user-initiated and infrequent (adding food, logging a spend), so this
+    // is the right place to pay for correctness.
+    function isNotBeingDeleted(uid) {
+      return !exists(/databases/$(database)/documents/deletionLocks/$(uid));
+    }
+
+    // The common case: the caller owns this subtree and it is not being
+    // deleted out from under them.
+    function canWrite(uid) {
+      return isOwner(uid) && isNotBeingDeleted(uid);
+    }
+
+    // --- Deletion bookkeeping ---------------------------------------------
+    //
+    // Both documents are written by the Cloud Functions Admin SDK, which
+    // bypasses these rules entirely. The rules therefore grant the *client*
+    // read-only access, so the app can show honest progress, and no write
+    // access at all - a client that could delete its own lock could write
+    // into a subtree mid-deletion, and a client that could edit its own job
+    // could mark itself "completed" without anything having happened.
+    match /deletionJobs/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    match /deletionLocks/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
     // --- Pantry (pre-existing, unchanged behaviour) -----------------------
     //
     // A signed-in user may only read or write their own pantry.
     match /users/{uid}/pantry/{pantryItemId} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
+      allow write: if canWrite(uid);
     }
 
     // --- Kitchen activity history -----------------------------------------
@@ -64,7 +111,8 @@ service cloud.firestore {
     // security boundary is the uid in the path, and nothing here is readable
     // or writable by anyone else's account.
     match /users/{uid}/inventoryEvents/{eventId} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
+      allow write: if canWrite(uid);
     }
 
     // --- Recipes saved from Discover --------------------------------------
@@ -82,7 +130,8 @@ service cloud.firestore {
     // sync with the enabled client feature; denied writes surface through the
     // existing save error.
     match /users/{uid}/savedRecipes/{recipeId} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
+      allow write: if canWrite(uid);
     }
 
     // --- Remote camera: device registry -----------------------------------
@@ -96,7 +145,8 @@ service cloud.firestore {
     // registration (create), heartbeat and role changes (update), and
     // removal (delete).
     match /users/{uid}/devices/{deviceId} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
+      allow write: if canWrite(uid);
     }
 
     // --- Remote camera: WebRTC signaling ----------------------------------
@@ -109,7 +159,8 @@ service cloud.firestore {
     // for sessions where calleeDeviceId == its own id, and the controller
     // sweeps sessions whose expiresAt has passed.
     match /users/{uid}/webrtcSessions/{sessionId} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
+      allow write: if canWrite(uid);
     }
 
     // ICE candidates, in a subcollection per negotiating role.
@@ -124,7 +175,9 @@ service cloud.firestore {
     // (see SignalingRole.candidateCollectionName) rather than a recursive
     // wildcard, so this grants no more than the feature needs.
     match /users/{uid}/webrtcSessions/{sessionId}/{candidateCollection}/{candidateId} {
-      allow read, write: if isOwner(uid)
+      allow read: if isOwner(uid)
+        && candidateCollection in ['callerCandidates', 'calleeCandidates'];
+      allow write: if canWrite(uid)
         && candidateCollection in ['callerCandidates', 'calleeCandidates'];
     }
 
@@ -139,7 +192,9 @@ service cloud.firestore {
     // rather than a wildcard, for the same reason as the ICE candidate rule
     // above.
     match /users/{uid}/{fundsCollection}/{docId} {
-      allow read, write: if isOwner(uid)
+      allow read: if isOwner(uid)
+        && fundsCollection in ['fundsBudget', 'fundsSpends', 'fundsWaste', 'fundsItemPrices', 'fundsPriceBook'];
+      allow write: if canWrite(uid)
         && fundsCollection in ['fundsBudget', 'fundsSpends', 'fundsWaste', 'fundsItemPrices', 'fundsPriceBook'];
     }
 

@@ -3,9 +3,15 @@ import SwiftUI
 
 struct ProfileSettingsView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
+    @Environment(\.deleteAccountUseCaseFactory) private var deleteAccountUseCaseFactory
+    /// Which store the pantry is actually in, so the sync row can state it
+    /// instead of guessing. `nil` where it was not supplied (previews), in
+    /// which case the row is left out rather than asserting a backend.
+    @Environment(\.persistenceBackend) private var persistenceBackend
 
     let store: ProfileSettingsStoring
     @State private var settings = ProfileSettings()
+    @State private var isPresentingDeleteAccount = false
 
     init(store: ProfileSettingsStoring = UserDefaultsProfileSettingsStore()) {
         self.store = store
@@ -13,49 +19,14 @@ struct ProfileSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.section) {
-            SettingsSectionTitle(title: "Expiry & Notifications", systemImage: "bell.badge")
-            SettingsCard {
-                UnsupportedSettingsRow(
-                    title: "Expiry reminders",
-                    detail: "Notification scheduling is not available in this build",
-                    systemImage: "alarm",
-                    tone: .warning
-                )
-                SettingsDivider()
-                UnsupportedSettingsRow(
-                    title: "Alert timing",
-                    detail: "Available after expiry notifications are implemented",
-                    systemImage: "clock"
-                )
-                SettingsDivider()
-                UnsupportedSettingsRow(
-                    title: "Sunday meal prep prompt",
-                    detail: "Weekly notification scheduling is not available",
-                    systemImage: "calendar"
-                )
-            }
-
-            SettingsSectionTitle(title: "Storage & Pantry Behaviour", systemImage: "cabinet")
-            SettingsCard {
-                UnsupportedSettingsRow(
-                    title: "Default quick-add shelf",
-                    detail: "Choose storage when adding each item",
-                    systemImage: "refrigerator"
-                )
-                SettingsDivider()
-                UnsupportedSettingsRow(
-                    title: "Auto-deduct cooked items",
-                    detail: "Inventory changes still require confirmation",
-                    systemImage: "cart.badge.minus"
-                )
-                SettingsDivider()
-                UnsupportedSettingsRow(
-                    title: "Smart Scan auto-match",
-                    detail: "Review detected ingredients before saving",
-                    systemImage: "viewfinder"
-                )
-            }
-
+            // Six rows used to sit above this, in two sections ("Expiry &
+            // Notifications", "Storage & Pantry Behaviour"), each rendered
+            // greyed out with a padlock and the word "Unavailable". They were
+            // not settings - none of them could be switched on, and together
+            // they made the first screenful of Settings a list of things
+            // FridgeFit cannot do. Advertising six absent features above the
+            // two real ones reads as an unfinished app, so they are gone
+            // rather than disabled. What remains is what works.
             SettingsSectionTitle(title: "Kitchen & Units", systemImage: "ruler")
             SettingsCard {
                 MeasurementPreferenceRow(selection: $settings.measurementSystem)
@@ -63,28 +34,35 @@ struct ProfileSettingsView: View {
                 ServingPreferenceRow(servings: $settings.defaultServingSize)
             }
 
-            SettingsSectionTitle(title: "Data & Account", systemImage: "person.crop.circle")
+            // Replaces a single row that read "Sync status - Firestore
+            // account sync - Private, user-scoped cloud storage". That was
+            // untrue in the shipping configuration, where the pantry is a
+            // local database and never leaves the device. The copy is now
+            // derived from the backend that was actually built, so it cannot
+            // drift from reality again - see `StorageDisclosure`.
+            SettingsSectionTitle(title: "Where your data lives", systemImage: "externaldrive")
             SettingsCard {
-                SettingsStatusRow(
-                    title: "Sync status",
-                    detail: "Private, user-scoped cloud storage",
-                    systemImage: "cloud",
-                    status: "Firestore account sync"
-                )
-                SettingsDivider()
-                UnsupportedSettingsRow(
-                    title: "Export kitchen data",
-                    detail: "Secure export is not available yet",
-                    systemImage: "square.and.arrow.up"
-                )
-                SettingsDivider()
-                UnsupportedSettingsRow(
-                    title: "Clear pantry data",
-                    detail: "Bulk deletion is disabled until an atomic, verified workflow exists",
-                    systemImage: "trash",
-                    tone: .danger
-                )
+                if let persistenceBackend {
+                    let disclosures = StorageDisclosure.all(for: persistenceBackend)
+                    ForEach(Array(disclosures.enumerated()), id: \.element.id) { index, disclosure in
+                        if index > 0 { SettingsDivider() }
+                        StorageDisclosureRow(disclosure: disclosure)
+                    }
+                } else {
+                    SettingsStatusRow(
+                        title: "Storage",
+                        detail: "Not available on this screen outside the running app",
+                        systemImage: "externaldrive",
+                        status: "Unknown"
+                    )
+                }
             }
+
+            Text(StorageDisclosure.noSyncNotice)
+                .font(FridgeFitTheme.Typography.caption)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, FridgeFitTheme.Spacing.xSmall)
 
             AppInformationCard(version: appVersion, build: appBuild)
 
@@ -104,9 +82,46 @@ struct ProfileSettingsView: View {
                 .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
                 .frame(maxWidth: .infinity)
                 .textSelection(.enabled)
+
+            // Last, visually separated, and behind a sheet plus a
+            // confirmation dialog. Offered only when the composition root
+            // supplied a way to actually do it - a Delete Account button
+            // that cannot delete anything is the thing this section exists
+            // to stop being.
+            if let deleteAccountUseCaseFactory {
+                deleteAccountSection(factory: deleteAccountUseCaseFactory)
+            }
         }
         .task { settings = store.load() }
         .onChange(of: settings) { _, newValue in store.save(newValue) }
+    }
+
+    private func deleteAccountSection(factory: DeleteAccountUseCaseFactory) -> some View {
+        VStack(alignment: .leading, spacing: FridgeFitTheme.Spacing.medium) {
+            SettingsSectionTitle(title: "Danger zone", systemImage: "exclamationmark.triangle")
+
+            Button {
+                isPresentingDeleteAccount = true
+            } label: {
+                Label("Delete Account", systemImage: "trash")
+                    .foregroundStyle(FridgeFitTheme.ColorToken.danger)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(FridgeFitSecondaryButtonStyle())
+            .accessibilityIdentifier("open-delete-account")
+            .accessibilityHint("Permanently deletes your FridgeFit account and all of your data. You'll be asked to confirm.")
+
+            Text("Permanently removes your account and everything in it. This can't be undone.")
+                .font(FridgeFitTheme.Typography.caption)
+                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.top, FridgeFitTheme.Spacing.small)
+        .sheet(isPresented: $isPresentingDeleteAccount) {
+            DeleteAccountSheet(viewModel: DeleteAccountViewModel(useCase: factory.make()))
+        }
     }
 
     private var accountEmail: String {
@@ -162,41 +177,6 @@ private enum SettingsRowTone {
     case neutral
     case warning
     case danger
-}
-
-private struct UnsupportedSettingsRow: View {
-    let title: String
-    let detail: String
-    let systemImage: String
-    var tone: SettingsRowTone = .neutral
-
-    var body: some View {
-        HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.medium) {
-            SettingsRowIcon(systemImage: systemImage, tone: tone)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: title)
-                    .font(FridgeFitTheme.Typography.cardTitle)
-                    .foregroundStyle(tone == .danger ? FridgeFitTheme.ColorToken.danger : FridgeFitTheme.ColorToken.textPrimary)
-                Text(verbatim: detail)
-                    .font(FridgeFitTheme.Typography.caption)
-                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text("Unavailable")
-                    .font(FridgeFitTheme.Typography.caption.weight(.semibold))
-                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "lock.fill")
-                .font(.caption)
-                .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
-                .accessibilityHidden(true)
-        }
-        .padding(FridgeFitTheme.Spacing.large)
-        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
-        .opacity(0.78)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(verbatim: "\(title), unavailable"))
-    }
 }
 
 private struct SettingsRowIcon: View {
@@ -291,6 +271,55 @@ private struct ServingPreferenceRow: View {
             .background(FridgeFitTheme.ColorToken.disabledSurface, in: Capsule())
         }
         .padding(FridgeFitTheme.Spacing.large)
+    }
+}
+
+/// One "where your data lives" line.
+///
+/// The location is carried by text as well as by icon and colour, so the
+/// distinction between on-device and cloud is not conveyed by colour alone.
+private struct StorageDisclosureRow: View {
+    let disclosure: StorageDisclosure
+
+    var body: some View {
+        HStack(alignment: .top, spacing: FridgeFitTheme.Spacing.medium) {
+            SettingsRowIcon(systemImage: systemImage, tone: .neutral)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: disclosure.title)
+                    .font(FridgeFitTheme.Typography.cardTitle)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(verbatim: disclosure.location.shortLabel)
+                    .font(FridgeFitTheme.Typography.caption.weight(.semibold))
+                    .foregroundStyle(FridgeFitTheme.ColorToken.primary)
+
+                Text(verbatim: disclosure.detail)
+                    .font(FridgeFitTheme.Typography.caption)
+                    .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(FridgeFitTheme.Spacing.large)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            Text(verbatim: "\(disclosure.title). \(disclosure.location.shortLabel). \(disclosure.detail)")
+        )
+    }
+
+    private var systemImage: String {
+        switch disclosure.location {
+        case .onDeviceOnly: "iphone"
+        case .privateCloud: "lock.icloud"
+        // Deliberately not a lock: this is the one row where the data goes
+        // to someone other than FridgeFit, and the icon should not imply
+        // the same protection as the rows that stay under the account.
+        case .thirdParty: "arrow.up.forward.app"
+        }
     }
 }
 
