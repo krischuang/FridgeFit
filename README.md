@@ -249,7 +249,7 @@ or device, press ⌘R. Run tests with ⌘U.
 xcodebuild build -project FridgeFit.xcodeproj -scheme FridgeFit \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 
-# Test (240 tests)
+# Test (1,832 unit tests)
 xcodebuild test -project FridgeFit.xcodeproj -scheme FridgeFit \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
@@ -298,6 +298,19 @@ Xcode older than 26.1. Update Xcode.
 
 ---
 
+## Third-Party Dependencies
+
+| Package | Source | License |
+|---|---|---|
+| [Firebase iOS SDK](https://github.com/firebase/firebase-ios-sdk) | Swift Package, resolved automatically | Apache 2.0 |
+| [Google Sign-In for iOS](https://github.com/google/GoogleSignIn-iOS) | Swift Package, resolved automatically | Apache 2.0 |
+| [WebRTC Swift Package](https://github.com/stasel/WebRTC) | Swift Package, resolved automatically | BSD 3-Clause |
+
+Each is used under the license terms in its own repository; none of their
+source is vendored or modified in this project.
+
+---
+
 ## Repository layout
 
 ```
@@ -313,5 +326,4 @@ FridgeFitTests/         1,832 unit tests
 Config.xcconfig         Committed build config; includes Secrets.xcconfig
 Secrets.xcconfig.example  Template for your local, gitignored secrets
 firestore.rules         Per-user Firestore access rules
-docs/                   Feature audit and progress dashboard
 ```
