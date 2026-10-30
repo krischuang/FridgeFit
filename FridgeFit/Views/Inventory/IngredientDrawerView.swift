@@ -234,7 +234,7 @@ struct IngredientDrawerView: View {
             Image(systemName: "ellipsis.circle")
                 .font(.title3.weight(.medium))
                 .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
-                .frame(width: 34, height: 34)
+                .frame(width: 44, height: 44)
                 .contentShape(Circle())
         }
         .accessibilityLabel("More")

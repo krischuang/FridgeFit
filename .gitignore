@@ -22,6 +22,9 @@ Pods/
 # macOS
 .DS_Store
 
+# Editable report source - the PDF is the submitted deliverable, not the docx
+*.docx
+
 # Firebase
 #
 # GoogleService-Info.plist IS committed on purpose - the repo is private and

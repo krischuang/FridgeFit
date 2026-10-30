@@ -7,18 +7,27 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0C0191C71BE370DA13CBE083 /* ScreenshotCaptureUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5268B3F363A768A3B3CDE789 /* ScreenshotCaptureUITests.swift */; };
 		4C4AA1041869C9AE83349E2D /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = A33105392B7C6EF6C33290E6 /* GoogleSignInSwift */; };
 		89CB0E06E185C91A995F878D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 432FCA6D9680CAA14967130D /* Foundation.framework */; };
 		AA1000000000000000000004 /* WebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = AA1000000000000000000002 /* WebRTC */; };
 		AA1000000000000000000005 /* WebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = AA1000000000000000000003 /* WebRTC */; };
 		C8ED1E66BF188F6DDC94A9D5 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 5575BFD813A75E3190B13428 /* FirebaseFirestore */; };
 		DCCE30E2166A5CA7EA26DCC0 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = B2B19C79C7CDE2A5D8299505 /* FirebaseCore */; };
+		E80D26A78488394B93B1BEFB /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 432FCA6D9680CAA14967130D /* Foundation.framework */; };
 		FAB752160D9F984B40CAB423 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = ED9DF0389D44056354FD852E /* FirebaseAuth */; };
 		FCB8BC08B1D04A779509E274 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D2749F77276CA117F8ECFB1B /* GoogleSignIn */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		89A05451D7F065C82B8A0BB0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2AF9856630518F9E0065A469 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2AF9856D30518F9E0065A469;
+			remoteInfo = FridgeFit;
+		};
+		ADE5A804610C1D0287903D08 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 2AF9856630518F9E0065A469 /* Project object */;
 			proxyType = 1;
@@ -32,6 +41,8 @@
 		39DE02FFF38E1D8B020F8816 /* Secrets.xcconfig.example */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig.example; sourceTree = "<group>"; };
 		432FCA6D9680CAA14967130D /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		4ED902A1A70855916CA73C63 /* FridgeFitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FridgeFitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5268B3F363A768A3B3CDE789 /* ScreenshotCaptureUITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ScreenshotCaptureUITests.swift; path = FridgeFitUITests/ScreenshotCaptureUITests.swift; sourceTree = "<group>"; };
+		63FF53786239F8C62148F656 /* FridgeFitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FridgeFitUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9ADE3FAB860B088B60A43E6D /* Config.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -56,6 +67,8 @@
 		};
 		5921EE0D09BD997FDB717209 /* FridgeFitTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = FridgeFitTests;
 			sourceTree = "<group>";
 		};
@@ -72,6 +85,14 @@
 				4C4AA1041869C9AE83349E2D /* GoogleSignInSwift in Frameworks */,
 				C8ED1E66BF188F6DDC94A9D5 /* FirebaseFirestore in Frameworks */,
 				AA1000000000000000000004 /* WebRTC in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3D97F944F9CE0AA7406B5056 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E80D26A78488394B93B1BEFB /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +133,7 @@
 				5921EE0D09BD997FDB717209 /* FridgeFitTests */,
 				9ADE3FAB860B088B60A43E6D /* Config.xcconfig */,
 				39DE02FFF38E1D8B020F8816 /* Secrets.xcconfig.example */,
+				3AE6597EF9F899A0C0410417 /* FridgeFitUITests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -120,8 +142,17 @@
 			children = (
 				2AF9856E30518F9E0065A469 /* FridgeFit.app */,
 				4ED902A1A70855916CA73C63 /* FridgeFitTests.xctest */,
+				63FF53786239F8C62148F656 /* FridgeFitUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		3AE6597EF9F899A0C0410417 /* FridgeFitUITests */ = {
+			isa = PBXGroup;
+			children = (
+				5268B3F363A768A3B3CDE789 /* ScreenshotCaptureUITests.swift */,
+			);
+			name = FridgeFitUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -154,6 +185,24 @@
 			productName = FridgeFit;
 			productReference = 2AF9856E30518F9E0065A469 /* FridgeFit.app */;
 			productType = "com.apple.product-type.application";
+		};
+		92FB9116A182D55FCF4D2C7F /* FridgeFitUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 34A2DB3851FB203DCA32F665 /* Build configuration list for PBXNativeTarget "FridgeFitUITests" */;
+			buildPhases = (
+				489ABC9DBB818EB558D1A92F /* Sources */,
+				3D97F944F9CE0AA7406B5056 /* Frameworks */,
+				0876DCA0B7C0AA0ABE8AAD5F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				51568E0F8C4189BA3341491F /* PBXTargetDependency */,
+			);
+			name = FridgeFitUITests;
+			productName = FridgeFitUITests;
+			productReference = 63FF53786239F8C62148F656 /* FridgeFitUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 		D9F4445E7DC280EDF276EE1C /* FridgeFitTests */ = {
 			isa = PBXNativeTarget;
@@ -192,6 +241,10 @@
 					2AF9856D30518F9E0065A469 = {
 						CreatedOnToolsVersion = 26.1;
 					};
+					92FB9116A182D55FCF4D2C7F = {
+						CreatedOnToolsVersion = 26.1;
+						TestTargetID = 2AF9856D30518F9E0065A469;
+					};
 					D9F4445E7DC280EDF276EE1C = {
 						CreatedOnToolsVersion = 26.1;
 						TestTargetID = 2AF9856D30518F9E0065A469;
@@ -219,11 +272,19 @@
 			targets = (
 				2AF9856D30518F9E0065A469 /* FridgeFit */,
 				D9F4445E7DC280EDF276EE1C /* FridgeFitTests */,
+				92FB9116A182D55FCF4D2C7F /* FridgeFitUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0876DCA0B7C0AA0ABE8AAD5F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		2AF9856C30518F9E0065A469 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -255,6 +316,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		489ABC9DBB818EB558D1A92F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0C0191C71BE370DA13CBE083 /* ScreenshotCaptureUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -263,6 +332,12 @@
 			name = FridgeFit;
 			target = 2AF9856D30518F9E0065A469 /* FridgeFit */;
 			targetProxy = 89A05451D7F065C82B8A0BB0 /* PBXContainerItemProxy */;
+		};
+		51568E0F8C4189BA3341491F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = FridgeFit;
+			target = 2AF9856D30518F9E0065A469 /* FridgeFit */;
+			targetProxy = ADE5A804610C1D0287903D08 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -452,6 +527,37 @@
 			};
 			name = Release;
 		};
+		855C9FAD3E34FC6DED1797F0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Fridge.FridgeFitUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = FridgeFit;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A99758348A8F1BB28C4FC0C2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Fridge.FridgeFitUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = FridgeFit;
+			};
+			name = Debug;
+		};
 		B8F347AA1FB91AF6EE218628 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -527,6 +633,15 @@
 			buildConfigurations = (
 				2AF9857A30518FA00065A469 /* Debug */,
 				2AF9857B30518FA00065A469 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		34A2DB3851FB203DCA32F665 /* Build configuration list for PBXNativeTarget "FridgeFitUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				855C9FAD3E34FC6DED1797F0 /* Release */,
+				A99758348A8F1BB28C4FC0C2 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
