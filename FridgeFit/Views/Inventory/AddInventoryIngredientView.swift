@@ -90,7 +90,8 @@ struct AddInventoryIngredientView: View {
                 Button { searchText = "" } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(FridgeFitTheme.ColorToken.textSecondary)
-                        .frame(width: 36, height: 44)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Clear search")
             }

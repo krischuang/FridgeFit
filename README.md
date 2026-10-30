@@ -28,7 +28,8 @@ substitutions.
 
 Architecture is layered: `Domain` (models, protocols, errors) → `UseCases`
 → `Data` (SwiftData, Firestore, Vision, Foundation Models) → `ViewModels`
-→ `Views`. 1,820 unit tests cover the domain, use-case, persistence and
+→ `Views`. 1,832 unit tests (verified via a clean `xcodebuild test` run,
+30 Oct 2026) cover the domain, use-case, persistence and
 view-model layers, plus 129 Firebase emulator tests (86 Firestore
 security-rules, 43 Cloud Functions account-deletion) run against the local
 emulator suite.
@@ -36,7 +37,11 @@ emulator suite.
 A TypeScript Cloud Functions backend for server-side account deletion lives
 in `functions/`. It is complete and emulator-tested but **not deployed** —
 deploying needs the Blaze plan — so the shipping app uses its on-device
-deletion path. See `docs/assessment4-final-production-verification.md`.
+deletion path.
+
+### Demo video
+
+Capstone walkthrough (2–5 min, HD): [OneDrive link](https://studentutsedu-my.sharepoint.com/:v:/g/personal/kai-hsiang_chuang_student_uts_edu_au/IQC4-wJ41hbKT6y5S5bHStZSAdqRWwd1NXjzNVf6gjfrCuk?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=kcFNfl)
 
 ### Where your data actually lives
 
@@ -223,6 +228,12 @@ is injected via build settings into `Info.plist` at build time, so it never
 appears in source. Note that this means the key *is* readable inside the
 built app binary — fine for a class project, not a pattern for production.
 
+**Marking/tutor copies of this project** may ship with a `Secrets.xcconfig`
+already filled in, so Discover works without any setup. That key is a
+dedicated, revocable test key issued separately from any key a team member
+uses personally, and is not present in the GitHub repository itself — only
+in the private assessment submission package.
+
 ---
 
 ## Building and running
@@ -238,7 +249,7 @@ or device, press ⌘R. Run tests with ⌘U.
 xcodebuild build -project FridgeFit.xcodeproj -scheme FridgeFit \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 
-# Test (240 tests)
+# Test (1,832 unit tests)
 xcodebuild test -project FridgeFit.xcodeproj -scheme FridgeFit \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
@@ -287,6 +298,19 @@ Xcode older than 26.1. Update Xcode.
 
 ---
 
+## Third-Party Dependencies
+
+| Package | Source | License |
+|---|---|---|
+| [Firebase iOS SDK](https://github.com/firebase/firebase-ios-sdk) | Swift Package, resolved automatically | Apache 2.0 |
+| [Google Sign-In for iOS](https://github.com/google/GoogleSignIn-iOS) | Swift Package, resolved automatically | Apache 2.0 |
+| [WebRTC Swift Package](https://github.com/stasel/WebRTC) | Swift Package, resolved automatically | BSD 3-Clause |
+
+Each is used under the license terms in its own repository; none of their
+source is vendored or modified in this project.
+
+---
+
 ## Repository layout
 
 ```
@@ -298,9 +322,8 @@ FridgeFit/              App source (file-system-synchronized group)
   Views/                SwiftUI screens
   GoogleService-Info.plist   Firebase config (committed on purpose)
   Info.plist            Google Sign-In URL scheme, camera usage, API keys
-FridgeFitTests/         240 unit tests
+FridgeFitTests/         1,832 unit tests
 Config.xcconfig         Committed build config; includes Secrets.xcconfig
 Secrets.xcconfig.example  Template for your local, gitignored secrets
 firestore.rules         Per-user Firestore access rules
-docs/                   Feature audit and progress dashboard
 ```

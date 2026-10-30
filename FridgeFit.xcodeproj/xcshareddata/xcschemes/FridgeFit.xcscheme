@@ -39,6 +39,24 @@
                ReferencedContainer = "container:FridgeFit.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "92FB9116A182D55FCF4D2C7F"
+               BuildableName = "FridgeFitUITests.xctest"
+               BlueprintName = "FridgeFitUITests"
+               ReferencedContainer = "container:FridgeFit.xcodeproj">
+            </BuildableReference>
+            <SkippedTests>
+               <Test
+                  Identifier = "ScreenshotCaptureUITests/testCaptureAppStoreScreenshots">
+               </Test>
+               <Test
+                  Identifier = "ScreenshotCaptureUITests/testCaptureDarkModeScreenshot">
+               </Test>
+            </SkippedTests>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

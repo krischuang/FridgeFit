@@ -106,33 +106,33 @@ nonisolated enum DeleteAccountError: LocalizedError, Equatable {
                 so it can't be deleted from here. Contact support and your account will be \
                 removed for you.
                 """
-        case .remoteDataDeletionFailed(let reason):
+        case .remoteDataDeletionFailed:
             return """
                 Your cloud data couldn't be deleted, so FridgeFit stopped and changed nothing. \
                 Your account and all your data are still here. Check your connection and try \
-                again. (\(reason))
+                again.
                 """
-        case .localDataDeletionFailed(let reason):
+        case .localDataDeletionFailed:
             return """
                 Your cloud data was deleted but the copy on this device wasn't. Your account \
-                still exists - tap Delete Account again to finish. (\(reason))
+                still exists - tap Delete Account again to finish.
                 """
-        case .accountDeletionFailed(let reason):
+        case .accountDeletionFailed:
             return """
                 Your FridgeFit data has been deleted, but the sign-in itself could not be \
-                removed. Tap Delete Account again to finish removing it. (\(reason))
+                removed. Tap Delete Account again to finish removing it.
                 """
-        case .backendUnreachable(let reason):
+        case .backendUnreachable:
             return """
                 FridgeFit couldn't reach the account service, so nothing has been deleted. \
                 Your account and all your data are still here. Check your connection and \
-                try again. (\(reason))
+                try again.
                 """
-        case .deletionStatusUnknown(let reason):
+        case .deletionStatusUnknown:
             return """
                 FridgeFit couldn't confirm whether your account was deleted. It may still \
                 be in progress. Open this screen again in a moment to check - don't assume \
-                either way. (\(reason))
+                either way.
                 """
         }
     }
